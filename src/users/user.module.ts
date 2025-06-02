@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UserService } from './user.service';
 import { UserController } from './user.controller';
+import { UserRepository } from './users.repository';
 import { UserEntity } from '../schemas/user.entity';
 import { UserPreferencesEntity } from '../schemas/user-preferences.entity';
 
@@ -11,7 +12,7 @@ import { UserPreferencesEntity } from '../schemas/user-preferences.entity';
 @Module({
   imports: [TypeOrmModule.forFeature([UserEntity, UserPreferencesEntity])],
   controllers: [UserController],
-  providers: [UserService],
-  exports: [UserService],
+  providers: [UserService, UserRepository],
+  exports: [UserService, UserRepository],
 })
 export class UserModule {}

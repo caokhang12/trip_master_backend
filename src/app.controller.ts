@@ -9,4 +9,12 @@ export class AppController {
   getHello(): string {
     return this.appService.getHello();
   }
+
+  /**
+   * Health check endpoint that includes database connection status
+   */
+  @Get('health')
+  getHealth() {
+    return this.appService.getHealthCheck();
+  }
 }
