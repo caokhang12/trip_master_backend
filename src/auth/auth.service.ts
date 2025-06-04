@@ -66,7 +66,7 @@ export class AuthService {
   async login(loginDto: LoginDto): Promise<AuthResponseData> {
     const user = await this.userService.findByEmail(loginDto.email);
     if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException('You have not register this email yet');
     }
 
     const isValidPassword = await this.userService.verifyPassword(
