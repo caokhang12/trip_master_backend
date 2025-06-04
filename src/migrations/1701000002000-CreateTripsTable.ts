@@ -4,9 +4,9 @@ export class CreateTripsTable1701000002000 implements MigrationInterface {
   name = 'CreateTripsTable1701000002000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    // Create trips table
+    // Create trips table if it doesn't exist
     await queryRunner.query(`
-      CREATE TABLE "trips" (
+      CREATE TABLE IF NOT EXISTS "trips" (
         "id" uuid NOT NULL DEFAULT gen_random_uuid(),
         "user_id" uuid NOT NULL,
         "title" character varying(255) NOT NULL,
@@ -26,9 +26,9 @@ export class CreateTripsTable1701000002000 implements MigrationInterface {
       )
     `);
 
-    // Create itineraries table
+    // Create itineraries table if it doesn't exist
     await queryRunner.query(`
-      CREATE TABLE "itineraries" (
+      CREATE TABLE IF NOT EXISTS "itineraries" (
         "id" uuid NOT NULL DEFAULT gen_random_uuid(),
         "trip_id" uuid NOT NULL,
         "day_number" integer NOT NULL,
@@ -44,9 +44,9 @@ export class CreateTripsTable1701000002000 implements MigrationInterface {
       )
     `);
 
-    // Create trip_shares table
+    // Create trip_shares table if it doesn't exist
     await queryRunner.query(`
-      CREATE TABLE "trip_shares" (
+      CREATE TABLE IF NOT EXISTS "trip_shares" (
         "id" uuid NOT NULL DEFAULT gen_random_uuid(),
         "trip_id" uuid NOT NULL,
         "share_token" character varying(255) NOT NULL,
@@ -59,35 +59,35 @@ export class CreateTripsTable1701000002000 implements MigrationInterface {
       )
     `);
 
-    // Create indexes for better query performance
+    // Create indexes for better query performance (only if they don't exist)
     await queryRunner.query(
-      `CREATE INDEX "IDX_trips_user_id" ON "trips" ("user_id")`,
+      `CREATE INDEX IF NOT EXISTS "IDX_trips_user_id" ON "trips" ("user_id")`,
     );
     await queryRunner.query(
-      `CREATE INDEX "IDX_trips_status" ON "trips" ("status")`,
+      `CREATE INDEX IF NOT EXISTS "IDX_trips_status" ON "trips" ("status")`,
     );
     await queryRunner.query(
-      `CREATE INDEX "IDX_trips_dates" ON "trips" ("start_date", "end_date")`,
+      `CREATE INDEX IF NOT EXISTS "IDX_trips_dates" ON "trips" ("start_date", "end_date")`,
     );
     await queryRunner.query(
-      `CREATE INDEX "IDX_itineraries_trip_id" ON "itineraries" ("trip_id")`,
+      `CREATE INDEX IF NOT EXISTS "IDX_itineraries_trip_id" ON "itineraries" ("trip_id")`,
     );
     await queryRunner.query(
-      `CREATE INDEX "IDX_trip_shares_token" ON "trip_shares" ("share_token")`,
+      `CREATE INDEX IF NOT EXISTS "IDX_trip_shares_token" ON "trip_shares" ("share_token")`,
     );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    // Drop indexes
-    await queryRunner.query(`DROP INDEX "IDX_trip_shares_token"`);
-    await queryRunner.query(`DROP INDEX "IDX_itineraries_trip_id"`);
-    await queryRunner.query(`DROP INDEX "IDX_trips_dates"`);
-    await queryRunner.query(`DROP INDEX "IDX_trips_status"`);
-    await queryRunner.query(`DROP INDEX "IDX_trips_user_id"`);
+    // Drop indexes if they exist
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_trip_shares_token"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_itineraries_trip_id"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_trips_dates"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_trips_status"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_trips_user_id"`);
 
-    // Drop tables in reverse order
-    await queryRunner.query(`DROP TABLE "trip_shares"`);
-    await queryRunner.query(`DROP TABLE "itineraries"`);
-    await queryRunner.query(`DROP TABLE "trips"`);
+    // Drop tables in reverse order if they exist
+    await queryRunner.query(`DROP TABLE IF EXISTS "trip_shares"`);
+    await queryRunner.query(`DROP TABLE IF EXISTS "itineraries"`);
+    await queryRunner.query(`DROP TABLE IF EXISTS "trips"`);
   }
 }

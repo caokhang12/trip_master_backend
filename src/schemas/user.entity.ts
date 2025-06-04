@@ -5,6 +5,7 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToOne,
+  Index,
 } from 'typeorm';
 import { UserRole } from '../shared/types/base-response.types';
 import { UserPreferencesEntity } from './user-preferences.entity';
@@ -13,6 +14,8 @@ import { UserPreferencesEntity } from './user-preferences.entity';
  * User entity representing the users table in the database
  */
 @Entity('users')
+@Index(['homeCountry'])
+@Index(['preferredLanguage'])
 export class UserEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -31,6 +34,17 @@ export class UserEntity {
 
   @Column({ name: 'avatar_url', type: 'text', nullable: true })
   avatarUrl?: string;
+
+  @Column({ name: 'home_country', length: 100, nullable: true })
+  homeCountry?: string;
+
+  @Column({
+    name: 'preferred_language',
+    length: 10,
+    nullable: true,
+    default: 'en',
+  })
+  preferredLanguage?: string;
 
   @Column({
     type: 'enum',

@@ -45,7 +45,7 @@ async function bootstrap(): Promise<void> {
     })
     .addTag('Authentication', 'User authentication and account management')
     .addTag('Users', 'User profile and preference operations')
-    .addTag('Trip', 'Trip planning and management')
+    .addTag('Trips', 'Trip planning and management')
     .addServer('http://localhost:3000', 'Development Server')
     .build();
 

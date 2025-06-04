@@ -88,6 +88,22 @@ export class UserProfileDataDto {
   avatarUrl?: string;
 
   @ApiProperty({
+    description:
+      'User home country for localized content and currency preferences',
+    required: false,
+    example: 'Vietnam',
+  })
+  homeCountry?: string;
+
+  @ApiProperty({
+    description: 'User preferred language for the application interface',
+    required: false,
+    example: 'vi',
+    enum: ['en', 'vi', 'zh', 'ja', 'ko', 'th', 'fr', 'de', 'es'],
+  })
+  preferredLanguage?: string;
+
+  @ApiProperty({
     description: 'User role in the system',
     enum: UserRole,
     example: UserRole.USER,

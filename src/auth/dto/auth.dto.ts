@@ -6,6 +6,7 @@ import {
   IsEnum,
   Matches,
   MaxLength,
+  IsIn,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -56,6 +57,32 @@ export class RegisterDto {
   @IsString({ message: 'Last name must be a string' })
   @MaxLength(50, { message: 'Last name must not exceed 50 characters' })
   lastName?: string;
+
+  @ApiProperty({
+    description:
+      'User home country for localized content and currency preferences',
+    example: 'Vietnam',
+    required: false,
+    maxLength: 100,
+  })
+  @IsOptional()
+  @IsString({ message: 'Home country must be a string' })
+  @MaxLength(100, { message: 'Home country must not exceed 100 characters' })
+  homeCountry?: string;
+
+  @ApiProperty({
+    description: 'User preferred language for the application interface',
+    example: 'vi',
+    enum: ['en', 'vi', 'zh', 'ja', 'ko', 'th', 'fr', 'de', 'es'],
+    required: false,
+  })
+  @IsOptional()
+  @IsString({ message: 'Preferred language must be a string' })
+  @IsIn(['en', 'vi', 'zh', 'ja', 'ko', 'th', 'fr', 'de', 'es'], {
+    message:
+      'Preferred language must be one of: en, vi, zh, ja, ko, th, fr, de, es',
+  })
+  preferredLanguage?: string;
 }
 
 /**
