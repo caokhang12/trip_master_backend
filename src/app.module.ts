@@ -6,6 +6,7 @@ import { AppService } from './app.service';
 import { SharedModule } from './shared/shared.module';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './users/user.module';
+import { TripModule } from './trip/trip.module';
 import { DatabaseModule } from './database/database.module';
 import { GlobalExceptionFilter } from './shared/filters/global-exception.filter';
 import { GlobalValidationPipe } from './shared/pipes/global-validation.pipe';
@@ -20,6 +21,7 @@ import { GlobalValidationPipe } from './shared/pipes/global-validation.pipe';
     SharedModule,
     AuthModule,
     UserModule,
+    TripModule,
   ],
   controllers: [AppController],
   providers: [
