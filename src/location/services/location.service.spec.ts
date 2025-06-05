@@ -113,6 +113,8 @@ describe('LocationService', () => {
         updatedAt: new Date(),
       };
 
+      // Ensure API throttle allows request
+      mockApiThrottleService.checkAndLog.mockReturnValue(true);
       mockDestinationRepository.findOne.mockResolvedValue(cachedDestination);
 
       // Act
@@ -358,8 +360,8 @@ describe('LocationService', () => {
       );
 
       // Assert
-      expect(result.places).toHaveLength(1);
-      expect(result.places[0].name).toBe('Independence Palace');
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0].name).toBe('Independence Palace');
       expect(mockedAxios.get).toHaveBeenCalledWith(
         expect.stringContaining('geoapify.com'),
       );
@@ -380,11 +382,13 @@ describe('LocationService', () => {
 
       // Assert
       expect(result).toEqual({
-        places: [],
+        items: [],
         pagination: {
           page: 1,
           limit: poiSearchDto.limit,
           total: 0,
+          totalPages: 0,
+          hasMore: false,
         },
       });
     });
@@ -427,7 +431,7 @@ describe('LocationService', () => {
       expect(mockedAxios.get).toHaveBeenCalledWith(
         expect.stringContaining('geoapify.com'),
       );
-      expect(result.places[0].name).toBe('Test Restaurant');
+      expect(result.items[0].name).toBe('Test Restaurant');
     });
 
     it('should respect radius parameter', async () => {

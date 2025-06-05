@@ -2,6 +2,7 @@ import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import { APIThrottleService } from '../../shared/services/api-throttle.service';
+import { ErrorUtilService } from '../../shared/utils/error.util';
 
 export interface WeatherCurrent {
   temperature: number;
@@ -40,6 +41,70 @@ export interface WeatherResponse {
     name: string;
   };
   vietnamSeasonInfo?: VietnamSeasonInfo;
+}
+
+// OpenWeatherMap API response interfaces
+interface OpenWeatherMapCurrentResponse {
+  main: {
+    temp: number;
+    feels_like: number;
+    humidity: number;
+    pressure: number;
+  };
+  weather: Array<{
+    id: number;
+    main: string;
+    description: string;
+    icon: string;
+  }>;
+  wind?: {
+    speed: number;
+    deg: number;
+  };
+  visibility?: number;
+  name: string;
+  sys: {
+    country: string;
+  };
+}
+
+interface OpenWeatherMapForecastResponse {
+  list: Array<{
+    dt: number;
+    main: {
+      temp: number;
+      temp_min: number;
+      temp_max: number;
+      humidity: number;
+    };
+    weather: Array<{
+      id: number;
+      main: string;
+      description: string;
+      icon: string;
+    }>;
+    wind?: {
+      speed: number;
+      deg: number;
+    };
+    rain?: {
+      '3h': number;
+    };
+    dt_txt: string;
+  }>;
+  city: {
+    name: string;
+    country: string;
+  };
+}
+
+interface OpenWeatherMapGeocodingResponse {
+  name: string;
+  local_names?: Record<string, string>;
+  lat: number;
+  lon: number;
+  country: string;
+  state?: string;
 }
 
 /**
@@ -112,8 +177,11 @@ export class WeatherService {
         },
         vietnamSeasonInfo,
       };
-    } catch (error) {
-      this.logger.error(`Weather service error: ${error.message}`, error.stack);
+    } catch (error: unknown) {
+      this.logger.error(
+        `Weather service error: ${ErrorUtilService.getErrorMessage(error)}`,
+        ErrorUtilService.getErrorStack(error),
+      );
 
       if (error instanceof HttpException) {
         throw error;
@@ -134,7 +202,7 @@ export class WeatherService {
     lng: number,
     apiKey: string,
   ): Promise<WeatherCurrent> {
-    const response = await axios.get(
+    const response = await axios.get<OpenWeatherMapCurrentResponse>(
       'https://api.openweathermap.org/data/2.5/weather',
       {
         params: {
@@ -168,7 +236,7 @@ export class WeatherService {
     lng: number,
     apiKey: string,
   ): Promise<WeatherForecast[]> {
-    const response = await axios.get(
+    const response = await axios.get<OpenWeatherMapForecastResponse>(
       'https://api.openweathermap.org/data/2.5/forecast',
       {
         params: {
@@ -193,14 +261,14 @@ export class WeatherService {
         processedDates.add(dateStr);
 
         // Get min/max temps for the day
-        const dayForecasts = forecasts.filter((f: any) => {
+        const dayForecasts = forecasts.filter((f) => {
           const fDate = new Date(f.dt * 1000).toISOString().split('T')[0];
           return fDate === dateStr;
         });
 
-        const temps = dayForecasts.map((f: any) => f.main.temp);
-        const humidities = dayForecasts.map((f: any) => f.main.humidity);
-        const rainChances = dayForecasts.map((f: any) =>
+        const temps = dayForecasts.map((f) => f.main.temp);
+        const humidities = dayForecasts.map((f) => f.main.humidity);
+        const rainChances = dayForecasts.map((f) =>
           f.rain ? Math.min(100, (f.rain['3h'] || 0) * 10) : 0,
         );
 
@@ -232,7 +300,7 @@ export class WeatherService {
     apiKey: string,
   ): Promise<string> {
     try {
-      const response = await axios.get(
+      const response = await axios.get<OpenWeatherMapGeocodingResponse[]>(
         'https://api.openweathermap.org/geo/1.0/reverse',
         {
           params: {
@@ -249,8 +317,10 @@ export class WeatherService {
       if (location) {
         return `${location.name}${location.state ? `, ${location.state}` : ''}, ${location.country}`;
       }
-    } catch (error) {
-      this.logger.warn(`Failed to get location name: ${error.message}`);
+    } catch (error: unknown) {
+      this.logger.warn(
+        `Failed to get location name: ${ErrorUtilService.getErrorMessage(error)}`,
+      );
     }
 
     return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;

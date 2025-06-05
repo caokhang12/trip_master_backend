@@ -2,6 +2,7 @@ import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import { APIThrottleService } from '../../shared/services/api-throttle.service';
+import { ErrorUtilService } from '../../shared/utils/error.util';
 
 export interface ExchangeRates {
   base: string;
@@ -131,10 +132,10 @@ export class CurrencyService {
       });
 
       return rates;
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.logger.error(
-        `Exchange rates service error: ${error.message}`,
-        error.stack,
+        `Exchange rates service error: ${ErrorUtilService.getErrorMessage(error)}`,
+        ErrorUtilService.getErrorStack(error),
       );
 
       if (error instanceof HttpException) {
@@ -196,10 +197,10 @@ export class CurrencyService {
         formattedAmount: this.formatCurrency(convertedAmount, to.toUpperCase()),
         conversionDate: new Date().toISOString(),
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.logger.error(
-        `Currency conversion error: ${error.message}`,
-        error.stack,
+        `Currency conversion error: ${ErrorUtilService.getErrorMessage(error)}`,
+        ErrorUtilService.getErrorStack(error),
       );
 
       if (error instanceof HttpException) {
@@ -244,8 +245,10 @@ export class CurrencyService {
       if (apiKey) {
         return await this.fetchFromExchangeRateAPI(base, currencies, apiKey);
       }
-    } catch (error: any) {
-      this.logger.warn(`ExchangeRate-API failed: ${error.message}`);
+    } catch (error: unknown) {
+      this.logger.warn(
+        `ExchangeRate-API failed: ${ErrorUtilService.getErrorMessage(error)}`,
+      );
     }
 
     // Fallback to Fixer.io (free tier: 100 requests/month)
@@ -254,15 +257,19 @@ export class CurrencyService {
       if (fixerApiKey) {
         return await this.fetchFromFixerIO(base, currencies, fixerApiKey);
       }
-    } catch (error: any) {
-      this.logger.warn(`Fixer.io failed: ${error.message}`);
+    } catch (error: unknown) {
+      this.logger.warn(
+        `Fixer.io failed: ${ErrorUtilService.getErrorMessage(error)}`,
+      );
     }
 
     // Last fallback to ExchangeRatesAPI (free, no key required)
     try {
       return await this.fetchFromExchangeRatesAPI(base, currencies);
-    } catch (error: any) {
-      this.logger.error(`All exchange rate APIs failed: ${error.message}`);
+    } catch (error: unknown) {
+      this.logger.error(
+        `All exchange rate APIs failed: ${ErrorUtilService.getErrorMessage(error)}`,
+      );
       throw new HttpException(
         'All exchange rate services are unavailable',
         HttpStatus.SERVICE_UNAVAILABLE,

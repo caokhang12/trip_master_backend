@@ -10,6 +10,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { TripEntity, TripStatus } from '../schemas/trip.entity';
 import { ItineraryEntity } from '../schemas/itinerary.entity';
 import { TripShareEntity } from '../schemas/trip-share.entity';
+import { PaginationResult } from '../shared/types/pagination.types';
+import { PaginationUtilService } from '../shared/utils/pagination.util';
 import {
   CreateTripDto,
   UpdateTripDto,
@@ -17,16 +19,6 @@ import {
   ShareTripDto,
   TripSearchDto,
 } from './dto/trip.dto';
-
-export interface PaginationResult<T> {
-  items: T[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
-}
 
 export interface TripWithItinerary extends TripEntity {
   itinerary: ItineraryEntity[];
@@ -85,7 +77,10 @@ export class TripService {
       sortBy = 'createdAt',
       sortOrder = 'DESC',
     } = queryDto;
-    const skip = (page - 1) * limit;
+    const { skip } = PaginationUtilService.validateAndNormalizePagination(
+      page,
+      limit,
+    );
 
     const queryBuilder = this.tripRepository
       .createQueryBuilder('trip')
@@ -106,15 +101,11 @@ export class TripService {
 
     const [items, total] = await queryBuilder.getManyAndCount();
 
-    return {
-      items,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
-    };
+    return PaginationUtilService.createPaginationResult(items, {
+      page,
+      limit,
+      total,
+    });
   }
 
   /**
@@ -270,7 +261,10 @@ export class TripService {
     searchDto: TripSearchDto,
   ): Promise<PaginationResult<TripEntity>> {
     const { query, page = 1, limit = 10 } = searchDto;
-    const skip = (page - 1) * limit;
+    const { skip } = PaginationUtilService.validateAndNormalizePagination(
+      page,
+      limit,
+    );
 
     const queryBuilder = this.tripRepository
       .createQueryBuilder('trip')
@@ -285,15 +279,11 @@ export class TripService {
 
     const [items, total] = await queryBuilder.getManyAndCount();
 
-    return {
-      items,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
-    };
+    return PaginationUtilService.createPaginationResult(items, {
+      page,
+      limit,
+      total,
+    });
   }
 
   /**

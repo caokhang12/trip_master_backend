@@ -19,32 +19,40 @@ import { Type, Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { TripStatus, DestinationCoords } from '../../schemas/trip.entity';
 import { Activity } from '../../schemas/itinerary.entity';
+import {
+  ExtendedPaginationDto,
+  PaginationDto,
+} from '../../shared/dto/pagination.dto';
+import { OptionalDateRangeDto } from '../../shared/dto/date.dto';
+import { BaseCoordinateDto } from '../../shared/dto/coordinate.dto';
 
-export class DestinationCoordsDto {
-  @ApiProperty({
-    description: 'Latitude coordinate of the destination',
-    example: 35.6762,
-    minimum: -90,
-    maximum: 90,
-  })
-  @IsNumber({}, { message: 'Latitude must be a number' })
-  @Min(-90, { message: 'Latitude must be at least -90' })
-  @Max(90, { message: 'Latitude must be at most 90' })
-  lat: number;
+// Using shared BaseCoordinateDto instead of local DestinationCoordsDto
 
-  @ApiProperty({
-    description: 'Longitude coordinate of the destination',
-    example: 139.6503,
-    minimum: -180,
-    maximum: 180,
+/**
+ * Base trip DTO that combines date and budget validation
+ */
+export class BaseTripDto extends OptionalDateRangeDto {
+  @ApiPropertyOptional({
+    description: 'Total budget for the trip in the specified currency',
+    example: 3000,
+    minimum: 0,
   })
-  @IsNumber({}, { message: 'Longitude must be a number' })
-  @Min(-180, { message: 'Longitude must be at least -180' })
-  @Max(180, { message: 'Longitude must be at most 180' })
-  lng: number;
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({}, { message: 'Budget must be a number' })
+  @Min(0, { message: 'Budget must be at least 0' })
+  budget?: number;
+
+  @ApiPropertyOptional({
+    description: 'Currency code for the budget (ISO 4217)',
+    example: 'USD',
+    default: 'USD',
+  })
+  @IsOptional()
+  currency?: string = 'USD';
 }
 
-export class CreateTripDto {
+export class CreateTripDto extends BaseTripDto {
   @ApiProperty({
     description: 'Trip title - should be descriptive and engaging',
     example: 'Amazing Japan Adventure 2024',
@@ -77,7 +85,7 @@ export class CreateTripDto {
 
   @ApiPropertyOptional({
     description: 'GPS coordinates of the destination for map integration',
-    type: DestinationCoordsDto,
+    type: BaseCoordinateDto,
     example: {
       lat: 35.6762,
       lng: 139.6503,
@@ -86,47 +94,8 @@ export class CreateTripDto {
   @IsOptional()
   @IsObject()
   @ValidateNested()
-  @Type(() => DestinationCoordsDto)
+  @Type(() => BaseCoordinateDto)
   destinationCoords?: DestinationCoords;
-
-  @ApiPropertyOptional({
-    description: 'Trip start date in ISO 8601 format',
-    example: '2024-03-15',
-    format: 'date',
-  })
-  @IsOptional()
-  @IsDateString()
-  startDate?: string;
-
-  @ApiPropertyOptional({
-    description: 'Trip end date in ISO 8601 format (must be after start date)',
-    example: '2024-03-22',
-    format: 'date',
-  })
-  @IsOptional()
-  @IsDateString()
-  endDate?: string;
-
-  @ApiPropertyOptional({
-    description: 'Total budget for the trip in the specified currency',
-    example: 3000,
-    minimum: 0,
-  })
-  @IsOptional()
-  @IsNumber({}, { message: 'Budget must be a number' })
-  @Min(0, { message: 'Budget must be at least 0' })
-  budget?: number;
-
-  @ApiPropertyOptional({
-    description: 'Currency code (ISO 4217 standard)',
-    example: 'USD',
-    maxLength: 3,
-    default: 'USD',
-  })
-  @IsOptional()
-  @IsString()
-  @MaxLength(3)
-  currency?: string;
 
   @ApiPropertyOptional({
     description: 'Current status of the trip',
@@ -148,7 +117,7 @@ export class CreateTripDto {
   isPublic?: boolean;
 }
 
-export class UpdateTripDto {
+export class UpdateTripDto extends BaseTripDto {
   @ApiPropertyOptional({
     description: 'Updated trip title',
     example: 'Amazing Japan Adventure 2024 - Extended',
@@ -182,7 +151,7 @@ export class UpdateTripDto {
 
   @ApiPropertyOptional({
     description: 'Updated GPS coordinates of the destination',
-    type: DestinationCoordsDto,
+    type: BaseCoordinateDto,
     example: {
       lat: 35.0116,
       lng: 135.7681,
@@ -191,46 +160,8 @@ export class UpdateTripDto {
   @IsOptional()
   @IsObject()
   @ValidateNested()
-  @Type(() => DestinationCoordsDto)
+  @Type(() => BaseCoordinateDto)
   destinationCoords?: DestinationCoords;
-
-  @ApiPropertyOptional({
-    description: 'Updated trip start date',
-    example: '2024-03-10',
-    format: 'date',
-  })
-  @IsOptional()
-  @IsDateString()
-  startDate?: string;
-
-  @ApiPropertyOptional({
-    description: 'Updated trip end date',
-    example: '2024-03-25',
-    format: 'date',
-  })
-  @IsOptional()
-  @IsDateString()
-  endDate?: string;
-
-  @ApiPropertyOptional({
-    description: 'Updated total budget for the trip',
-    example: 4500,
-    minimum: 0,
-  })
-  @IsOptional()
-  @IsNumber({}, { message: 'Budget must be a number' })
-  @Min(0, { message: 'Budget must be at least 0' })
-  budget?: number;
-
-  @ApiPropertyOptional({
-    description: 'Updated currency code',
-    example: 'EUR',
-    maxLength: 3,
-  })
-  @IsOptional()
-  @IsString()
-  @MaxLength(3)
-  currency?: string;
 
   @ApiPropertyOptional({
     description: 'Updated trip status',
@@ -250,33 +181,7 @@ export class UpdateTripDto {
   isPublic?: boolean;
 }
 
-export class TripQueryDto {
-  @ApiPropertyOptional({
-    description: 'Page number for pagination',
-    example: 1,
-    minimum: 1,
-    default: 1,
-  })
-  @IsOptional()
-  @Transform(({ value }: { value: string }) => parseInt(value, 10))
-  @IsNumber({}, { message: 'Page must be a number' })
-  @Min(1, { message: 'Page must be at least 1' })
-  page?: number = 1;
-
-  @ApiPropertyOptional({
-    description: 'Number of trips per page',
-    example: 10,
-    minimum: 1,
-    maximum: 100,
-    default: 10,
-  })
-  @IsOptional()
-  @Transform(({ value }: { value: string }) => parseInt(value, 10))
-  @IsNumber({}, { message: 'Limit must be a number' })
-  @Min(1, { message: 'Limit must be at least 1' })
-  @Max(100, { message: 'Limit must be at most 100' })
-  limit?: number = 10;
-
+export class TripQueryDto extends ExtendedPaginationDto {
   @ApiPropertyOptional({
     description: 'Filter trips by status',
     enum: TripStatus,
@@ -285,34 +190,6 @@ export class TripQueryDto {
   @IsOptional()
   @IsEnum(TripStatus)
   status?: TripStatus;
-
-  @ApiPropertyOptional({
-    description: 'Search trips by title or destination',
-    example: 'Japan',
-  })
-  @IsOptional()
-  @IsString()
-  search?: string;
-
-  @ApiPropertyOptional({
-    description: 'Field to sort by',
-    example: 'createdAt',
-    enum: ['createdAt', 'updatedAt', 'title', 'startDate', 'endDate'],
-    default: 'createdAt',
-  })
-  @IsOptional()
-  @IsString()
-  sortBy?: string = 'createdAt';
-
-  @ApiPropertyOptional({
-    description: 'Sort order',
-    enum: ['ASC', 'DESC'],
-    example: 'DESC',
-    default: 'DESC',
-  })
-  @IsOptional()
-  @IsEnum(['ASC', 'DESC'])
-  sortOrder?: 'ASC' | 'DESC' = 'DESC';
 }
 
 export class ActivityDto {
@@ -524,7 +401,7 @@ export class ShareTripDto {
   expiresAt?: string;
 }
 
-export class TripSearchDto {
+export class TripSearchDto extends PaginationDto {
   @ApiProperty({
     description:
       'Search query for finding trips by title, destination, or description',
@@ -535,19 +412,7 @@ export class TripSearchDto {
   query: string;
 
   @ApiPropertyOptional({
-    description: 'Page number for pagination',
-    example: 1,
-    minimum: 1,
-    default: 1,
-  })
-  @IsOptional()
-  @Transform(({ value }: { value: string }) => parseInt(value, 10))
-  @IsNumber({}, { message: 'Page must be a number' })
-  @Min(1, { message: 'Page must be at least 1' })
-  page?: number = 1;
-
-  @ApiPropertyOptional({
-    description: 'Number of search results per page',
+    description: 'Maximum number of search results per page',
     example: 10,
     minimum: 1,
     maximum: 50,

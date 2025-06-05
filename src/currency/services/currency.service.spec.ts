@@ -78,7 +78,9 @@ describe('CurrencyService', () => {
         },
       };
 
-      mockedAxios.get.mockResolvedValue(exchangeRateResponse);
+      // Ensure API throttle service allows the request
+      mockApiThrottleService.checkAndLog.mockReturnValue(true);
+      mockedAxios.get.mockResolvedValueOnce(exchangeRateResponse);
 
       // Act
       const result = await service.convertCurrency(

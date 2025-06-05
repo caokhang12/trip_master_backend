@@ -99,7 +99,50 @@ describe('WeatherService', () => {
         },
       };
 
-      mockedAxios.get.mockResolvedValue(openWeatherResponse);
+      const forecastResponse = {
+        data: {
+          list: [
+            {
+              dt: 1609545600,
+              main: {
+                temp: 28.5,
+                feels_like: 32.1,
+                temp_min: 26.0,
+                temp_max: 31.0,
+                pressure: 1012,
+                humidity: 82,
+              },
+              weather: [
+                {
+                  id: 801,
+                  main: 'Clouds',
+                  description: 'few clouds',
+                  icon: '02d',
+                },
+              ],
+              clouds: {
+                all: 20,
+              },
+              wind: {
+                speed: 2.8,
+                deg: 210,
+              },
+              visibility: 10000,
+              pop: 0.1,
+              dt_txt: '2021-01-02 00:00:00',
+            },
+          ],
+        },
+      };
+
+      // Ensure API throttle service allows the request
+      mockApiThrottleService.checkAndLog.mockReturnValue(true);
+
+      // Mock all axios calls
+      mockedAxios.get
+        .mockResolvedValueOnce(openWeatherResponse) // Current weather
+        .mockResolvedValueOnce(forecastResponse) // Forecast
+        .mockResolvedValueOnce(openWeatherResponse); // Location name
 
       // Act
       const result = await service.getWeather(10.8231, 106.6297);

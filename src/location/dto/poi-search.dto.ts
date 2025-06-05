@@ -2,15 +2,14 @@ import {
   IsString,
   IsOptional,
   IsNumber,
-  IsNotEmpty,
   Min,
   Max,
   IsEnum,
-  IsArray,
   Length,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
+import { BaseCoordinateDto } from '../../shared/dto/coordinate.dto';
 
 /**
  * Enum for POI categories
@@ -31,33 +30,7 @@ export enum POICategory {
 /**
  * DTO for POI (Points of Interest) search requests
  */
-export class POISearchDto {
-  @ApiProperty({
-    description: 'Latitude coordinate',
-    example: 10.8231,
-    required: true,
-    minimum: -90,
-    maximum: 90,
-  })
-  @Type(() => Number)
-  @IsNumber()
-  @Min(-90)
-  @Max(90)
-  lat: number;
-
-  @ApiProperty({
-    description: 'Longitude coordinate',
-    example: 106.6297,
-    required: true,
-    minimum: -180,
-    maximum: 180,
-  })
-  @Type(() => Number)
-  @IsNumber()
-  @Min(-180)
-  @Max(180)
-  lng: number;
-
+export class POISearchDto extends BaseCoordinateDto {
   @ApiProperty({
     description: 'Category of places to search for',
     enum: POICategory,
@@ -109,6 +82,9 @@ export class POISearchDto {
     description: 'Language for results (ISO 639-1)',
     example: 'vi',
     required: false,
+    minLength: 2,
+    maxLength: 2,
+    default: 'en',
   })
   @IsOptional()
   @IsString()

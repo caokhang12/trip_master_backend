@@ -1,4 +1,4 @@
-import { Controller, Get, Query, HttpStatus, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -17,9 +17,10 @@ import { WeatherService, WeatherResponse } from './services/weather.service';
 import { LocationSearchDto } from './dto/location-search.dto';
 import { POISearchDto } from './dto/poi-search.dto';
 import { WeatherRequestDto } from './dto/weather-request.dto';
+import { ResponseUtil } from '../shared/utils/response.util';
 
 @ApiTags('Locations')
-@Controller('api/v1/locations')
+@Controller('location')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class LocationController {
@@ -120,11 +121,7 @@ export class LocationController {
       searchDto.country,
     );
 
-    return {
-      result: 'OK',
-      status: HttpStatus.OK,
-      data: locations.slice(0, searchDto.limit || 10),
-    };
+    return ResponseUtil.success(locations.slice(0, searchDto.limit || 10));
   }
 
   @Get('vietnam/provinces')
@@ -184,11 +181,7 @@ export class LocationController {
   }> {
     const provinces = await this.locationService.getVietnameseRegions();
 
-    return {
-      result: 'OK',
-      status: HttpStatus.OK,
-      data: provinces,
-    };
+    return ResponseUtil.success(provinces);
   }
 
   @Get('nearby-places')
@@ -291,11 +284,15 @@ export class LocationController {
       searchDto.limit || 20,
     );
 
-    return {
-      result: 'OK',
-      status: HttpStatus.OK,
-      data: result,
-    };
+    return ResponseUtil.success({
+      places: result.items,
+      pagination: {
+        total: result.pagination.total,
+        page: result.pagination.page,
+        limit: result.pagination.limit,
+        hasMore: result.pagination.hasMore || false,
+      },
+    });
   }
 
   @Get('weather')
@@ -426,10 +423,6 @@ export class LocationController {
       weatherDto.includeVietnamInfo,
     );
 
-    return {
-      result: 'OK',
-      status: HttpStatus.OK,
-      data: weather,
-    };
+    return ResponseUtil.success(weather);
   }
 }

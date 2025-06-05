@@ -8,7 +8,7 @@ import {
   Length,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 /**
  * DTO for location search requests
@@ -23,22 +23,23 @@ export class LocationSearchDto {
   @IsNotEmpty()
   query: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'User country code for optimization',
     example: 'VN',
-    required: false,
+    minLength: 2,
+    maxLength: 2,
   })
   @IsOptional()
   @IsString()
   @Length(2, 2)
   country?: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Limit number of results',
     example: 10,
-    required: false,
     minimum: 1,
     maximum: 50,
+    default: 10,
   })
   @IsOptional()
   @Type(() => Number)
@@ -47,10 +48,9 @@ export class LocationSearchDto {
   @Max(50)
   limit?: number = 10;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Latitude for nearby search',
     example: 10.8231,
-    required: false,
     minimum: -90,
     maximum: 90,
   })
@@ -61,10 +61,9 @@ export class LocationSearchDto {
   @Max(90)
   lat?: number;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Longitude for nearby search',
     example: 106.6297,
-    required: false,
     minimum: -180,
     maximum: 180,
   })

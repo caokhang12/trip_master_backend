@@ -6,6 +6,9 @@ import axios from 'axios';
 import { VietnamLocationEntity } from '../entities/vietnam-location.entity';
 import { DestinationEntity } from '../entities/destination.entity';
 import { APIThrottleService } from '../../shared/services/api-throttle.service';
+import { ErrorUtilService } from '../../shared/utils/error.util';
+import { PaginationUtilService } from '../../shared/utils/pagination.util';
+import { PaginationResult } from '../../shared/types/pagination.types';
 import {
   GoongResult,
   GoongResponse,
@@ -109,8 +112,8 @@ export class LocationService {
       return nominatimResults;
     } catch (error: unknown) {
       this.logger.error(
-        `Location search failed: ${this.getErrorMessage(error)}`,
-        this.getErrorStack(error),
+        `Location search failed: ${ErrorUtilService.getErrorMessage(error)}`,
+        ErrorUtilService.getErrorStack(error),
       );
       throw new HttpException(
         'Location search temporarily unavailable',
@@ -154,7 +157,7 @@ export class LocationService {
       }));
     } catch (error: unknown) {
       this.logger.error(
-        `Failed to fetch Vietnamese regions: ${this.getErrorMessage(error)}`,
+        `Failed to fetch Vietnamese regions: ${ErrorUtilService.getErrorMessage(error)}`,
       );
       throw new HttpException(
         'Unable to fetch Vietnamese regions',
@@ -172,7 +175,7 @@ export class LocationService {
     category: string,
     radius: number = 5000,
     limit: number = 20,
-  ): Promise<{ places: POI[]; pagination: any }> {
+  ): Promise<PaginationResult<POI>> {
     try {
       this.logger.log(
         `Searching for POIs near ${lat},${lng}, category: ${category}`,
@@ -188,15 +191,11 @@ export class LocationService {
           limit,
         );
         if (geoapifyResults.length > 0) {
-          return {
-            places: geoapifyResults,
-            pagination: {
-              total: geoapifyResults.length,
-              page: 1,
-              limit,
-              hasMore: geoapifyResults.length === limit,
-            },
-          };
+          return PaginationUtilService.createPaginationResult(geoapifyResults, {
+            page: 1,
+            limit,
+            total: geoapifyResults.length,
+          });
         }
       }
 
@@ -208,19 +207,15 @@ export class LocationService {
         radius,
         limit,
       );
-      return {
-        places: nominatimResults,
-        pagination: {
-          total: nominatimResults.length,
-          page: 1,
-          limit,
-          hasMore: nominatimResults.length === limit,
-        },
-      };
+      return PaginationUtilService.createPaginationResult(nominatimResults, {
+        page: 1,
+        limit,
+        total: nominatimResults.length,
+      });
     } catch (error: unknown) {
       this.logger.error(
-        `POI search failed: ${this.getErrorMessage(error)}`,
-        this.getErrorStack(error),
+        `POI search failed: ${ErrorUtilService.getErrorMessage(error)}`,
+        ErrorUtilService.getErrorStack(error),
       );
       throw new HttpException(
         'Places search temporarily unavailable',
@@ -329,7 +324,9 @@ export class LocationService {
       const results: GoongResult[] = response.data.results || [];
       return results.slice(0, 10).map(this.mapGoongToLocation);
     } catch (error: unknown) {
-      this.logger.warn(`Goong API error: ${this.getErrorMessage(error)}`);
+      this.logger.warn(
+        `Goong API error: ${ErrorUtilService.getErrorMessage(error)}`,
+      );
       return [];
     }
   }
@@ -363,7 +360,9 @@ export class LocationService {
       const results: NominatimResult[] = response.data;
       return results.map(this.mapNominatimToLocation);
     } catch (error: unknown) {
-      this.logger.warn(`Nominatim API error: ${this.getErrorMessage(error)}`);
+      this.logger.warn(
+        `Nominatim API error: ${ErrorUtilService.getErrorMessage(error)}`,
+      );
       return [];
     }
   }
@@ -410,7 +409,9 @@ export class LocationService {
       const features: GeoapifyFeature[] = response.data.features || [];
       return features.map(this.mapGeoapifyToPOI);
     } catch (error: unknown) {
-      this.logger.warn(`Geoapify API error: ${this.getErrorMessage(error)}`);
+      this.logger.warn(
+        `Geoapify API error: ${ErrorUtilService.getErrorMessage(error)}`,
+      );
       return [];
     }
   }
@@ -461,7 +462,7 @@ export class LocationService {
       return results.slice(0, limit).map(this.mapNominatimToPOI);
     } catch (error: unknown) {
       this.logger.warn(
-        `Nominatim POI search error: ${this.getErrorMessage(error)}`,
+        `Nominatim POI search error: ${ErrorUtilService.getErrorMessage(error)}`,
       );
       return [];
     }
@@ -564,20 +565,6 @@ export class LocationService {
     address: result.display_name || '',
     source: 'nominatim',
   });
-
-  private getErrorMessage(error: unknown): string {
-    if (error instanceof Error) {
-      return error.message;
-    }
-    return String(error);
-  }
-
-  private getErrorStack(error: unknown): string | undefined {
-    if (error instanceof Error) {
-      return error.stack;
-    }
-    return undefined;
-  }
 
   private parseCoordinates(coords: string): { lat: number; lng: number } {
     try {

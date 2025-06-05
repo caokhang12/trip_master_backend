@@ -1,12 +1,4 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Query,
-  HttpStatus,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, UseGuards } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -22,9 +14,10 @@ import {
   CurrencyConversion,
 } from './services/currency.service';
 import { CurrencyConversionDto, ExchangeRatesDto } from './dto/currency.dto';
+import { ResponseUtil } from '../shared/utils/response.util';
 
 @ApiTags('Currency')
-@Controller('api/v1/currency')
+@Controller('currency')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class CurrencyController {
@@ -118,11 +111,7 @@ export class CurrencyController {
       currencyArray,
     );
 
-    return {
-      result: 'OK',
-      status: HttpStatus.OK,
-      data: rates,
-    };
+    return ResponseUtil.success(rates);
   }
 
   @Post('convert')
@@ -204,11 +193,7 @@ export class CurrencyController {
       conversionDto.to,
     );
 
-    return {
-      result: 'OK',
-      status: HttpStatus.OK,
-      data: conversion,
-    };
+    return ResponseUtil.success(conversion);
   }
 
   @Get('popular')
@@ -242,11 +227,7 @@ export class CurrencyController {
   } {
     const currencies = this.currencyService.getPopularCurrencies();
 
-    return {
-      result: 'OK',
-      status: HttpStatus.OK,
-      data: currencies,
-    };
+    return ResponseUtil.success(currencies);
   }
 
   @Get('cache/stats')
@@ -280,11 +261,7 @@ export class CurrencyController {
   } {
     const stats = this.currencyService.getCacheStats();
 
-    return {
-      result: 'OK',
-      status: HttpStatus.OK,
-      data: stats,
-    };
+    return ResponseUtil.success(stats);
   }
 
   @Post('cache/clear')
@@ -301,17 +278,9 @@ export class CurrencyController {
       },
     },
   })
-  clearCache(): {
-    result: string;
-    status: number;
-    message: string;
-  } {
+  clearCache() {
     this.currencyService.clearCache();
 
-    return {
-      result: 'OK',
-      status: HttpStatus.OK,
-      message: 'Exchange rates cache cleared',
-    };
+    return ResponseUtil.success('Exchange rates cache cleared');
   }
 }

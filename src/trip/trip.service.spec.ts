@@ -218,6 +218,7 @@ describe('TripService', () => {
           limit: 10,
           total: 1,
           totalPages: 1,
+          hasMore: false,
         },
       });
       expect(mockQueryBuilder.where).toHaveBeenCalledWith(
@@ -504,6 +505,7 @@ describe('TripService', () => {
           limit: 10,
           total: 1,
           totalPages: 1,
+          hasMore: false,
         },
       });
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(

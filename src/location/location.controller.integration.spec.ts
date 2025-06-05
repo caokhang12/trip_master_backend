@@ -3,9 +3,9 @@ import { INestApplication } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import * as request from 'supertest';
 import { APIThrottleService } from '../shared/services/api-throttle.service';
-import { DatabaseModule } from 'src/database/database.module';
-import { SharedModule } from 'src/shared/shared.module';
-import { LocationModule } from 'src/location/location.module';
+import { DatabaseModule } from '../database/database.module';
+import { SharedModule } from '../shared/shared.module';
+import { LocationModule } from '../location/location.module';
 
 describe('LocationController (Integration)', () => {
   let app: INestApplication;
@@ -34,6 +34,10 @@ describe('LocationController (Integration)', () => {
       .compile();
 
     app = moduleFixture.createNestApplication();
+
+    // Set global prefix to match main.ts
+    app.setGlobalPrefix('api/v1');
+
     apiThrottleService =
       moduleFixture.get<APIThrottleService>(APIThrottleService);
 

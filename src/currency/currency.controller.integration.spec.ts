@@ -3,8 +3,8 @@ import { INestApplication } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import * as request from 'supertest';
 import { APIThrottleService } from '../shared/services/api-throttle.service';
-import { SharedModule } from 'src/shared/shared.module';
-import { CurrencyModule } from 'src/currency/currency.module';
+import { SharedModule } from '../shared/shared.module';
+import { CurrencyModule } from '../currency/currency.module';
 
 describe('CurrencyController (Integration)', () => {
   let app: INestApplication;
@@ -32,6 +32,10 @@ describe('CurrencyController (Integration)', () => {
       .compile();
 
     app = moduleFixture.createNestApplication();
+
+    // Set global prefix to match main.ts
+    app.setGlobalPrefix('api/v1');
+
     apiThrottleService =
       moduleFixture.get<APIThrottleService>(APIThrottleService);
 

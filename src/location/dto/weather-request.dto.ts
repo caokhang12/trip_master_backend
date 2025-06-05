@@ -1,37 +1,12 @@
-import { IsNumber, IsOptional, IsBoolean, Min, Max } from 'class-validator';
+import { IsBoolean, IsOptional } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
+import { BaseCoordinateDto } from '../../shared/dto/coordinate.dto';
 
 /**
  * DTO for weather information requests
  */
-export class WeatherRequestDto {
-  @ApiProperty({
-    description: 'Latitude coordinate',
-    example: 10.8231,
-    required: true,
-    minimum: -90,
-    maximum: 90,
-  })
-  @Type(() => Number)
-  @IsNumber()
-  @Min(-90)
-  @Max(90)
-  lat: number;
-
-  @ApiProperty({
-    description: 'Longitude coordinate',
-    example: 106.6297,
-    required: true,
-    minimum: -180,
-    maximum: 180,
-  })
-  @Type(() => Number)
-  @IsNumber()
-  @Min(-180)
-  @Max(180)
-  lng: number;
-
+export class WeatherRequestDto extends BaseCoordinateDto {
   @ApiProperty({
     description: 'Include extended forecast (7 days)',
     example: true,
