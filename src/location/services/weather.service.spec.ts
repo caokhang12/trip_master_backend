@@ -60,7 +60,7 @@ describe('WeatherService', () => {
   describe('getWeather', () => {
     it('should return weather data successfully', async () => {
       // Arrange
-      const openWeatherResponse = {
+      const currentWeatherResponse = {
         data: {
           weather: [
             {
@@ -103,46 +103,53 @@ describe('WeatherService', () => {
         data: {
           list: [
             {
-              dt: 1609545600,
+              dt: 1609459200,
               main: {
-                temp: 28.5,
-                feels_like: 32.1,
-                temp_min: 26.0,
-                temp_max: 31.0,
-                pressure: 1012,
-                humidity: 82,
+                temp: 30.0,
+                temp_min: 28.0,
+                temp_max: 32.0,
+                humidity: 75,
               },
               weather: [
                 {
-                  id: 801,
-                  main: 'Clouds',
-                  description: 'few clouds',
-                  icon: '02d',
+                  id: 800,
+                  main: 'Clear',
+                  description: 'clear sky',
+                  icon: '01d',
                 },
               ],
-              clouds: {
-                all: 20,
+              rain: {
+                '3h': 0.1,
               },
-              wind: {
-                speed: 2.8,
-                deg: 210,
-              },
-              visibility: 10000,
-              pop: 0.1,
-              dt_txt: '2021-01-02 00:00:00',
+              dt_txt: '2024-01-01 12:00:00',
             },
           ],
+          city: {
+            name: 'Ho Chi Minh City',
+            country: 'VN',
+          },
         },
+      };
+
+      const geocodingResponse = {
+        data: [
+          {
+            name: 'Ho Chi Minh City',
+            lat: 10.8231,
+            lon: 106.6297,
+            country: 'VN',
+          },
+        ],
       };
 
       // Ensure API throttle service allows the request
       mockApiThrottleService.checkAndLog.mockReturnValue(true);
 
-      // Mock all axios calls
+      // Mock API calls: current weather, forecast, and geocoding
       mockedAxios.get
-        .mockResolvedValueOnce(openWeatherResponse) // Current weather
+        .mockResolvedValueOnce(currentWeatherResponse) // Current weather
         .mockResolvedValueOnce(forecastResponse) // Forecast
-        .mockResolvedValueOnce(openWeatherResponse); // Location name
+        .mockResolvedValueOnce(geocodingResponse); // Geocoding for location name
 
       // Act
       const result = await service.getWeather(10.8231, 106.6297);
@@ -152,11 +159,11 @@ describe('WeatherService', () => {
       expect(result.current.description).toBe('clear sky');
       expect(result.current.humidity).toBe(78);
       expect(result.current.windSpeed).toBe(3.2);
-      expect(result.location.name).toBe('Ho Chi Minh City');
-      expect(mockedAxios.get).toHaveBeenCalled();
+      expect(result.location.name).toBe('Ho Chi Minh City, VN');
+      expect(mockedAxios.get).toHaveBeenCalledTimes(3);
     });
 
-    it('should handle API throttle limits', async () => {
+    it('should handle rate limits', async () => {
       // Arrange
       mockApiThrottleService.checkAndLog.mockReturnValue(false);
 
@@ -168,6 +175,7 @@ describe('WeatherService', () => {
 
     it('should handle API errors', async () => {
       // Arrange
+      mockApiThrottleService.checkAndLog.mockReturnValue(true);
       mockedAxios.get.mockRejectedValue(new Error('API error'));
 
       // Act & Assert

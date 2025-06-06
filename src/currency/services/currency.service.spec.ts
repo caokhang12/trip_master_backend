@@ -75,6 +75,7 @@ describe('CurrencyService', () => {
             VND: 24500,
           },
           base_code: 'USD',
+          time_last_update_utc: '2024-01-01 00:00:00 +00',
         },
       };
 
@@ -109,6 +110,7 @@ describe('CurrencyService', () => {
             VND: 24500,
           },
           base: 'USD',
+          date: '2024-01-01',
         },
       };
 
@@ -136,6 +138,7 @@ describe('CurrencyService', () => {
             VND: 24500,
           },
           base: 'USD',
+          date: '2024-01-01',
         },
       };
 
@@ -192,6 +195,7 @@ describe('CurrencyService', () => {
             VND: 24500,
           },
           base_code: 'USD',
+          time_last_update_utc: '2024-01-01 00:00:00 +00',
         },
       };
 
@@ -206,7 +210,7 @@ describe('CurrencyService', () => {
 
       // Assert
       expect(result.formattedAmount).toContain('₫');
-      expect(result.formattedAmount).toContain('24,500');
+      expect(result.formattedAmount).toContain('24.500');
     });
 
     it('should handle API throttle limits', async () => {

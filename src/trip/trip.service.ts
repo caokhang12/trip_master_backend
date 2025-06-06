@@ -12,6 +12,11 @@ import { ItineraryEntity } from '../schemas/itinerary.entity';
 import { TripShareEntity } from '../schemas/trip-share.entity';
 import { PaginationResult } from '../shared/types/pagination.types';
 import { PaginationUtilService } from '../shared/utils/pagination.util';
+import { CountryDefaultsService } from '../shared/services/country-defaults.service';
+import {
+  CountryService,
+  CountryDetectionResult,
+} from '../shared/services/country.service';
 import {
   CreateTripDto,
   UpdateTripDto,
@@ -37,6 +42,8 @@ export class TripService {
     private readonly itineraryRepository: Repository<ItineraryEntity>,
     @InjectRepository(TripShareEntity)
     private readonly tripShareRepository: Repository<TripShareEntity>,
+    private readonly countryDefaultsService: CountryDefaultsService,
+    private readonly countryService: CountryService,
   ) {}
 
   /**
@@ -48,15 +55,36 @@ export class TripService {
   ): Promise<TripEntity> {
     this.validateDateRange(createTripDto.startDate, createTripDto.endDate);
 
+    // Start with base trip data
+    let tripData = { ...createTripDto };
+
+    // Apply country intelligence if coordinates are provided and detection is enabled
+    if (
+      createTripDto.destinationCoords &&
+      createTripDto.detectCountryFromCoords !== false
+    ) {
+      try {
+        tripData = await this.applyCountryIntelligence(tripData);
+      } catch (error) {
+        // Log error but don't fail trip creation if country detection fails
+        console.warn('Country intelligence failed:', error);
+      }
+    }
+
+    // Apply country-aware defaults if country code is available
+    if (tripData.destinationCountry) {
+      const countryDefaults = this.countryDefaultsService.applyCountryDefaults(
+        tripData.destinationCountry,
+        tripData,
+      );
+      tripData = { ...tripData, ...countryDefaults };
+    }
+
     const trip = this.tripRepository.create({
-      ...createTripDto,
+      ...tripData,
       userId,
-      startDate: createTripDto.startDate
-        ? new Date(createTripDto.startDate)
-        : undefined,
-      endDate: createTripDto.endDate
-        ? new Date(createTripDto.endDate)
-        : undefined,
+      startDate: tripData.startDate ? new Date(tripData.startDate) : undefined,
+      endDate: tripData.endDate ? new Date(tripData.endDate) : undefined,
     });
 
     return await this.tripRepository.save(trip);
@@ -76,6 +104,10 @@ export class TripService {
       search,
       sortBy = 'createdAt',
       sortOrder = 'DESC',
+      destinationCountry,
+      destinationCity,
+      timezone,
+      defaultCurrency,
     } = queryDto;
     const { skip } = PaginationUtilService.validateAndNormalizePagination(
       page,
@@ -90,9 +122,31 @@ export class TripService {
       queryBuilder.andWhere('trip.status = :status', { status });
     }
 
+    if (destinationCountry) {
+      queryBuilder.andWhere('trip.destinationCountry = :destinationCountry', {
+        destinationCountry,
+      });
+    }
+
+    if (destinationCity) {
+      queryBuilder.andWhere('trip.destinationCity ILIKE :destinationCity', {
+        destinationCity: `%${destinationCity}%`,
+      });
+    }
+
+    if (timezone) {
+      queryBuilder.andWhere('trip.timezone = :timezone', { timezone });
+    }
+
+    if (defaultCurrency) {
+      queryBuilder.andWhere('trip.defaultCurrency = :defaultCurrency', {
+        defaultCurrency,
+      });
+    }
+
     if (search) {
       queryBuilder.andWhere(
-        '(trip.title ILIKE :search OR trip.description ILIKE :search OR trip.destinationName ILIKE :search)',
+        '(trip.title ILIKE :search OR trip.description ILIKE :search OR trip.destinationName ILIKE :search OR trip.destinationCity ILIKE :search OR trip.destinationProvince ILIKE :search)',
         { search: `%${search}%` },
       );
     }
@@ -154,17 +208,27 @@ export class TripService {
       this.validateStatusTransition(trip.status, updateTripDto.status);
     }
 
-    const updateData = {
-      ...updateTripDto,
-      startDate: updateTripDto.startDate
-        ? new Date(updateTripDto.startDate)
+    // Apply country-aware defaults if country code is provided and different from current
+    let updateData = { ...updateTripDto };
+    if (
+      updateTripDto.destinationCountry &&
+      updateTripDto.destinationCountry !== trip.destinationCountry
+    ) {
+      updateData = this.countryDefaultsService.applyCountryDefaults(
+        updateTripDto.destinationCountry,
+        updateData,
+      );
+    }
+
+    const finalUpdateData = {
+      ...updateData,
+      startDate: updateData.startDate
+        ? new Date(updateData.startDate)
         : undefined,
-      endDate: updateTripDto.endDate
-        ? new Date(updateTripDto.endDate)
-        : undefined,
+      endDate: updateData.endDate ? new Date(updateData.endDate) : undefined,
     };
 
-    await this.tripRepository.update(tripId, updateData);
+    await this.tripRepository.update(tripId, finalUpdateData);
     const updatedTrip = await this.tripRepository.findOne({
       where: { id: tripId },
     });
@@ -377,5 +441,65 @@ export class TripService {
         `Invalid status transition from ${currentStatus} to ${newStatus}`,
       );
     }
+  }
+
+  /**
+   * Apply country intelligence to auto-populate country-related fields from coordinates
+   */
+  private async applyCountryIntelligence(
+    tripData: CreateTripDto,
+  ): Promise<CreateTripDto> {
+    if (!tripData.destinationCoords) {
+      return tripData;
+    }
+    const { lat, lng } = tripData.destinationCoords;
+    // Detect country from coordinates
+    const countryDetection: CountryDetectionResult =
+      await this.countryService.detectCountryFromCoordinates(lat, lng);
+    // Create enhanced trip data with country intelligence
+    const enhancedTripData = { ...tripData };
+    // Auto-populate country code if not provided or if user prefers detected country
+    if (!enhancedTripData.destinationCountry) {
+      if (enhancedTripData.preferredCountry) {
+        // Use the user's preferred country
+        enhancedTripData.destinationCountry = enhancedTripData.preferredCountry;
+      } else {
+        // Use detected country from coordinates
+        enhancedTripData.destinationCountry = countryDetection.countryCode;
+      }
+    }
+    // Auto-populate administrative information if available
+    if (countryDetection.administrativeInfo) {
+      if (
+        !enhancedTripData.destinationProvince &&
+        countryDetection.administrativeInfo.province
+      ) {
+        enhancedTripData.destinationProvince =
+          countryDetection.administrativeInfo.province;
+      }
+      if (
+        !enhancedTripData.destinationCity &&
+        countryDetection.administrativeInfo.city
+      ) {
+        enhancedTripData.destinationCity =
+          countryDetection.administrativeInfo.city;
+      }
+    }
+    // Auto-populate timezone if not provided
+    if (!enhancedTripData.timezone && countryDetection.defaults.timezone) {
+      enhancedTripData.timezone = countryDetection.defaults.timezone;
+    }
+    // Auto-populate currency if not provided and no budget currency is set
+    if (
+      !enhancedTripData.defaultCurrency &&
+      countryDetection.defaults.currency
+    ) {
+      enhancedTripData.defaultCurrency = countryDetection.defaults.currency;
+      // Also update budget currency if not explicitly set
+      if (!enhancedTripData.currency) {
+        enhancedTripData.currency = countryDetection.defaults.currency;
+      }
+    }
+    return enhancedTripData;
   }
 }

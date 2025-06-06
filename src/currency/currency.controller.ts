@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Query,
+  UseGuards,
+  HttpCode,
+} from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -115,6 +123,7 @@ export class CurrencyController {
   }
 
   @Post('convert')
+  @HttpCode(200)
   @ApiOperation({ summary: 'Convert currency amount' })
   @ApiBody({
     type: CurrencyConversionDto,
@@ -265,6 +274,7 @@ export class CurrencyController {
   }
 
   @Post('cache/clear')
+  @HttpCode(200)
   @ApiOperation({ summary: 'Clear exchange rates cache (admin only)' })
   @ApiResponse({
     status: 200,

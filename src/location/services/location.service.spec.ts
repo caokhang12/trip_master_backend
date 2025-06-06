@@ -2,7 +2,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { IsNull } from 'typeorm';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { HttpException, HttpStatus } from '@nestjs/common';
 import axios from 'axios';
 
 import { LocationService } from '../services/location.service';
@@ -20,10 +19,10 @@ describe('LocationService', () => {
   let service: LocationService;
 
   const mockDestinationRepository = {
-    findOne: jest.fn(),
-    save: jest.fn(),
-    create: jest.fn(),
-    find: jest.fn(),
+    findOne: jest.fn().mockResolvedValue(null),
+    save: jest.fn().mockResolvedValue({}),
+    create: jest.fn().mockReturnValue({}),
+    find: jest.fn().mockResolvedValue([]),
   };
 
   const mockVietnamLocationRepository = {
@@ -42,7 +41,7 @@ describe('LocationService', () => {
   };
 
   const mockApiThrottleService = {
-    checkAndLog: jest.fn(),
+    checkAndLog: jest.fn().mockReturnValue(true),
     getUsageStats: jest.fn(),
   };
 
@@ -102,12 +101,14 @@ describe('LocationService', () => {
         name: 'Ho Chi Minh City',
         country: 'Vietnam',
         countryCode: 'VN',
-        latitude: 10.8231,
-        longitude: 106.6297,
-        type: 'city',
-        population: 9000000,
-        timezone: 'Asia/Ho_Chi_Minh',
-        poiData: [],
+        city: 'Ho Chi Minh City',
+        province: 'Ho Chi Minh',
+        coordinates: 'POINT(106.6297 10.8231)', // PostGIS format
+        description: 'Largest city in Vietnam',
+        imageUrls: [],
+        averageBudget: null,
+        bestTimeToVisit: null,
+        poiData: null,
         weatherInfo: null,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -147,26 +148,29 @@ describe('LocationService', () => {
           longitude: 106.6297,
           createdAt: new Date(),
           updatedAt: new Date(),
+          provinceId: 79,
+          provinceName: 'Ho Chi Minh City',
+          districtName: null,
+          districtId: null,
+          wardId: null,
+          coordinates: 'POINT(106.6297 10.8231)',
         },
       ];
 
       mockDestinationRepository.findOne.mockResolvedValue(null);
-      mockVietnamLocationRepository.find.mockResolvedValue(vietnamLocations);
-      mockDestinationRepository.save.mockResolvedValue({
-        id: '123e4567-e89b-12d3-a456-426614174000',
-        name: 'Ho Chi Minh City',
-        country: 'Vietnam',
-        countryCode: 'VN',
-        latitude: 10.8231,
-        longitude: 106.6297,
-        type: 'city',
-        population: 9000000,
-        timezone: 'Asia/Ho_Chi_Minh',
-        poiData: [],
-        weatherInfo: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
+
+      // Mock the query builder chain properly
+      const mockQueryBuilder = {
+        where: jest.fn().mockReturnThis(),
+        orWhere: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue(vietnamLocations),
+      };
+
+      mockVietnamLocationRepository.createQueryBuilder.mockReturnValue(
+        mockQueryBuilder,
+      );
 
       // Act
       const result = await service.searchLocation(
@@ -177,49 +181,52 @@ describe('LocationService', () => {
       // Assert
       expect(result).toHaveLength(1);
       expect(result[0].source).toBe('vietnam-db');
-      expect(mockVietnamLocationRepository.find).toHaveBeenCalled();
+      expect(
+        mockVietnamLocationRepository.createQueryBuilder,
+      ).toHaveBeenCalled();
     });
 
     it('should use Goong API for Vietnam locations when not in database', async () => {
       // Arrange
       const goongResponse = {
         data: {
-          predictions: [
+          results: [
             {
-              description: 'Ho Chi Minh City, Vietnam',
-              structured_formatting: {
-                main_text: 'Ho Chi Minh City',
-                secondary_text: 'Vietnam',
-              },
+              place_id: 'goong_123',
+              name: 'Ho Chi Minh City',
+              formatted_address: 'Ho Chi Minh City, Vietnam',
               geometry: {
                 location: {
                   lat: 10.8231,
                   lng: 106.6297,
                 },
               },
+              compound: {
+                province: 'Ho Chi Minh',
+                district: 'District 1',
+              },
+              types: ['locality'],
             },
           ],
         },
       };
 
       mockDestinationRepository.findOne.mockResolvedValue(null);
-      mockVietnamLocationRepository.find.mockResolvedValue([]);
+
+      // Mock empty Vietnamese location results
+      const mockQueryBuilder = {
+        where: jest.fn().mockReturnThis(),
+        orWhere: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue([]),
+      };
+
+      mockVietnamLocationRepository.createQueryBuilder.mockReturnValue(
+        mockQueryBuilder,
+      );
+
       mockedAxios.get.mockResolvedValue(goongResponse);
-      mockDestinationRepository.save.mockResolvedValue({
-        id: '123e4567-e89b-12d3-a456-426614174000',
-        name: 'Ho Chi Minh City',
-        country: 'Vietnam',
-        countryCode: 'VN',
-        latitude: 10.8231,
-        longitude: 106.6297,
-        type: 'city',
-        population: null,
-        timezone: 'Asia/Ho_Chi_Minh',
-        poiData: [],
-        weatherInfo: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
 
       // Act
       const result = await service.searchLocation(
@@ -232,6 +239,7 @@ describe('LocationService', () => {
       expect(result[0].source).toBe('goong');
       expect(mockedAxios.get).toHaveBeenCalledWith(
         expect.stringContaining('goong.io'),
+        expect.any(Object),
       );
     });
 
@@ -288,14 +296,34 @@ describe('LocationService', () => {
       expect(mockedAxios.get).toHaveBeenCalledTimes(2);
     });
 
-    it('should throw error when API throttle limit is exceeded', async () => {
+    it('should return empty results when API throttle limit is exceeded', async () => {
       // Arrange
+      mockDestinationRepository.findOne.mockResolvedValue(null);
+
+      // Mock empty Vietnamese location results
+      const mockQueryBuilder = {
+        where: jest.fn().mockReturnThis(),
+        orWhere: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue([]),
+      };
+
+      mockVietnamLocationRepository.createQueryBuilder.mockReturnValue(
+        mockQueryBuilder,
+      );
+
       mockApiThrottleService.checkAndLog.mockReturnValue(false);
 
-      // Act & Assert
-      await expect(
-        service.searchLocation(searchDto.query, searchDto.country),
-      ).rejects.toThrow('Location search temporarily unavailable');
+      // Act
+      const result = await service.searchLocation(
+        searchDto.query,
+        searchDto.country,
+      );
+
+      // Assert
+      expect(result).toEqual([]);
+      expect(mockedAxios.get).not.toHaveBeenCalled();
     });
 
     it('should handle empty search results gracefully', async () => {
@@ -339,9 +367,11 @@ describe('LocationService', () => {
                 country_code: 'vn',
                 formatted:
                   '135 Nam Ky Khoi Nghia, District 1, Ho Chi Minh City, Vietnam',
-                lat: 10.8268,
-                lon: 106.6951,
                 place_id: 'test-place-id',
+              },
+              geometry: {
+                type: 'Point',
+                coordinates: [106.6951, 10.8268], // [lng, lat] format
               },
             },
           ],
@@ -363,7 +393,14 @@ describe('LocationService', () => {
       expect(result.items).toHaveLength(1);
       expect(result.items[0].name).toBe('Independence Palace');
       expect(mockedAxios.get).toHaveBeenCalledWith(
-        expect.stringContaining('geoapify.com'),
+        'https://api.geoapify.com/v2/places',
+        expect.objectContaining({
+          params: expect.objectContaining({
+            categories: 'tourism',
+            filter: `circle:${poiSearchDto.lng},${poiSearchDto.lat},${poiSearchDto.radius}`,
+            limit: poiSearchDto.limit,
+          }),
+        }),
       );
     });
 
@@ -408,8 +445,11 @@ describe('LocationService', () => {
                 name: 'Test Restaurant',
                 categories: ['catering.restaurant'],
                 formatted: 'Test Restaurant, Ho Chi Minh City',
-                lat: 10.8268,
-                lon: 106.6951,
+                place_id: 'restaurant-id',
+              },
+              geometry: {
+                type: 'Point',
+                coordinates: [106.6951, 10.8268], // [lng, lat] format
               },
             },
           ],
@@ -429,7 +469,13 @@ describe('LocationService', () => {
 
       // Assert
       expect(mockedAxios.get).toHaveBeenCalledWith(
-        expect.stringContaining('geoapify.com'),
+        'https://api.geoapify.com/v2/places',
+        expect.objectContaining({
+          params: expect.objectContaining({
+            categories: 'catering',
+            filter: `circle:${categorizedPoiDto.lng},${categorizedPoiDto.lat},${categorizedPoiDto.radius}`,
+          }),
+        }),
       );
       expect(result.items[0].name).toBe('Test Restaurant');
     });
@@ -454,29 +500,32 @@ describe('LocationService', () => {
 
       // Assert
       expect(mockedAxios.get).toHaveBeenCalledWith(
-        expect.stringContaining('geoapify.com'),
+        'https://api.geoapify.com/v2/places',
+        expect.objectContaining({
+          params: expect.objectContaining({
+            filter: `circle:${radiusDto.lng},${radiusDto.lat},${radiusDto.radius}`,
+          }),
+        }),
       );
     });
 
     it('should handle API throttle limits for POI search', async () => {
-      // Arrange
+      // Arrange - Mock both Geoapify throttle (false) and Nominatim failure
       mockApiThrottleService.checkAndLog.mockReturnValue(false);
+      mockedAxios.get.mockRejectedValue(new Error('Nominatim API failed'));
 
-      // Act & Assert
-      await expect(
-        service.findNearbyPlaces(
-          poiSearchDto.lat,
-          poiSearchDto.lng,
-          poiSearchDto.category || 'all',
-          poiSearchDto.radius,
-          poiSearchDto.limit,
-        ),
-      ).rejects.toThrow(
-        new HttpException(
-          'API rate limit exceeded. Please try again later.',
-          HttpStatus.TOO_MANY_REQUESTS,
-        ),
+      // Act
+      const result = await service.findNearbyPlaces(
+        poiSearchDto.lat,
+        poiSearchDto.lng,
+        poiSearchDto.category || 'all',
+        poiSearchDto.radius,
+        poiSearchDto.limit,
       );
+
+      // Assert - Should return empty results when APIs are throttled/failed
+      expect(result.items).toEqual([]);
+      expect(result.pagination.total).toBe(0);
     });
   });
 

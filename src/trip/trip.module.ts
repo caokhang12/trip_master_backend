@@ -6,6 +6,9 @@ import { ItineraryService } from './itinerary.service';
 import { TripEntity } from '../schemas/trip.entity';
 import { ItineraryEntity } from '../schemas/itinerary.entity';
 import { TripShareEntity } from '../schemas/trip-share.entity';
+import { LocationModule } from '../location/location.module';
+import { CurrencyModule } from '../currency/currency.module';
+import { CountryModule } from '../shared/services/country.module';
 
 /**
  * Trip module containing trip management services and controllers
@@ -13,6 +16,9 @@ import { TripShareEntity } from '../schemas/trip-share.entity';
 @Module({
   imports: [
     TypeOrmModule.forFeature([TripEntity, ItineraryEntity, TripShareEntity]),
+    LocationModule,
+    CurrencyModule,
+    CountryModule,
   ],
   controllers: [TripController, PublicTripController],
   providers: [TripService, ItineraryService],

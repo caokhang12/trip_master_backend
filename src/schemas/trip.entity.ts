@@ -48,6 +48,21 @@ export class TripEntity {
   @Column({ name: 'destination_coords', type: 'json', nullable: true })
   destinationCoords?: DestinationCoords;
 
+  @Column({ name: 'destination_country', length: 2, nullable: true })
+  destinationCountry?: string;
+
+  @Column({ name: 'destination_province', length: 255, nullable: true })
+  destinationProvince?: string;
+
+  @Column({ name: 'destination_city', length: 255, nullable: true })
+  destinationCity?: string;
+
+  @Column({ length: 50, nullable: true })
+  timezone?: string;
+
+  @Column({ name: 'default_currency', length: 3, nullable: true })
+  defaultCurrency?: string;
+
   @Column({ name: 'start_date', type: 'date', nullable: true })
   startDate?: Date;
 

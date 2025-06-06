@@ -24,6 +24,7 @@ import { Request } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TripService } from './trip.service';
 import { ItineraryService } from './itinerary.service';
+import { CountryDefaultsService } from '../shared/services/country-defaults.service';
 import { ResponseUtil } from '../shared/utils/response.util';
 import { BaseResponse } from '../shared/types/base-response.types';
 import {
@@ -55,36 +56,109 @@ export class TripController {
   constructor(
     private readonly tripService: TripService,
     private readonly itineraryService: ItineraryService,
+    private readonly countryDefaultsService: CountryDefaultsService,
   ) {}
 
   /**
-   * Create new trip
+   * Create new trip with intelligent country detection
    */
   @ApiOperation({
-    summary: 'Create a new trip',
+    summary: 'Create a new trip with country-aware features',
     description:
-      'Creates a new trip for the authenticated user with the provided details. The trip will be initialized with planning status.',
+      'Creates a new trip for the authenticated user with intelligent country detection and country-specific defaults. When GPS coordinates are provided, the system automatically detects the destination country and applies appropriate defaults (currency, timezone, language) for an enhanced user experience.',
   })
   @ApiBody({
     type: CreateTripDto,
     description:
-      'Trip creation data including destination, dates, and preferences',
+      'Trip creation data including destination, dates, and preferences. NEW: Now supports intelligent country detection from coordinates and country-specific defaults.',
+    examples: {
+      vietnamTrip: {
+        summary: 'Vietnam trip with intelligent country detection',
+        value: {
+          title: 'Discover Vietnam Adventure 2024',
+          description:
+            'An amazing journey through Ho Chi Minh City, Ha Long Bay, and Hanoi',
+          destinationName: 'Ho Chi Minh City, Vietnam',
+          destinationCoords: { lat: 10.8231, lng: 106.6297 },
+          startDate: '2024-04-15',
+          endDate: '2024-04-25',
+          budget: 1500,
+          detectCountryFromCoords: true,
+        },
+      },
+      japanTripManual: {
+        summary: 'Japan trip with manual country override',
+        value: {
+          title: 'Amazing Japan Adventure 2024',
+          description: 'A comprehensive 7-day journey through Tokyo and Kyoto',
+          destinationName: 'Tokyo, Japan',
+          destinationCoords: { lat: 35.6762, lng: 139.6503 },
+          startDate: '2024-03-15',
+          endDate: '2024-03-22',
+          budget: 3000,
+          currency: 'USD',
+          preferredCountry: 'JP',
+          detectCountryFromCoords: false,
+        },
+      },
+    },
   })
   @ApiResponse({
     status: 201,
-    description: 'Trip created successfully',
+    description: 'Trip created successfully with country-aware enhancements',
     type: BaseResponseDto,
     examples: {
-      success: {
-        summary: 'Successful trip creation',
+      vietnamSuccess: {
+        summary: 'Successful Vietnam trip creation with auto-detection',
         value: {
           data: {
             id: '123e4567-e89b-12d3-a456-426614174000',
+            title: 'Discover Vietnam Adventure 2024',
+            description:
+              'An amazing journey through Ho Chi Minh City, Ha Long Bay, and Hanoi',
+            destinationName: 'Ho Chi Minh City, Vietnam',
+            destinationCoords: { lat: 10.8231, lng: 106.6297 },
+            destinationCountry: 'VN',
+            destinationProvince: 'Ho Chi Minh City',
+            destinationCity: 'Ho Chi Minh City',
+            timezone: 'Asia/Ho_Chi_Minh',
+            defaultCurrency: 'VND',
+            startDate: '2024-04-15',
+            endDate: '2024-04-25',
+            budget: 1500,
+            currency: 'VND',
+            status: 'planning',
+            isPublic: false,
+            userId: '987fcdeb-51a2-43d1-9c23-f23456789012',
+            createdAt: '2024-03-01T10:00:00.000Z',
+            updatedAt: '2024-03-01T10:00:00.000Z',
+          },
+          meta: {
+            timestamp: '2024-03-01T10:00:00.000Z',
+            requestId: 'req_123456789',
+            countryDetection: {
+              detected: true,
+              method: 'coordinates',
+              confidence: 'high',
+            },
+          },
+        },
+      },
+      japanSuccess: {
+        summary: 'Successful Japan trip creation with manual override',
+        value: {
+          data: {
+            id: '456e7890-e89b-12d3-a456-426614174001',
             title: 'Amazing Japan Adventure 2024',
             description:
               'A comprehensive 7-day journey through Tokyo and Kyoto',
             destinationName: 'Tokyo, Japan',
             destinationCoords: { lat: 35.6762, lng: 139.6503 },
+            destinationCountry: 'JP',
+            destinationProvince: 'Tokyo',
+            destinationCity: 'Tokyo',
+            timezone: 'Asia/Tokyo',
+            defaultCurrency: 'JPY',
             startDate: '2024-03-15',
             endDate: '2024-03-22',
             budget: 3000,
@@ -97,7 +171,12 @@ export class TripController {
           },
           meta: {
             timestamp: '2024-03-01T10:00:00.000Z',
-            requestId: 'req_123456789',
+            requestId: 'req_123456790',
+            countryDetection: {
+              detected: false,
+              method: 'manual',
+              reason: 'detection_disabled',
+            },
           },
         },
       },
@@ -124,12 +203,12 @@ export class TripController {
   }
 
   /**
-   * Get user's trips with pagination
+   * Get user's trips with enhanced country-aware filtering
    */
   @ApiOperation({
-    summary: 'Get user trips',
+    summary: 'Get user trips with country filtering',
     description:
-      'Retrieves a paginated list of trips belonging to the authenticated user with optional filtering and sorting.',
+      'Retrieves a paginated list of trips belonging to the authenticated user with optional filtering and sorting. NEW: Now supports country-based filtering for better trip organization.',
   })
   @ApiQuery({
     name: 'page',
@@ -160,6 +239,14 @@ export class TripController {
     example: 'Japan',
   })
   @ApiQuery({
+    name: 'country',
+    required: false,
+    type: String,
+    description:
+      'Filter by destination country (ISO 3166-1 alpha-2 code). NEW: Country-aware filtering',
+    example: 'VN',
+  })
+  @ApiQuery({
     name: 'sortBy',
     required: false,
     enum: ['createdAt', 'updatedAt', 'title', 'startDate', 'endDate'],
@@ -175,8 +262,65 @@ export class TripController {
   })
   @ApiResponse({
     status: 200,
-    description: 'User trips retrieved successfully',
+    description: 'User trips retrieved successfully with country filtering',
     type: BaseResponseDto,
+    examples: {
+      allTrips: {
+        summary: 'All user trips without filtering',
+        value: {
+          data: {
+            trips: [
+              {
+                id: '123e4567-e89b-12d3-a456-426614174000',
+                title: 'Discover Vietnam Adventure 2024',
+                destinationName: 'Ho Chi Minh City, Vietnam',
+                destinationCountry: 'VN',
+                status: 'planning',
+                startDate: '2024-04-15',
+                endDate: '2024-04-25',
+              },
+              {
+                id: '456e7890-e89b-12d3-a456-426614174001',
+                title: 'Amazing Japan Adventure 2024',
+                destinationName: 'Tokyo, Japan',
+                destinationCountry: 'JP',
+                status: 'completed',
+                startDate: '2024-03-15',
+                endDate: '2024-03-22',
+              },
+            ],
+            pagination: { page: 1, limit: 10, total: 2, totalPages: 1 },
+          },
+        },
+      },
+      vietnamTrips: {
+        summary: 'Vietnam trips only (country=VN)',
+        value: {
+          data: {
+            trips: [
+              {
+                id: '123e4567-e89b-12d3-a456-426614174000',
+                title: 'Discover Vietnam Adventure 2024',
+                destinationName: 'Ho Chi Minh City, Vietnam',
+                destinationCountry: 'VN',
+                destinationProvince: 'Ho Chi Minh City',
+                timezone: 'Asia/Ho_Chi_Minh',
+                defaultCurrency: 'VND',
+                status: 'planning',
+                startDate: '2024-04-15',
+                endDate: '2024-04-25',
+              },
+            ],
+            pagination: { page: 1, limit: 10, total: 1, totalPages: 1 },
+          },
+          meta: {
+            timestamp: '2024-03-01T10:00:00.000Z',
+            requestId: 'req_123456789',
+            filters: { country: 'VN' },
+          },
+        },
+      },
+    },
   })
   @ApiResponse({
     status: 401,
@@ -825,7 +969,10 @@ export class TripController {
 @ApiTags('Public Trips')
 @Controller('public/trips')
 export class PublicTripController {
-  constructor(private readonly tripService: TripService) {}
+  constructor(
+    private readonly tripService: TripService,
+    private readonly countryDefaultsService: CountryDefaultsService,
+  ) {}
 
   /**
    * View shared trip (public access)
@@ -902,4 +1049,72 @@ export class PublicTripController {
     const trip = await this.tripService.getSharedTrip(shareToken);
     return ResponseUtil.success(trip);
   }
+
+  /**
+   * Get country defaults for trip planning
+   */
+  @ApiOperation({
+    summary: 'Get country defaults',
+    description:
+      'Retrieves default settings (currency, timezone, language) for a specific country to assist with trip planning.',
+  })
+  @ApiParam({
+    name: 'countryCode',
+    description: 'ISO 3166-1 alpha-2 country code (e.g., JP, US, FR)',
+    example: 'JP',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Country defaults retrieved successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        data: {
+          type: 'object',
+          properties: {
+            countryCode: { type: 'string', example: 'JP' },
+            defaultCurrency: { type: 'string', example: 'JPY' },
+            timezone: { type: 'string', example: 'Asia/Tokyo' },
+            language: { type: 'string', example: 'ja' },
+          },
+        },
+        meta: {
+          type: 'object',
+          properties: {
+            timestamp: { type: 'string', format: 'date-time' },
+            requestId: { type: 'string' },
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Country not supported or invalid country code',
+    type: ErrorResponseDto,
+  })
+  @Get('countries/:countryCode/defaults')
+  getCountryDefaults(
+    @Param('countryCode') countryCode: string,
+  ): BaseResponse<any> {
+    const defaults = this.countryDefaultsService.getCountryDefaults(
+      countryCode.toUpperCase(),
+    );
+    return ResponseUtil.success(defaults);
+  }
+
+  // TODO: Implement new country-specific endpoints
+  // The following endpoints are documented in:
+  // - docs/api-enhancement-examples.md
+  // - docs/developer-integration-guide.md
+  //
+  // Planned endpoints:
+  // - GET /api/v1/trips/countries/{countryCode} - Get trips by country
+  // - GET /api/v1/trips/statistics/countries - Get trip statistics by country
+  // - GET /api/v1/trips/recommendations/destinations - Get AI recommendations
+  //
+  // These require implementing the corresponding service methods:
+  // - TripService.getTripsByCountry()
+  // - TripService.getTripStatisticsByCountry()
+  // - TripService.getDestinationRecommendations()
 }

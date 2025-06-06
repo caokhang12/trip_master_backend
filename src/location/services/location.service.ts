@@ -93,6 +93,16 @@ export class LocationService {
         `Searching for location: ${query}, userCountry: ${userCountry}`,
       );
 
+      // First check if we have cached destination data
+      const cachedDestination = await this.destinationRepository.findOne({
+        where: { name: query },
+      });
+
+      if (cachedDestination) {
+        this.logger.log(`Found cached destination for: ${query}`);
+        return [this.mapDestinationEntityToLocation(cachedDestination)];
+      }
+
       // First, try Vietnam-specific search if query seems Vietnamese
       if (this.isVietnameseQuery(query, userCountry)) {
         const vietnamResults = await this.searchVietnameseLocations(query);
@@ -564,6 +574,22 @@ export class LocationService {
     },
     address: result.display_name || '',
     source: 'nominatim',
+  });
+
+  private mapDestinationEntityToLocation = (
+    entity: DestinationEntity,
+  ): Location => ({
+    id: entity.id,
+    name: entity.name,
+    displayName: `${entity.name}, ${entity.country}`,
+    coordinates: this.parseCoordinates(entity.coordinates),
+    country: entity.country,
+    countryCode: entity.countryCode,
+    province: entity.province,
+    district: undefined,
+    address: `${entity.name}, ${entity.country}`,
+    placeType: 'destination',
+    source: 'destination-cache',
   });
 
   private parseCoordinates(coords: string): { lat: number; lng: number } {
