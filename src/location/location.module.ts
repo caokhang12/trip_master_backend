@@ -4,8 +4,8 @@ import { ConfigModule } from '@nestjs/config';
 import { LocationController } from './location.controller';
 import { LocationService } from './services/location.service';
 import { WeatherService } from './services/weather.service';
-import { DestinationEntity } from './entities/destination.entity';
-import { VietnamLocationEntity } from './entities/vietnam-location.entity';
+import { DestinationEntity } from '../schemas/destination.entity';
+import { VietnamLocationEntity } from '../schemas/vietnam-location.entity';
 import { APIThrottleService } from '../shared/services/api-throttle.service';
 
 @Module({

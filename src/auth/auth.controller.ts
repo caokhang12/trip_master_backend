@@ -3,6 +3,7 @@ import {
   Post,
   Body,
   HttpStatus,
+  HttpCode,
   UseGuards,
   Get,
   Req,
@@ -120,6 +121,7 @@ export class AuthController {
     type: ErrorResponseDto,
   })
   @Post('login')
+  @HttpCode(HttpStatus.OK)
   async login(
     @Body() loginDto: LoginDto,
   ): Promise<BaseResponse<AuthResponseData>> {

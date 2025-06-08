@@ -1,10 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, HttpStatus } from '@nestjs/common';
+import { INestApplication, HttpStatus, ValidationPipe } from '@nestjs/common';
 import * as request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { UserEntity } from '../src/schemas/user.entity';
 import { UserPreferencesEntity } from '../src/schemas/user-preferences.entity';
+import { UserService } from '../src/users/user.service';
 
 describe('Authentication E2E', () => {
   let app: INestApplication;
@@ -22,6 +23,17 @@ describe('Authentication E2E', () => {
     save: jest.fn(),
   };
 
+  const mockUserService = {
+    createUser: jest.fn(),
+    findByEmail: jest.fn(),
+    findById: jest.fn(),
+    verifyPassword: jest.fn(),
+    updateRefreshToken: jest.fn(),
+    updateProfile: jest.fn(),
+    setEmailVerificationToken: jest.fn(),
+    transformToProfileData: jest.fn(),
+  };
+
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
@@ -30,10 +42,18 @@ describe('Authentication E2E', () => {
       .useValue(mockUserRepository)
       .overrideProvider(getRepositoryToken(UserPreferencesEntity))
       .useValue(mockPreferencesRepository)
+      .overrideProvider(UserService)
+      .useValue(mockUserService)
       .compile();
 
     app = moduleFixture.createNestApplication();
-    app.useGlobalPipes();
+    app.useGlobalPipes(
+      new ValidationPipe({
+        transform: true,
+        whitelist: true,
+        forbidNonWhitelisted: true,
+      }),
+    );
     app.setGlobalPrefix('api/v1');
 
     await app.init();
@@ -50,7 +70,7 @@ describe('Authentication E2E', () => {
   describe('POST /api/v1/auth/register', () => {
     const inputRegisterData = {
       email: 'test@example.com',
-      password: 'password123',
+      password: 'Password123!',
       firstName: 'John',
       lastName: 'Doe',
     };
@@ -69,9 +89,23 @@ describe('Authentication E2E', () => {
         updatedAt: new Date(),
       };
 
-      mockUserRepository.findOne.mockResolvedValue(null); // User doesn't exist
-      mockUserRepository.create.mockReturnValue(expectedUser);
-      mockUserRepository.save.mockResolvedValue(expectedUser);
+      const expectedProfileData = {
+        id: expectedUser.id,
+        email: expectedUser.email,
+        firstName: expectedUser.firstName,
+        lastName: expectedUser.lastName,
+        role: expectedUser.role,
+        emailVerified: expectedUser.emailVerified,
+        createdAt: expectedUser.createdAt,
+        updatedAt: expectedUser.updatedAt,
+      };
+
+      mockUserService.createUser.mockResolvedValue(expectedUser);
+      mockUserService.setEmailVerificationToken.mockResolvedValue(undefined);
+      mockUserService.updateRefreshToken.mockResolvedValue(undefined);
+      mockUserService.transformToProfileData.mockReturnValue(
+        expectedProfileData,
+      );
 
       // Act
       const response = await request(app.getHttpServer())
@@ -126,7 +160,7 @@ describe('Authentication E2E', () => {
   describe('POST /api/v1/auth/login', () => {
     const inputLoginData = {
       email: 'test@example.com',
-      password: 'password123',
+      password: 'Password123!',
     };
 
     it('should login user successfully with valid credentials', async () => {
@@ -143,11 +177,23 @@ describe('Authentication E2E', () => {
         updatedAt: new Date(),
       };
 
-      mockUserRepository.findOne.mockResolvedValue(mockUser);
-      // Mock bcrypt.compare to return true
-      jest.doMock('bcryptjs', () => ({
-        compare: jest.fn().mockResolvedValue(true),
-      }));
+      const expectedProfileData = {
+        id: mockUser.id,
+        email: mockUser.email,
+        firstName: mockUser.firstName,
+        lastName: mockUser.lastName,
+        role: mockUser.role,
+        emailVerified: mockUser.emailVerified,
+        createdAt: mockUser.createdAt,
+        updatedAt: mockUser.updatedAt,
+      };
+
+      mockUserService.findByEmail.mockResolvedValue(mockUser);
+      mockUserService.verifyPassword.mockResolvedValue(true);
+      mockUserService.updateRefreshToken.mockResolvedValue(undefined);
+      mockUserService.transformToProfileData.mockReturnValue(
+        expectedProfileData,
+      );
 
       // Act
       const response = await request(app.getHttpServer())
@@ -182,7 +228,7 @@ describe('Authentication E2E', () => {
       // Arrange
       const userData = {
         email: 'integration@example.com',
-        password: 'password123',
+        password: 'Password123!',
         firstName: 'Integration',
         lastName: 'Test',
       };
@@ -197,10 +243,24 @@ describe('Authentication E2E', () => {
         updatedAt: new Date(),
       };
 
+      const expectedProfileData = {
+        id: mockUser.id,
+        email: mockUser.email,
+        firstName: mockUser.firstName,
+        lastName: mockUser.lastName,
+        role: mockUser.role,
+        emailVerified: mockUser.emailVerified,
+        createdAt: mockUser.createdAt,
+        updatedAt: mockUser.updatedAt,
+      };
+
       // Mock registration
-      mockUserRepository.findOne.mockResolvedValueOnce(null);
-      mockUserRepository.create.mockReturnValue(mockUser);
-      mockUserRepository.save.mockResolvedValue(mockUser);
+      mockUserService.createUser.mockResolvedValue(mockUser);
+      mockUserService.setEmailVerificationToken.mockResolvedValue(undefined);
+      mockUserService.updateRefreshToken.mockResolvedValue(undefined);
+      mockUserService.transformToProfileData.mockReturnValue(
+        expectedProfileData,
+      );
 
       // Step 1: Register
       const registerResponse = await request(app.getHttpServer())
@@ -212,7 +272,7 @@ describe('Authentication E2E', () => {
       const accessToken = registerResponse.body.data.access_token;
 
       // Step 2: Get Profile using access token
-      mockUserRepository.findOne.mockResolvedValue(mockUser);
+      mockUserService.findById.mockResolvedValue(mockUser);
 
       const profileResponse = await request(app.getHttpServer())
         .get('/api/v1/users/profile')
@@ -232,17 +292,15 @@ describe('Authentication E2E', () => {
       };
 
       const updatedUser = { ...mockUser, firstName: 'UpdatedName' };
-      mockUserRepository.findOne.mockResolvedValue(mockUser);
-      mockUserRepository.save.mockResolvedValue(updatedUser);
-      mockPreferencesRepository.findOne.mockResolvedValue(null);
-      mockPreferencesRepository.create.mockReturnValue({
-        userId: mockUser.id,
-        ...updateData.preferences,
-      });
-      mockPreferencesRepository.save.mockResolvedValue({
-        userId: mockUser.id,
-        ...updateData.preferences,
-      });
+      const updatedProfileData = {
+        ...expectedProfileData,
+        firstName: 'UpdatedName',
+      };
+      mockUserService.findById.mockResolvedValue(mockUser);
+      mockUserService.updateProfile.mockResolvedValue(updatedUser);
+      mockUserService.transformToProfileData.mockReturnValue(
+        updatedProfileData,
+      );
 
       const updateResponse = await request(app.getHttpServer())
         .put('/api/v1/users/profile')

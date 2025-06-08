@@ -19,7 +19,7 @@ export const AppDataSource = new DataSource({
   logging: process.env.NODE_ENV === 'development',
   entities: [
     process.env.NODE_ENV === 'production'
-      ? 'dist/**/*.entity.js'
+      ? 'dist/schemas/*.entity.js'
       : 'src/schemas/*.entity.ts',
   ],
   migrations: [

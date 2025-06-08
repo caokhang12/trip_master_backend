@@ -6,6 +6,8 @@ import { UserPreferencesEntity } from '../schemas/user-preferences.entity';
 import { TripEntity } from '../schemas/trip.entity';
 import { ItineraryEntity } from '../schemas/itinerary.entity';
 import { TripShareEntity } from '../schemas/trip-share.entity';
+import { VietnamLocationEntity } from '../schemas/vietnam-location.entity';
+import { DestinationEntity } from '../schemas/destination.entity';
 
 /**
  * Database configuration service that provides TypeORM configuration
@@ -22,20 +24,18 @@ export class DatabaseConfig implements TypeOrmOptionsFactory {
     const nodeEnv = this.configService.get<string>('NODE_ENV', 'development');
     const isProduction = nodeEnv === 'production';
     const isDevelopment = nodeEnv === 'development';
-    const isTest = nodeEnv === 'test';
 
-    // For testing, we'll try PostgreSQL first, and if it fails, the integration tests will be skipped
-    // SQLite doesn't support JSONB columns used in our entities
+    // Database credentials are now required from environment variables
+    // Test environment should use .env.test file with proper credentials
+    const username = this.configService.get<string>('DATABASE_USER');
+    const password = this.configService.get<string>('DATABASE_PASSWORD');
+    const database = this.configService.get<string>('DATABASE_NAME');
 
-    // Handle missing credentials gracefully for testing
-    const username =
-      this.configService.get<string>('DATABASE_USER') ||
-      (isTest ? 'postgres' : '');
-    const password =
-      this.configService.get<string>('DATABASE_PASSWORD') || (isTest ? '' : '');
-    const database =
-      this.configService.get<string>('DATABASE_NAME') ||
-      (isTest ? 'trip_master_test' : '');
+    if (!username || !password || !database) {
+      throw new Error(
+        `Missing required database configuration. Please ensure DATABASE_USER, DATABASE_PASSWORD, and DATABASE_NAME are set in your environment variables.`,
+      );
+    }
 
     return {
       type: 'postgres' as const,
@@ -50,8 +50,10 @@ export class DatabaseConfig implements TypeOrmOptionsFactory {
         TripEntity,
         ItineraryEntity,
         TripShareEntity,
+        VietnamLocationEntity,
+        DestinationEntity,
       ],
-      synchronize: isDevelopment || isTest, // Enable for development and testing
+      synchronize: false, // Disabled - we use migrations instead
       logging: isDevelopment ? ['query', 'error'] : ['error'],
       autoLoadEntities: true,
       ssl: isProduction

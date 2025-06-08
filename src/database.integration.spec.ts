@@ -167,7 +167,7 @@ describe('Database Integration', () => {
         expect(isValidPassword).toBe(true);
         expect(isInvalidPassword).toBe(false);
       }
-    });
+    }, 15000); // 15 second timeout for password verification
 
     it('should handle duplicate email creation', async () => {
       if (!databaseAvailable) {

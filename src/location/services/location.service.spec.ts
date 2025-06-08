@@ -5,8 +5,8 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import axios from 'axios';
 
 import { LocationService } from '../services/location.service';
-import { DestinationEntity } from '../entities/destination.entity';
-import { VietnamLocationEntity } from '../entities/vietnam-location.entity';
+import { DestinationEntity } from '../../schemas/destination.entity';
+import { VietnamLocationEntity } from '../../schemas/vietnam-location.entity';
 import { APIThrottleService } from '../../shared/services/api-throttle.service';
 import { LocationSearchDto } from '../dto/location-search.dto';
 import { POISearchDto, POICategory } from '../dto/poi-search.dto';
