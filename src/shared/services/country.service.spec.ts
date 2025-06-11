@@ -1,16 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { Logger } from '@nestjs/common';
+import { LocationSource } from '../../location/interfaces/smart-location.interface';
 import axios from 'axios';
 
-import {
-  CountryService,
-  CountryDetectionResult,
-  EnrichedLocationData,
-} from './country.service';
-import {
-  LocationService,
-  Location,
-} from '../../location/services/location.service';
+import { CountryService } from './country.service';
+import { LocationService } from '../../location/services/location.service';
+import { SmartLocation } from '../../location/interfaces/smart-location.interface';
 import {
   CountryDefaultsService,
   CountryDefaults,
@@ -29,8 +23,7 @@ describe('CountryService', () => {
   let service: CountryService;
 
   const mockLocationService = {
-    searchLocation: jest.fn(),
-    isVietnameseQuery: jest.fn(),
+    searchLocations: jest.fn(),
   };
 
   const mockCountryDefaultsService = {
@@ -308,7 +301,7 @@ describe('CountryService', () => {
   });
 
   describe('enrichLocationData', () => {
-    const mockLocation: Location = {
+    const mockLocation: SmartLocation = {
       id: '123',
       name: 'Ho Chi Minh City',
       displayName: 'Ho Chi Minh City, Vietnam',
@@ -317,12 +310,18 @@ describe('CountryService', () => {
       countryCode: 'VN',
       address: 'Ho Chi Minh City, Vietnam',
       placeType: 'city',
-      source: 'test',
+      source: LocationSource.DATABASE,
+      importance: 1,
     };
 
     it('should enrich location data with comprehensive information', async () => {
       // Arrange
-      mockLocationService.searchLocation.mockResolvedValue([mockLocation]);
+      mockLocationService.searchLocations.mockResolvedValue({
+        results: [mockLocation],
+        total: 1,
+        page: 1,
+        limit: 1,
+      });
 
       const mockDefaults: CountryDefaults = {
         currency: 'VND',
@@ -370,7 +369,12 @@ describe('CountryService', () => {
     it('should use provided coordinates over location coordinates', async () => {
       // Arrange
       const providedCoords = { lat: 21.0285, lng: 105.8542 }; // Hanoi
-      mockLocationService.searchLocation.mockResolvedValue([mockLocation]);
+      mockLocationService.searchLocations.mockResolvedValue({
+        results: [mockLocation],
+        total: 1,
+        page: 1,
+        limit: 1,
+      });
 
       const mockDefaults: CountryDefaults = {
         currency: 'VND',
@@ -405,7 +409,12 @@ describe('CountryService', () => {
 
     it('should throw error when location is not found', async () => {
       // Arrange
-      mockLocationService.searchLocation.mockResolvedValue([]);
+      mockLocationService.searchLocations.mockResolvedValue({
+        results: [],
+        total: 0,
+        page: 1,
+        limit: 1,
+      });
 
       // Act & Assert
       await expect(
@@ -417,7 +426,7 @@ describe('CountryService', () => {
   describe('isVietnameseLocation', () => {
     it('should identify Vietnamese location by coordinates', () => {
       // Arrange
-      const vietnameseLocation: Location = {
+      const vietnameseLocation: SmartLocation = {
         id: '123',
         name: 'Ho Chi Minh City',
         displayName: 'Ho Chi Minh City, Vietnam',
@@ -426,7 +435,8 @@ describe('CountryService', () => {
         countryCode: 'VN',
         address: 'Ho Chi Minh City, Vietnam',
         placeType: 'city',
-        source: 'test',
+        source: LocationSource.DATABASE,
+        importance: 1,
       };
 
       // Act
@@ -438,7 +448,7 @@ describe('CountryService', () => {
 
     it('should identify Vietnamese location by country code', () => {
       // Arrange
-      const vietnameseLocation: Location = {
+      const vietnameseLocation: SmartLocation = {
         id: '123',
         name: 'Unknown Location',
         displayName: 'Unknown Location, Vietnam',
@@ -447,7 +457,8 @@ describe('CountryService', () => {
         countryCode: 'VN',
         address: 'Unknown Location, Vietnam',
         placeType: 'city',
-        source: 'test',
+        source: LocationSource.DATABASE,
+        importance: 1,
       };
 
       // Act
@@ -471,7 +482,7 @@ describe('CountryService', () => {
 
     it('should identify non-Vietnamese location', () => {
       // Arrange
-      const internationalLocation: Location = {
+      const internationalLocation: SmartLocation = {
         id: '123',
         name: 'New York',
         displayName: 'New York, United States',
@@ -480,7 +491,8 @@ describe('CountryService', () => {
         countryCode: 'US',
         address: 'New York, United States',
         placeType: 'city',
-        source: 'test',
+        source: LocationSource.NOMINATIM,
+        importance: 1,
       };
 
       // Act
@@ -595,19 +607,25 @@ describe('CountryService', () => {
     it('should provide north Vietnam region info for Hanoi coordinates', async () => {
       // Arrange
       const hanoiCoords = { lat: 21.0285, lng: 105.8542 };
-      mockLocationService.searchLocation.mockResolvedValue([
-        {
-          id: '123',
-          name: 'Hanoi',
-          displayName: 'Hanoi, Vietnam',
-          coordinates: hanoiCoords,
-          country: 'Vietnam',
-          countryCode: 'VN',
-          address: 'Hanoi, Vietnam',
-          placeType: 'city',
-          source: 'test',
-        },
-      ]);
+      mockLocationService.searchLocations.mockResolvedValue({
+        results: [
+          {
+            id: '123',
+            name: 'Hanoi',
+            displayName: 'Hanoi, Vietnam',
+            coordinates: hanoiCoords,
+            country: 'Vietnam',
+            countryCode: 'VN',
+            address: 'Hanoi, Vietnam',
+            placeType: 'city',
+            source: LocationSource.DATABASE,
+            importance: 1,
+          },
+        ],
+        total: 1,
+        page: 1,
+        limit: 1,
+      });
 
       const mockDefaults: CountryDefaults = {
         currency: 'VND',
@@ -645,19 +663,25 @@ describe('CountryService', () => {
     it('should provide central Vietnam region info for Da Nang coordinates', async () => {
       // Arrange
       const daNangCoords = { lat: 16.0544, lng: 108.2022 };
-      mockLocationService.searchLocation.mockResolvedValue([
-        {
-          id: '123',
-          name: 'Da Nang',
-          displayName: 'Da Nang, Vietnam',
-          coordinates: daNangCoords,
-          country: 'Vietnam',
-          countryCode: 'VN',
-          address: 'Da Nang, Vietnam',
-          placeType: 'city',
-          source: 'test',
-        },
-      ]);
+      mockLocationService.searchLocations.mockResolvedValue({
+        results: [
+          {
+            id: '123',
+            name: 'Da Nang',
+            displayName: 'Da Nang, Vietnam',
+            coordinates: daNangCoords,
+            country: 'Vietnam',
+            countryCode: 'VN',
+            address: 'Da Nang, Vietnam',
+            placeType: 'city',
+            source: LocationSource.DATABASE,
+            importance: 1,
+          },
+        ],
+        total: 1,
+        page: 1,
+        limit: 1,
+      });
 
       const mockDefaults: CountryDefaults = {
         currency: 'VND',

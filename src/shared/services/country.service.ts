@@ -1,9 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
-import {
-  LocationService,
-  Location,
-} from '../../location/services/location.service';
+import { LocationService } from '../../location/services/location.service';
+import { SmartLocation } from '../../location/interfaces/smart-location.interface';
+import { LocationSearchDto } from '../../location/dto/location.dto';
 import {
   CountryDefaultsService,
   CountryDefaults,
@@ -36,7 +35,7 @@ export interface CountryDetectionResult {
  * Enhanced location data with country intelligence
  */
 export interface EnrichedLocationData {
-  originalLocation: Location;
+  originalLocation: SmartLocation;
   countryDetection: CountryDetectionResult;
   budgetRecommendations?: {
     currency: string;
@@ -73,6 +72,23 @@ interface VietnamRegionInfo {
     south: number;
     east: number;
     west: number;
+  };
+}
+
+/**
+ * Nominatim reverse geocoding response interface
+ */
+interface NominatimReverseResponse {
+  address?: {
+    country_code?: string;
+    country?: string;
+    state?: string;
+    province?: string;
+    county?: string;
+    district?: string;
+    city?: string;
+    town?: string;
+    village?: string;
   };
 }
 
@@ -270,14 +286,19 @@ export class CountryService {
     try {
       this.logger.log(`Enriching location data for: ${destinationName}`);
 
-      // First, search for the location using existing LocationService
-      const locations =
-        await this.locationService.searchLocation(destinationName);
-      if (locations.length === 0) {
+      // First, search for the location using LocationService
+      const searchDto: LocationSearchDto = {
+        query: destinationName,
+        limit: 1,
+      };
+      const searchResponse =
+        await this.locationService.searchLocations(searchDto);
+
+      if (searchResponse.results.length === 0) {
         throw new Error(`Location "${destinationName}" not found`);
       }
 
-      const primaryLocation = locations[0];
+      const primaryLocation = searchResponse.results[0];
 
       // Use provided coordinates or location's coordinates for country detection
       const targetCoords = coordinates || primaryLocation.coordinates;
@@ -292,11 +313,9 @@ export class CountryService {
       );
 
       // Get travel insights
-      const travelInsights = await this.getTravelInsights(
+      const travelInsights = this.getTravelInsights(
         countryDetection.countryCode,
         targetCoords.lat,
-        targetCoords.lng,
-        primaryLocation,
       );
 
       return {
@@ -318,7 +337,7 @@ export class CountryService {
    * Check if location is Vietnamese using existing LocationService logic
    * Leverages the sophisticated Vietnamese detection from LocationService
    */
-  isVietnameseLocation(location: Location | string): boolean {
+  isVietnameseLocation(location: SmartLocation | string): boolean {
     if (typeof location === 'string') {
       // Use the same Vietnamese detection logic as LocationService
       return this.isVietnameseQuery(location);
@@ -457,11 +476,15 @@ export class CountryService {
     lng: number,
   ): Promise<CountryDetectionResult> {
     try {
-      // Get Vietnam region information
-      const regionInfo = this.getVietnameseRegion(lat, lng);
+      // Get Vietnam region information for reference
+      this.getVietnameseRegion(lat);
 
       // Try to get more specific location info using Nominatim as fallback
-      let administrativeInfo: any = {};
+      let administrativeInfo = {
+        province: '',
+        district: '',
+        city: '',
+      };
 
       if (this.apiThrottleService.checkAndLog('nominatim')) {
         try {
@@ -482,12 +505,16 @@ export class CountryService {
             },
           );
 
-          if (response.data?.address) {
-            const address = response.data.address;
+          const data = response.data as NominatimReverseResponse;
+          if (data?.address) {
             administrativeInfo = {
-              province: address.state || address.province,
-              district: address.county || address.district,
-              city: address.city || address.town || address.village,
+              province: data.address.state || data.address.province || '',
+              district: data.address.county || data.address.district || '',
+              city:
+                data.address.city ||
+                data.address.town ||
+                data.address.village ||
+                '',
             };
           }
         } catch (error) {
@@ -545,13 +572,13 @@ export class CountryService {
         },
       );
 
-      const data = response.data;
+      const data = response.data as NominatimReverseResponse;
       if (!data?.address?.country_code) {
         return this.createFallbackDetectionResult(lat, lng);
       }
 
       const countryCode = data.address.country_code.toUpperCase();
-      const countryName = data.address.country;
+      const countryName = data.address.country || '';
       const defaults =
         this.countryDefaultsService.getCountryDefaults(countryCode);
 
@@ -561,9 +588,9 @@ export class CountryService {
       }
 
       const administrativeInfo = {
-        province: data.address.state || data.address.province,
-        district: data.address.county || data.address.district,
-        city: data.address.city || data.address.town,
+        province: data.address.state || data.address.province || '',
+        district: data.address.county || data.address.district || '',
+        city: data.address.city || data.address.town || '',
       };
 
       return {
@@ -608,7 +635,7 @@ export class CountryService {
   /**
    * Get Vietnamese region based on coordinates
    */
-  private getVietnameseRegion(lat: number, lng: number): VietnamRegionInfo {
+  private getVietnameseRegion(lat: number): VietnamRegionInfo {
     if (lat >= 20.0) {
       return this.vietnamRegions.north;
     } else if (lat >= 11.0) {
@@ -632,7 +659,7 @@ export class CountryService {
     let currencySymbol = defaults?.currency || 'USD';
     try {
       // Try to get proper currency formatting from CurrencyService
-      const rates = await this.currencyService.getExchangeRates('USD', [
+      await this.currencyService.getExchangeRates('USD', [
         defaults?.currency || 'USD',
       ]);
       currencySymbol = defaults?.currency || 'USD';
@@ -652,19 +679,20 @@ export class CountryService {
   /**
    * Get comprehensive travel insights
    */
-  private async getTravelInsights(
-    countryCode: string,
-    lat: number,
-    lng: number,
-    location: Location,
-  ) {
+  private getTravelInsights(countryCode: string, lat: number) {
     const defaults =
       this.countryDefaultsService.getCountryDefaults(countryCode);
     const isVietnamDestination = countryCode === 'VN';
 
-    let vietnamSpecificInfo;
+    let vietnamSpecificInfo:
+      | {
+          region: 'north' | 'central' | 'south';
+          popularProvinces: string[];
+          recommendedDuration: string;
+        }
+      | undefined;
     if (isVietnamDestination) {
-      const regionInfo = this.getVietnameseRegion(lat, lng);
+      const regionInfo = this.getVietnameseRegion(lat);
       vietnamSpecificInfo = {
         region: regionInfo.region,
         popularProvinces: regionInfo.popularProvinces,

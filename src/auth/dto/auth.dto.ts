@@ -91,7 +91,7 @@ export class RegisterDto {
 export class LoginDto {
   @ApiProperty({
     description: 'User email address',
-    example: 'john.doe@example.com',
+    example: 'admin@tripmaster.com',
     format: 'email',
   })
   @IsEmail({}, { message: 'Please provide a valid email address' })
@@ -99,7 +99,7 @@ export class LoginDto {
 
   @ApiProperty({
     description: 'User password',
-    example: 'SecurePass123!',
+    example: 'admin123',
   })
   @IsString({ message: 'Password must be a string' })
   password: string;

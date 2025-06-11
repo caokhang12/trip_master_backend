@@ -5,6 +5,7 @@ import { CountryModule } from './country.module';
 import { LocationModule } from '../../location/location.module';
 import { CurrencyModule } from '../../currency/currency.module';
 import { SharedModule } from '../shared.module';
+import { LocationSource } from '../../location/interfaces/smart-location.interface';
 
 /**
  * Integration tests for CountryService within the NestJS module system
@@ -94,7 +95,8 @@ describe('CountryService Integration', () => {
         countryCode: 'VN',
         address: 'Hà Nội, Vietnam',
         placeType: 'city',
-        source: 'goong',
+        source: LocationSource.GOONG,
+        importance: 1,
       };
 
       const result = service.isVietnameseLocation(hanoi);
