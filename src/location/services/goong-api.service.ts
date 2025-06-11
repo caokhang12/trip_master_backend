@@ -16,20 +16,61 @@ export interface GoongSearchOptions {
 }
 
 /**
- * Goong place result interface
+ * Goong AutoComplete API response structure
+ */
+export interface GoongAutocompletePlace {
+  place_id: string;
+  description: string;
+  reference: string;
+  structured_formatting?: {
+    main_text: string;
+    main_text_matched_substrings?: Array<{
+      length: number;
+      offset: number;
+    }>;
+    secondary_text: string;
+    secondary_text_matched_substrings?: Array<{
+      length: number;
+      offset: number;
+    }>;
+  };
+  matched_substrings?: Array<{
+    length: number;
+    offset: number;
+  }>;
+  terms?: Array<{
+    offset: number;
+    value: string;
+  }>;
+  types: string[];
+  has_children?: boolean;
+  plus_code?: {
+    compound_code: string;
+    global_code: string;
+  };
+  compound?: {
+    district?: string;
+    commune?: string;
+    province?: string;
+  };
+  distance_meters?: number | null;
+}
+
+/**
+ * Normalized Goong place result interface for internal use
  */
 export interface GoongPlace {
   place_id: string;
   name: string;
   formatted_address: string;
-  geometry: {
+  geometry?: {
     location: {
       lat: number;
       lng: number;
     };
   };
   types: string[];
-  address_components: GoongAddressComponent[];
+  address_components?: GoongAddressComponent[];
   compound?: {
     district?: string;
     commune?: string;
@@ -95,7 +136,16 @@ export interface GoongReverseResult {
 }
 
 /**
- * Goong API response interface
+ * Goong AutoComplete API response interface
+ */
+interface GoongAutocompleteResponse {
+  predictions: GoongAutocompletePlace[];
+  status: string;
+  error_message?: string;
+}
+
+/**
+ * Goong API response interface for other endpoints
  */
 interface GoongApiResponse<T> {
   results: T[];
@@ -137,6 +187,7 @@ export class GoongApiService {
     options: GoongSearchOptions = {},
   ): Promise<GoongPlace[]> {
     if (!this.apiKey) {
+      this.logger.error('Goong API key not configured');
       throw new HttpException(
         'Goong API key not configured',
         HttpStatus.SERVICE_UNAVAILABLE,
@@ -144,14 +195,19 @@ export class GoongApiService {
     }
 
     if (!query || query.trim().length === 0) {
+      this.logger.debug('Empty query provided to Goong API');
       return [];
     }
 
     this.logger.debug(`Searching places with Goong API: "${query}"`);
+    this.logger.debug(
+      `Goong API key present: ${!!this.apiKey} (length: ${this.apiKey.length})`,
+    );
 
     // Check rate limits
     const canUseApi = this.apiThrottleService.checkAndLog('goong');
     if (!canUseApi) {
+      this.logger.warn('Goong API rate limit exceeded');
       throw new HttpException(
         'Goong API rate limit exceeded',
         HttpStatus.TOO_MANY_REQUESTS,
@@ -166,20 +222,35 @@ export class GoongApiService {
     ) as GoongPlace[] | null;
 
     if (cachedResult) {
-      this.logger.debug('Returning cached Goong search results');
+      this.logger.debug(
+        `Returning cached Goong search results: ${cachedResult.length} results`,
+      );
       return cachedResult;
     }
 
     try {
       const params = this.buildSearchParams(query, options);
-      const response: AxiosResponse<GoongApiResponse<GoongPlace>> =
-        await axios.get(`${this.baseUrl}/Place/AutoComplete`, {
+      this.logger.debug(`Goong API request params:`, params);
+
+      const requestUrl = `${this.baseUrl}/Place/AutoComplete`;
+      this.logger.debug(`Making request to: ${requestUrl}`);
+
+      const response: AxiosResponse<GoongAutocompleteResponse> =
+        await axios.get(requestUrl, {
           params,
           timeout: 10000,
           headers: {
             'User-Agent': 'TripMaster/1.0',
           },
         });
+
+      this.logger.debug(`Goong API response status: ${response.status}`);
+      this.logger.debug(`Goong API response data:`, {
+        status: response.data.status,
+        resultCount: response.data.predictions?.length || 0,
+        errorMessage: response.data.error_message,
+        fullResponse: response.data,
+      });
 
       if (response.data.status !== 'OK') {
         this.logger.error(
@@ -191,7 +262,77 @@ export class GoongApiService {
         );
       }
 
-      const results = response.data.results || [];
+      const rawResults = response.data.predictions || [];
+
+      this.logger.debug(`Raw Goong results for "${query}":`, {
+        resultCount: rawResults.length,
+        results: rawResults.map((place) => ({
+          place_id: place.place_id,
+          description: place.description,
+          types: place.types,
+        })),
+      });
+
+      // Transform AutoComplete results to normalized GoongPlace format
+      let results: GoongPlace[] = rawResults.map((place) =>
+        this.transformAutocompletePlace(place),
+      );
+
+      this.logger.debug(`Transformed Goong results for "${query}":`, {
+        resultCount: results.length,
+        results: results.map((place) => ({
+          place_id: place.place_id,
+          name: place.name,
+          formatted_address: place.formatted_address,
+          types: place.types,
+        })),
+      });
+
+      // AutoComplete API doesn't provide geometry, so we need to fetch coordinates
+      // for the first few results to make them usable
+      const limitForCoordinates = Math.min(results.length, 3); // Only fetch coordinates for top 3 results to save API calls
+      if (limitForCoordinates > 0) {
+        this.logger.debug(
+          `Fetching coordinates for top ${limitForCoordinates} Goong results`,
+        );
+
+        const resultsWithCoordinates = await Promise.allSettled(
+          results.slice(0, limitForCoordinates).map(async (place) => {
+            try {
+              const placeDetails = await this.getPlaceDetails(place.place_id);
+              return {
+                ...place,
+                geometry: placeDetails.geometry,
+              };
+            } catch (error) {
+              this.logger.debug(
+                `Failed to fetch coordinates for place ${place.place_id}: ${error.message}`,
+              );
+              return place; // Return original place without coordinates
+            }
+          }),
+        );
+
+        // Update results with coordinates where available
+        resultsWithCoordinates.forEach((result, index) => {
+          if (result.status === 'fulfilled' && result.value.geometry) {
+            results[index] = result.value;
+          }
+        });
+      }
+
+      this.logger.debug(`Goong results with coordinates for "${query}":`, {
+        resultCount: results.length,
+        resultsWithCoordinates: results.filter((r) => r.geometry).length,
+        results: results.map((place) => ({
+          place_id: place.place_id,
+          name: place.name,
+          formatted_address: place.formatted_address,
+          types: place.types,
+          hasGeometry: !!place.geometry,
+          coordinates: place.geometry?.location,
+        })),
+      });
 
       // Cache the results
       this.cacheService.cacheApiResponse(
@@ -207,6 +348,14 @@ export class GoongApiService {
       return results;
     } catch (error) {
       if (axios.isAxiosError(error)) {
+        this.logger.error(`Goong API axios error:`, {
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          data: error.response?.data,
+          message: error.message,
+          code: error.code,
+        });
+
         if (error.response?.status === 429) {
           throw new HttpException(
             'Goong API rate limit exceeded',
@@ -517,7 +666,42 @@ export class GoongApiService {
       params.language = options.language;
     }
 
+    this.logger.debug(`Built Goong search params:`, {
+      input: params.input,
+      api_key: params.api_key
+        ? `${String(params.api_key).substring(0, 8)}...`
+        : 'NOT_SET',
+      limit: params.limit,
+      location: params.location,
+      radius: params.radius,
+      types: params.types,
+      language: params.language,
+    });
+
     return params;
+  }
+
+  /**
+   * Transform AutoComplete place to normalized GoongPlace format
+   * @param place - Raw AutoComplete place data
+   * @returns Normalized GoongPlace object
+   */
+  private transformAutocompletePlace(
+    place: GoongAutocompletePlace,
+  ): GoongPlace {
+    return {
+      place_id: place.place_id,
+      name:
+        place.structured_formatting?.main_text ||
+        place.description ||
+        'Unknown',
+      formatted_address: place.description,
+      types: place.types,
+      compound: place.compound,
+      plus_code: place.plus_code,
+      // Note: AutoComplete API doesn't provide geometry,
+      // would need to call Place Details API for coordinates
+    };
   }
 
   /**

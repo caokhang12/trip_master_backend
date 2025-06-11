@@ -212,9 +212,20 @@ export class LocationService {
             address_components: goongResult.address_components,
             compound: goongResult.compound,
           };
-          location = this.convertToSmartLocation(goongPlace, source);
-          confidence = this.calculateGoongConfidence(goongPlace);
-          this.logger.debug('Used Goong API for Vietnam coordinates');
+          const convertedLocation = this.convertToSmartLocation(
+            goongPlace,
+            source,
+          );
+          if (convertedLocation) {
+            location = convertedLocation;
+            confidence = this.calculateGoongConfidence(goongPlace);
+            this.logger.debug('Used Goong API for Vietnam coordinates');
+          } else {
+            this.logger.warn(
+              'Goong place conversion returned null, falling back to Nominatim',
+            );
+            throw new Error('Invalid Goong place without coordinates');
+          }
         } catch (error) {
           this.logger.warn(
             `Goong reverse geocoding failed, falling back to Nominatim: ${ErrorUtilService.getErrorMessage(error)}`,
@@ -380,6 +391,9 @@ export class LocationService {
       const isInVietnam = VietnamDetectorUtil.isInVietnameseTerritory(lat, lng);
       let results: PointOfInterest[] = [];
 
+      // TODO: Implement Goong POI search later
+      // Temporarily commented out Goong API logic
+      /*
       if (isInVietnam && this.goongApiService.isAvailable()) {
         // Use Goong for Vietnamese POIs
         try {
@@ -398,8 +412,13 @@ export class LocationService {
           );
         }
       }
+      */
 
-      // Fallback to or supplement with Nominatim
+      this.logger.debug(
+        `POI search using Nominatim API only (Goong temporarily disabled, isInVietnam: ${isInVietnam})`,
+      );
+
+      // Use Nominatim for POI search
       if (results.length === 0) {
         const nominatimResults = await this.nominatimApiService.searchPOI(
           lat,
@@ -733,6 +752,9 @@ export class LocationService {
       });
     }
 
+    // TODO: Implement Goong API integration later
+    // Temporarily commented out Goong API logic due to coordinate fetching issues
+    /*
     // Try Goong API if no results from database
     if (results.length === 0 && this.goongApiService.isAvailable()) {
       sourcesAttempted.push(LocationSource.GOONG);
@@ -744,13 +766,21 @@ export class LocationService {
           },
         );
         if (goongResults.length > 0) {
-          results = goongResults.map((place) =>
-            this.convertGoongToSmartLocation(place),
-          );
-          sourcesWithResults.push(LocationSource.GOONG);
-          this.logger.debug(
-            `[${searchId}] Found ${goongResults.length} results from Goong API`,
-          );
+          const smartLocations = goongResults
+            .map((place) => this.convertGoongToSmartLocation(place))
+            .filter((location): location is SmartLocation => location !== null);
+
+          if (smartLocations.length > 0) {
+            results = smartLocations;
+            sourcesWithResults.push(LocationSource.GOONG);
+            this.logger.debug(
+              `[${searchId}] Found ${smartLocations.length} valid results from Goong API (${goongResults.length} total, ${goongResults.length - smartLocations.length} filtered out for missing coordinates)`,
+            );
+          } else {
+            this.logger.debug(
+              `[${searchId}] All ${goongResults.length} Goong API results filtered out due to missing coordinates`,
+            );
+          }
         }
       } catch (error) {
         errors.push({
@@ -759,6 +789,11 @@ export class LocationService {
         });
       }
     }
+    */
+
+    this.logger.debug(
+      `[${searchId}] Goong API temporarily disabled - using database and fallback to Nominatim only`,
+    );
 
     return results;
   }
@@ -906,20 +941,51 @@ export class LocationService {
     results: SmartLocation[],
     searchDto: LocationSearchDto,
   ): SmartLocation[] {
+    this.logger.debug(
+      `Applying filters to ${results.length} results with minImportance: ${searchDto.minImportance}, locationType: ${searchDto.locationType}`,
+    );
+
     let filteredResults = results;
 
-    // Apply importance filter
+    // Log initial results details
+    this.logger.debug(
+      'Initial results before filtering:',
+      results.map((r) => ({
+        id: r.id,
+        name: r.name,
+        importance: r.importance,
+        placeType: r.placeType,
+      })),
+    );
+
+    // TEMPORARILY DISABLED: Apply importance filter for testing API calls
+    // TODO: Re-enable after fixing minImportance filtering logic
+    /*
     if (searchDto.minImportance !== undefined) {
+      const beforeCount = filteredResults.length;
       filteredResults = filteredResults.filter(
         (result) => result.importance >= searchDto.minImportance!,
       );
+      this.logger.debug(
+        `Importance filter: ${beforeCount} -> ${filteredResults.length} (threshold: ${searchDto.minImportance})`,
+      );
     }
+    */
+
+    // Log that importance filtering is disabled
+    this.logger.debug(
+      `⚠️  IMPORTANCE FILTERING DISABLED FOR TESTING - All ${filteredResults.length} results will be included`,
+    );
 
     // Apply location type filter
     if (searchDto.locationType && searchDto.locationType !== LocationType.ALL) {
+      const beforeCount = filteredResults.length;
       filteredResults = this.filterByLocationType(
         filteredResults,
         searchDto.locationType,
+      );
+      this.logger.debug(
+        `Location type filter: ${beforeCount} -> ${filteredResults.length} (type: ${searchDto.locationType})`,
       );
     }
 
@@ -1004,14 +1070,27 @@ export class LocationService {
   }
 
   // Conversion helper methods
-  private convertGoongToSmartLocation(place: GoongPlace): SmartLocation {
+  private convertGoongToSmartLocation(place: GoongPlace): SmartLocation | null {
+    // Skip places without valid coordinates
+    if (
+      !place.geometry?.location?.lat ||
+      !place.geometry?.location?.lng ||
+      place.geometry.location.lat === 0 ||
+      place.geometry.location.lng === 0
+    ) {
+      this.logger.debug(
+        `Skipping Goong place without valid coordinates: ${place.name} (${place.place_id})`,
+      );
+      return null;
+    }
+
     return {
       id: place.place_id || `goong_${Date.now()}`,
       name: place.name || 'Unknown',
       displayName: place.formatted_address || place.name || 'Unknown',
       coordinates: {
-        lat: place.geometry?.location?.lat || 0,
-        lng: place.geometry?.location?.lng || 0,
+        lat: place.geometry.location.lat,
+        lng: place.geometry.location.lng,
       },
       country: 'Vietnam',
       countryCode: 'VN',
@@ -1023,8 +1102,8 @@ export class LocationService {
       source: LocationSource.GOONG,
       importance: this.calculateImportanceFromGoong(place),
       vietnamRegion: VietnamDetectorUtil.getRegionFromCoordinates(
-        place.geometry?.location?.lat || 0,
-        place.geometry?.location?.lng || 0,
+        place.geometry.location.lat,
+        place.geometry.location.lng,
       ) as VietnameseRegion | undefined,
     };
   }
@@ -1095,7 +1174,7 @@ export class LocationService {
   private convertToSmartLocation(
     result: GoongPlace | NominatimPlace | VietnamLocationEntity,
     source: LocationSource,
-  ): SmartLocation {
+  ): SmartLocation | null {
     switch (source) {
       case LocationSource.GOONG:
         return this.convertGoongToSmartLocation(result as GoongPlace);
@@ -1254,32 +1333,8 @@ export class LocationService {
     }
   }
 
-  /**
-   * Single location search (alias for searchLocations for backward compatibility)
-   */
-  async searchLocation(
-    searchDto: LocationSearchDto,
-  ): Promise<SmartLocationSearchResponse> {
-    return this.searchLocations(searchDto);
-  }
-
-  /**
-   * Get location suggestions (alias for getLocationSuggestions)
-   */
-  async getSuggestions(suggestionsDto: {
-    query: string;
-    limit?: number;
-  }): Promise<string[]> {
-    return this.getLocationSuggestions(
-      suggestionsDto.query,
-      suggestionsDto.limit || 10,
-    );
-  }
-
-  /**
-   * Get Vietnamese provinces (alias for getVietnameseRegions)
-   */
-  async getVietnameseProvinces(): Promise<any[]> {
-    return this.getVietnameseRegions();
-  }
+  // REMOVED LEGACY METHODS:
+  // - searchLocation() - use searchLocations() instead
+  // - getSuggestions() - use getLocationSuggestions() instead
+  // - getVietnameseProvinces() - use getVietnameseRegions() instead
 }

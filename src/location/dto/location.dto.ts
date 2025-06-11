@@ -19,9 +19,6 @@ import {
   LocationType,
   LocationSource,
   VietnamDetectionResult,
-  VietnameseRegion,
-  LocationCoordinates,
-  SearchResultMetadata,
   ApiError,
 } from '../interfaces/smart-location.interface';
 
@@ -161,7 +158,7 @@ export class LocationSearchDto {
 }
 
 /**
- * Location result DTO for API responses
+ * Location result DTO - implements SmartLocation interface
  */
 export class LocationResultDto {
   @ApiProperty({ description: 'Unique location identifier' })
@@ -223,53 +220,9 @@ export class LocationResultDto {
 }
 
 /**
- * Vietnam detection result DTO
+ * Search response metadata DTO - implements interface
  */
-export class VietnamDetectionDto implements VietnamDetectionResult {
-  @ApiProperty({ description: 'Is query Vietnamese-related' })
-  isVietnamese: boolean;
-
-  @ApiProperty({ description: 'Confidence score (0-1)' })
-  confidence: number;
-
-  @ApiProperty({ description: 'Detected Vietnamese keywords', type: [String] })
-  detectedKeywords: string[];
-
-  @ApiProperty({ description: 'Detection reasoning', type: [String] })
-  reasoning: string[];
-
-  @ApiPropertyOptional({ description: 'Detected region' })
-  detectedRegion?: VietnameseRegion;
-
-  @ApiPropertyOptional({ description: 'Administrative divisions' })
-  administrativeDivisions?: {
-    province?: string;
-    district?: string;
-    ward?: string;
-  };
-
-  @ApiPropertyOptional({ description: 'Coordinates' })
-  coordinates?: LocationCoordinates;
-}
-
-/**
- * Cache information DTO
- */
-export class CacheInfoDto {
-  @ApiProperty({ description: 'Was result from cache' })
-  hit: boolean;
-
-  @ApiPropertyOptional({ description: 'Cache key' })
-  key?: string;
-
-  @ApiPropertyOptional({ description: 'Cache TTL in seconds' })
-  ttl?: number;
-}
-
-/**
- * Search response metadata DTO
- */
-export class SearchMetadataDto implements SearchResultMetadata {
+export class SearchMetadataDto {
   @ApiProperty({ description: 'Search time in milliseconds' })
   searchTimeMs: number;
 
@@ -290,17 +243,14 @@ export class SearchMetadataDto implements SearchResultMetadata {
   })
   sourcesWithResults: LocationSource[];
 
-  @ApiProperty({ description: 'Cache information', type: CacheInfoDto })
+  @ApiProperty({ description: 'Cache information' })
   cache: {
     hit: boolean;
     key?: string;
     ttl?: number;
   };
 
-  @ApiProperty({
-    description: 'Vietnam detection result',
-    type: VietnamDetectionDto,
-  })
+  @ApiProperty({ description: 'Vietnam detection result' })
   vietnamDetection: VietnamDetectionResult;
 
   @ApiPropertyOptional({ description: 'API usage statistics' })
@@ -499,30 +449,6 @@ export class POISearchDto extends BaseCoordinateDto {
 }
 
 /**
- * Location suggestions DTO
- */
-export class SuggestionsDto {
-  @ApiProperty({
-    description: 'Partial search query',
-    example: 'Ho Chi',
-  })
-  @IsString()
-  query: string;
-
-  @ApiPropertyOptional({
-    description: 'Maximum number of suggestions',
-    example: 5,
-    minimum: 1,
-    maximum: 20,
-  })
-  @IsOptional()
-  @IsNumber()
-  @Min(1)
-  @Max(20)
-  limit?: number;
-}
-
-/**
  * Weather request DTO
  */
 export class WeatherDto extends BaseCoordinateDto {
@@ -534,44 +460,4 @@ export class WeatherDto extends BaseCoordinateDto {
   @IsOptional()
   @IsString()
   units?: 'metric' | 'imperial';
-}
-
-/**
- * Location suggestions DTO
- */
-export class LocationSuggestionsDto {
-  @ApiProperty({
-    description: 'Partial query text for suggestions',
-    example: 'Ho Chi',
-  })
-  @IsString()
-  query: string;
-
-  @ApiPropertyOptional({
-    description: 'Maximum number of suggestions',
-    example: 5,
-    minimum: 1,
-    maximum: 20,
-  })
-  @IsOptional()
-  @IsNumber()
-  @Min(1)
-  @Max(20)
-  limit?: number;
-
-  @ApiPropertyOptional({
-    description: 'User country code for localization',
-    example: 'VN',
-  })
-  @IsOptional()
-  @IsString()
-  userCountry?: string;
-
-  @ApiPropertyOptional({
-    description: 'Language for results (ISO 639-1)',
-    example: 'vi',
-  })
-  @IsOptional()
-  @IsString()
-  language?: string;
 }

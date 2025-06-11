@@ -191,10 +191,43 @@ export class NominatimApiService {
         return [];
       }
 
+      // Log raw response for debugging
+      this.logger.debug(`Raw Nominatim response for "${query}":`, {
+        resultCount: response.data.length,
+        results: response.data.map((place) => ({
+          place_id: place.place_id,
+          lat: place.lat,
+          lon: place.lon,
+          display_name: place.display_name,
+          importance: place.importance,
+          type: place.type,
+          class: place.class,
+        })),
+      });
+
       // Transform Nominatim places to SmartLocation
-      const smartLocations = response.data
-        .filter((place) => place && place.lat && place.lon)
-        .map((place) => this.transformToSmartLocation(place));
+      const filteredPlaces = response.data.filter(
+        (place) => place && place.lat && place.lon,
+      );
+      this.logger.debug(
+        `Places after coordinate filter: ${filteredPlaces.length}/${response.data.length}`,
+      );
+
+      const smartLocations = filteredPlaces.map((place) =>
+        this.transformToSmartLocation(place),
+      );
+
+      // Log transformed results
+      this.logger.debug(`Transformed SmartLocations for "${query}":`, {
+        resultCount: smartLocations.length,
+        results: smartLocations.map((loc) => ({
+          id: loc.id,
+          name: loc.name,
+          importance: loc.importance,
+          coordinates: loc.coordinates,
+          placeType: loc.placeType,
+        })),
+      });
 
       // Cache successful results
       this.cacheService.set(cacheKey, smartLocations, 300); // 5 minutes TTL

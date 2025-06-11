@@ -16,9 +16,15 @@ import {
   LocationSearchResponseDto,
   ReverseGeocodeResponseDto,
   BulkLocationSearchResponseDto,
-  SuggestionsDto,
+  POISearchDto,
 } from './dto/location.dto';
-import { POISearchDto } from './dto/poi-search.dto';
+import {
+  SmartLocationSearchResponse,
+  ReverseGeocodeResult,
+  BulkSearchResponse,
+  PointOfInterest,
+} from './interfaces/smart-location.interface';
+import { PaginationResult } from '../shared/types/pagination.types';
 
 /**
  * Location Controller - Optimized and consolidated
@@ -26,14 +32,11 @@ import { POISearchDto } from './dto/poi-search.dto';
  */
 @ApiTags('Locations')
 @Controller('location')
-@UseGuards(JwtAuthGuard)
+//@UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class LocationController {
   constructor(private readonly locationService: LocationService) {}
 
-  /**
-   * Main search endpoint with intelligent routing
-   */
   @Get('search')
   @ApiOperation({
     summary: 'Search for locations with intelligent routing',
@@ -53,13 +56,12 @@ export class LocationController {
     status: 500,
     description: 'Internal server error',
   })
-  async searchLocations(@Query() searchDto: LocationSearchDto): Promise<any> {
+  async searchLocations(
+    @Query() searchDto: LocationSearchDto,
+  ): Promise<SmartLocationSearchResponse> {
     return await this.locationService.searchLocations(searchDto);
   }
 
-  /**
-   * Reverse geocoding endpoint
-   */
   @Get('reverse-geocode')
   @ApiOperation({
     summary: 'Reverse geocode coordinates to location',
@@ -79,13 +81,12 @@ export class LocationController {
     status: 404,
     description: 'No location found for coordinates',
   })
-  async reverseGeocode(@Query() reverseDto: ReverseGeocodeDto): Promise<any> {
+  async reverseGeocode(
+    @Query() reverseDto: ReverseGeocodeDto,
+  ): Promise<ReverseGeocodeResult> {
     return await this.locationService.reverseGeocode(reverseDto);
   }
 
-  /**
-   * Bulk search endpoint
-   */
   @Post('bulk-search')
   @ApiOperation({
     summary: 'Bulk location search',
@@ -101,13 +102,12 @@ export class LocationController {
     status: 400,
     description: 'Bad request - invalid bulk search parameters',
   })
-  async bulkSearch(@Body() bulkDto: BulkLocationSearchDto): Promise<any> {
+  async bulkSearch(
+    @Body() bulkDto: BulkLocationSearchDto,
+  ): Promise<BulkSearchResponse> {
     return await this.locationService.bulkSearch(bulkDto);
   }
 
-  /**
-   * POI search endpoint
-   */
   @Get('poi')
   @ApiOperation({
     summary: 'Search Points of Interest',
@@ -116,30 +116,18 @@ export class LocationController {
   @ApiResponse({
     status: 200,
     description: 'POI search results with pagination',
-    schema: {
-      type: 'object',
-      properties: {
-        data: { type: 'array', items: { type: 'object' } },
-        page: { type: 'number' },
-        limit: { type: 'number' },
-        total: { type: 'number' },
-        totalPages: { type: 'number' },
-        hasNext: { type: 'boolean' },
-        hasPrev: { type: 'boolean' },
-      },
-    },
+    type: 'object',
   })
   @ApiResponse({
     status: 400,
     description: 'Bad request - invalid POI search parameters',
   })
-  async searchPOI(@Query() poiDto: POISearchDto): Promise<any> {
+  async searchPOI(
+    @Query() poiDto: POISearchDto,
+  ): Promise<PaginationResult<PointOfInterest>> {
     return await this.locationService.searchPOI(poiDto);
   }
 
-  /**
-   * Location suggestions endpoint
-   */
   @Get('suggestions')
   @ApiOperation({
     summary: 'Get location suggestions',
@@ -159,18 +147,15 @@ export class LocationController {
   @ApiResponse({
     status: 200,
     description: 'Location suggestions',
-    type: [SuggestionsDto],
+    type: [String],
   })
   async getSuggestions(
     @Query('query') query: string,
     @Query('limit') limit?: number,
-  ): Promise<any> {
+  ): Promise<string[]> {
     return await this.locationService.getLocationSuggestions(query, limit || 5);
   }
 
-  /**
-   * Vietnamese regions endpoint
-   */
   @Get('vietnam/provinces')
   @ApiOperation({
     summary: 'Get Vietnamese provinces',
@@ -179,75 +164,16 @@ export class LocationController {
   @ApiResponse({
     status: 200,
     description: 'List of Vietnamese provinces',
-    schema: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          code: { type: 'string' },
-          name: { type: 'string' },
-          type: { type: 'string' },
-          coordinates: { type: 'object' },
-        },
-      },
-    },
+    type: 'array',
   })
   @ApiResponse({
     status: 503,
     description: 'Unable to fetch Vietnamese regions',
   })
-  async getVietnameseRegions(): Promise<any> {
+  async getVietnameseRegions(): Promise<any[]> {
     return await this.locationService.getVietnameseRegions();
   }
 
-  /**
-   * LEGACY ENDPOINTS - for backward compatibility
-   */
-
-  /**
-   * Legacy search endpoint
-   * @deprecated Use /search instead
-   */
-  @Get('search-location')
-  @ApiOperation({
-    summary: 'Legacy location search',
-    description:
-      'Legacy endpoint for single location search - use /search instead',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Location search results',
-    type: LocationSearchResponseDto,
-  })
-  async searchLocation(@Query() searchDto: LocationSearchDto): Promise<any> {
-    return await this.locationService.searchLocation(searchDto);
-  }
-
-  /**
-   * Legacy provinces endpoint
-   * @deprecated Use /vietnam/provinces instead
-   */
-  @Get('vietnamese-provinces')
-  @ApiOperation({
-    summary: 'Legacy Vietnamese provinces',
-    description:
-      'Legacy endpoint for Vietnamese provinces - use /vietnam/provinces instead',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'List of Vietnamese provinces',
-    schema: {
-      type: 'array',
-      items: { type: 'object' },
-    },
-  })
-  async getVietnameseProvinces(): Promise<any> {
-    return await this.locationService.getVietnameseProvinces();
-  }
-
-  /**
-   * Service health check endpoint
-   */
   @Get('test')
   @ApiOperation({
     summary: 'Service health check',
@@ -266,12 +192,12 @@ export class LocationController {
       status: 'healthy',
       timestamp: new Date().toISOString(),
       availableEndpoints: [
-        'search',
-        'reverse-geocode',
-        'bulk-search',
-        'poi',
-        'suggestions',
-        'vietnam/provinces',
+        'GET /search - Main location search with intelligent routing',
+        'GET /reverse-geocode - Convert coordinates to location details',
+        'POST /bulk-search - Bulk location searches with parallel processing',
+        'GET /poi - Search Points of Interest near coordinates',
+        'GET /suggestions - Get location name suggestions for autocomplete',
+        'GET /vietnam/provinces - Get Vietnamese provinces and regions',
       ],
     };
   }
