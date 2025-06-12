@@ -30,6 +30,7 @@ import {
   IsValidCountryCurrency,
   IsValidCountryTimezone,
 } from './validators/country-validation.decorator';
+import { BudgetBreakdownDto } from './cost-tracking.dto';
 
 /**
  * Base trip DTO that combines date and budget validation
@@ -214,6 +215,25 @@ export class CreateTripDto extends BaseTripDto {
   @IsOptional()
   @IsBoolean()
   isPublic?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Budget breakdown by category for cost tracking',
+    type: BudgetBreakdownDto,
+  })
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => BudgetBreakdownDto)
+  budgetBreakdown?: BudgetBreakdownDto;
+
+  @ApiPropertyOptional({
+    description: 'Enable cost tracking for this trip',
+    example: true,
+    default: true,
+  })
+  @IsOptional()
+  @IsBoolean()
+  enableCostTracking?: boolean = true;
 }
 
 export class UpdateTripDto extends BaseTripDto {
@@ -363,6 +383,24 @@ export class UpdateTripDto extends BaseTripDto {
   @IsOptional()
   @IsBoolean()
   isPublic?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Updated budget breakdown by category',
+    type: BudgetBreakdownDto,
+  })
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => BudgetBreakdownDto)
+  budgetBreakdown?: BudgetBreakdownDto;
+
+  @ApiPropertyOptional({
+    description: 'Enable or disable cost tracking for this trip',
+    example: true,
+  })
+  @IsOptional()
+  @IsBoolean()
+  enableCostTracking?: boolean;
 }
 
 export class TripQueryDto extends ExtendedPaginationDto {

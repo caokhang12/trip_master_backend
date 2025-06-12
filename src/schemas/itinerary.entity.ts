@@ -5,10 +5,12 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   ManyToOne,
+  OneToMany,
   JoinColumn,
   Unique,
 } from 'typeorm';
 import { TripEntity } from './trip.entity';
+import { ActivityCostEntity } from './activity-cost.entity';
 
 export interface Activity {
   time: string;
@@ -53,10 +55,40 @@ export class ItineraryEntity {
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 
+  // Cost tracking fields
+  @Column({
+    name: 'estimated_cost',
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    default: 0,
+  })
+  estimatedCost: number;
+
+  @Column({
+    name: 'actual_cost',
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+  })
+  actualCost?: number;
+
+  @Column({ name: 'cost_currency', length: 3, default: 'USD' })
+  costCurrency: string;
+
+  @Column({ name: 'cost_breakdown', type: 'jsonb', nullable: true })
+  costBreakdown?: Record<string, number>;
+
   // Relations
   @ManyToOne(() => TripEntity, (trip) => trip.itinerary, {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'trip_id' })
   trip: TripEntity;
+
+  @OneToMany(() => ActivityCostEntity, (cost) => cost.itinerary, {
+    cascade: true,
+  })
+  activityCosts: ActivityCostEntity[];
 }

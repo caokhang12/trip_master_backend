@@ -36,6 +36,7 @@ import {
   ShareTripDto,
   TripSearchDto,
 } from './dto/trip.dto';
+import { UpdateActivityCostDto } from './dto/cost-tracking.dto';
 import { BaseResponseDto, ErrorResponseDto } from '../shared/dto/response.dto';
 
 interface RequestWithUser extends Request {
@@ -960,6 +961,123 @@ export class TripController {
       message: 'Trip service is running correctly',
       timestamp: new Date(),
     });
+  }
+
+  /**
+   * Update activity cost for a specific activity
+   */
+  @Put(':id/activities/:activityId/cost')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Update activity cost',
+    description: 'Update the actual cost for a specific activity in a trip',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Trip ID',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @ApiParam({
+    name: 'activityId',
+    description: 'Activity Cost ID',
+    example: '123e4567-e89b-12d3-a456-426614174001',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Activity cost updated successfully',
+    type: BaseResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Trip or activity not found',
+    type: ErrorResponseDto,
+  })
+  async updateActivityCost(
+    @Param('id') tripId: string,
+    @Param('activityId') activityId: string,
+    @Body() updateDto: UpdateActivityCostDto,
+    @Req() req: RequestWithUser,
+  ): Promise<BaseResponse<any>> {
+    const result = await this.itineraryService.updateActivityCost(
+      tripId,
+      req.user.id,
+      activityId,
+      updateDto,
+    );
+    return ResponseUtil.success(result);
+  }
+
+  /**
+   * Get cost analysis for a trip
+   */
+  @Get(':id/cost-analysis')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Get cost analysis',
+    description: 'Get detailed cost analysis for a trip',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Trip ID',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Cost analysis retrieved successfully',
+    type: BaseResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Trip not found',
+    type: ErrorResponseDto,
+  })
+  async getCostAnalysis(
+    @Param('id') tripId: string,
+    @Req() req: RequestWithUser,
+  ): Promise<BaseResponse<any>> {
+    const result = await this.itineraryService.getCostAnalysis(
+      tripId,
+      req.user.id,
+    );
+    return ResponseUtil.success(result);
+  }
+
+  /**
+   * Get budget summary for a trip
+   */
+  @Get(':id/budget-summary')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Get budget summary',
+    description: 'Get budget utilization summary for a trip',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Trip ID',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Budget summary retrieved successfully',
+    type: BaseResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Trip not found',
+    type: ErrorResponseDto,
+  })
+  async getBudgetSummary(
+    @Param('id') tripId: string,
+    @Req() req: RequestWithUser,
+  ): Promise<BaseResponse<any>> {
+    const result = await this.itineraryService.getBudgetSummary(
+      tripId,
+      req.user.id,
+    );
+    return ResponseUtil.success(result);
   }
 }
 

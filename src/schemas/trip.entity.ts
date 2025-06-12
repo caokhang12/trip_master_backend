@@ -12,6 +12,7 @@ import {
 import { UserEntity } from './user.entity';
 import { ItineraryEntity } from './itinerary.entity';
 import { TripShareEntity } from './trip-share.entity';
+import { BudgetTrackingEntity } from './budget-tracking.entity';
 
 export enum TripStatus {
   PLANNING = 'planning',
@@ -85,6 +86,9 @@ export class TripEntity {
   @Column({ name: 'is_public', default: false })
   isPublic: boolean;
 
+  @Column({ name: 'enable_cost_tracking', default: true })
+  enableCostTracking: boolean;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
@@ -107,4 +111,9 @@ export class TripEntity {
     eager: false,
   })
   shareInfo?: TripShareEntity;
+
+  @OneToMany(() => BudgetTrackingEntity, (budget) => budget.trip, {
+    cascade: true,
+  })
+  budgetTracking: BudgetTrackingEntity[];
 }

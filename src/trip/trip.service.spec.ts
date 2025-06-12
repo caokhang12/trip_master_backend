@@ -43,11 +43,13 @@ describe('TripService', () => {
     currency: 'USD',
     status: TripStatus.PLANNING,
     isPublic: false,
+    enableCostTracking: true,
     createdAt: new Date(),
     updatedAt: new Date(),
     user: {} as UserEntity,
     itinerary: [],
     shareInfo: undefined,
+    budgetTracking: [],
   };
 
   const mockItineraryEntity: ItineraryEntity = {
@@ -67,9 +69,12 @@ describe('TripService', () => {
     ],
     aiGenerated: true,
     userModified: false,
+    estimatedCost: 0,
+    costCurrency: 'USD',
     createdAt: new Date(),
     updatedAt: new Date(),
     trip: mockTripEntity,
+    activityCosts: [],
   };
 
   const mockShareEntity: TripShareEntity = {

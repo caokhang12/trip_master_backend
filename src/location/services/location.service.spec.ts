@@ -9,7 +9,7 @@ import { APIThrottleService } from '../../shared/services/api-throttle.service';
 import { VietnamLocationEntity } from '../../schemas/vietnam-location.entity';
 import { DestinationEntity } from '../../schemas/destination.entity';
 import { LocationSearchDto, POISearchDto } from '../dto/location.dto';
-import { POICategory } from '../dto/poi-search.dto';
+import { LocationType } from '../interfaces/smart-location.interface';
 import { LocationSource } from '../interfaces/smart-location.interface';
 
 describe('LocationService', () => {
@@ -119,7 +119,7 @@ describe('LocationService', () => {
     jest.clearAllMocks();
   });
 
-  describe('searchLocation', () => {
+  describe('searchLocations', () => {
     const searchDto: LocationSearchDto = {
       query: 'Ho Chi Minh City',
       userCountry: 'VN',
@@ -162,7 +162,7 @@ describe('LocationService', () => {
       mockCacheService.getSearchResults.mockReturnValue(cachedSmartLocations);
 
       // Act
-      const result = await service.searchLocation(searchDto);
+      const result = await service.searchLocationss(searchDto);
 
       // Assert
       expect(result.results).toHaveLength(1);
@@ -216,7 +216,7 @@ describe('LocationService', () => {
       );
 
       // Act
-      const result = await service.searchLocation(searchDto);
+      const result = await service.searchLocationss(searchDto);
 
       // Assert
       expect(result.results).toHaveLength(1);
@@ -283,7 +283,7 @@ describe('LocationService', () => {
       mockApiThrottleService.checkAndLog.mockReturnValue(true);
 
       // Act
-      const result = await service.searchLocation(searchDto);
+      const result = await service.searchLocations(searchDto);
 
       // Debug: Log the actual result to see what's happening
       console.log('Test Debug - Result:', JSON.stringify(result, null, 2));
@@ -347,7 +347,7 @@ describe('LocationService', () => {
       ]);
 
       // Act
-      const result = await service.searchLocation(searchDto);
+      const result = await service.searchLocations(searchDto);
 
       // Assert
       expect(result.results).toHaveLength(1);
@@ -377,7 +377,7 @@ describe('LocationService', () => {
       mockApiThrottleService.checkAndLog.mockReturnValue(false);
 
       // Act
-      const result = await service.searchLocation(searchDto);
+      const result = await service.searchLocations(searchDto);
 
       // Assert
       expect(result.results).toEqual([]);
@@ -404,7 +404,7 @@ describe('LocationService', () => {
       mockNominatimApiService.searchPlaces.mockResolvedValue([]);
 
       // Act
-      const result = await service.searchLocation(searchDto);
+      const result = await service.searchLocations(searchDto);
 
       // Assert
       expect(result.results).toEqual([]);
@@ -417,7 +417,7 @@ describe('LocationService', () => {
       lat: 10.8231,
       lng: 106.6297,
       radius: 1000,
-      category: POICategory.ATTRACTIONS,
+      category: LocationType.TOURIST_ATTRACTIONS,
       limit: 10,
     };
 
