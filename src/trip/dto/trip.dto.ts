@@ -7,6 +7,7 @@ import {
   IsNotEmpty,
   MaxLength,
   Min,
+  IsArray,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -72,6 +73,17 @@ export class CreateTripDto extends TripDto {
   @IsNotEmpty()
   @MaxLength(255)
   destinationName: string;
+
+  @ApiPropertyOptional({
+    description: 'Trip tags for categorization',
+    example: ['budget', 'backpacking', 'solo-travel'],
+    type: [String],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @MaxLength(50, { each: true })
+  tags?: string[];
 
   @ApiPropertyOptional({
     description: 'GPS coordinates of the destination',
