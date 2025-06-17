@@ -27,6 +27,8 @@ describe('ItineraryService', () => {
     status: TripStatus.PLANNING,
     isPublic: false,
     enableCostTracking: true,
+    imageUrls: [],
+    thumbnailUrl: undefined,
     createdAt: new Date(),
     updatedAt: new Date(),
     user: {} as UserEntity,

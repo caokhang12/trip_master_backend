@@ -213,7 +213,7 @@ describe('Trip API (e2e)', () => {
       expect(response.body.message).toBe('Trips retrieved successfully');
       expect(response.body.data.trips).toHaveLength(1);
       expect(response.body.data.total).toBe(1);
-      expect(tripService.getUserTrips).toHaveBeenCalledWith(
+      expect(tripService.findUserTrips).toHaveBeenCalledWith(
         mockUser.id,
         expect.any(Object),
       );
@@ -234,7 +234,7 @@ describe('Trip API (e2e)', () => {
       expect(response.body.success).toBe(true);
       expect(response.body.message).toBe('Trip retrieved successfully');
       expect(response.body.data.id).toBe(mockTrip.id);
-      expect(tripService.getTripById).toHaveBeenCalledWith('1', mockUser.id);
+      expect(tripService.findTripById).toHaveBeenCalledWith('1', mockUser.id);
     });
 
     it('should return 400 for invalid trip id', async () => {
@@ -326,7 +326,7 @@ describe('Trip API (e2e)', () => {
 
       expect(response.body.success).toBe(true);
       expect(response.body.message).toBe('Trips found successfully');
-      expect(tripService.searchTrips).toHaveBeenCalledWith(
+      expect(tripService.searchTripsByQuery).toHaveBeenCalledWith(
         mockUser.id,
         expect.any(Object),
       );
@@ -429,7 +429,9 @@ describe('Trip API (e2e)', () => {
 
       expect(response.body.success).toBe(true);
       expect(response.body.message).toBe('Shared trip retrieved successfully');
-      expect(tripService.getSharedTrip).toHaveBeenCalledWith('share123');
+      expect(tripService.findSharedTripByToken).toHaveBeenCalledWith(
+        'share123',
+      );
     });
   });
 });

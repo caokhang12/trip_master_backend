@@ -10,6 +10,7 @@ import { TripModule } from './trip/trip.module';
 import { LocationModule } from './location/location.module';
 import { CurrencyModule } from './currency/currency.module';
 import { CountryModule } from './shared/services/country.module';
+import { UploadModule } from './upload/upload.module';
 import { DatabaseModule } from './database/database.module';
 import { GlobalExceptionFilter } from './shared/filters/global-exception.filter';
 import { GlobalValidationPipe } from './shared/pipes/global-validation.pipe';
@@ -28,6 +29,7 @@ import { GlobalValidationPipe } from './shared/pipes/global-validation.pipe';
     LocationModule,
     CurrencyModule,
     CountryModule,
+    UploadModule,
   ],
   controllers: [AppController],
   providers: [

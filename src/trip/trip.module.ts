@@ -15,6 +15,7 @@ import { LocationModule } from '../location/location.module';
 import { CurrencyModule } from '../currency/currency.module';
 import { CountryModule } from '../shared/services/country.module';
 import { SharedModule } from '../shared/shared.module';
+import { UploadModule } from '../upload/upload.module';
 
 /**
  * Modular trip module with separated controllers for better maintainability
@@ -32,6 +33,7 @@ import { SharedModule } from '../shared/shared.module';
     CurrencyModule,
     CountryModule,
     SharedModule,
+    UploadModule,
   ],
   controllers: [
     TripController,

@@ -81,4 +81,54 @@ export class UserEntity {
     cascade: true,
   })
   preferences?: UserPreferencesEntity;
+
+  /**
+   * Computed property for avatar status
+   */
+  get hasAvatar(): boolean {
+    return (
+      this.avatarUrl !== null &&
+      this.avatarUrl !== undefined &&
+      this.avatarUrl.length > 0
+    );
+  }
+
+  /**
+   * Gets optimized avatar URL for display
+   * @param transformation - Cloudinary transformation options
+   * @returns Transformed avatar URL or null
+   */
+  getAvatarUrl(transformation?: {
+    width?: number;
+    height?: number;
+  }): string | null {
+    if (!this.avatarUrl) return null;
+
+    if (transformation?.width || transformation?.height) {
+      // Simple transformation for avatar URL
+      const { width = 200, height = 200 } = transformation;
+      return this.avatarUrl.replace(
+        '/upload/',
+        `/upload/w_${width},h_${height},c_fill/`,
+      );
+    }
+
+    return this.avatarUrl;
+  }
+
+  /**
+   * Gets user display name
+   */
+  get displayName(): string {
+    if (this.firstName && this.lastName) {
+      return `${this.firstName} ${this.lastName}`;
+    }
+    if (this.firstName) {
+      return this.firstName;
+    }
+    if (this.lastName) {
+      return this.lastName;
+    }
+    return this.email.split('@')[0];
+  }
 }

@@ -8,9 +8,13 @@ import {
   Param,
   Query,
   UseGuards,
+  UseInterceptors,
+  UploadedFiles,
+  BadRequestException,
   HttpStatus,
   Req,
 } from '@nestjs/common';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import {
   ApiTags,
   ApiOperation,
@@ -19,6 +23,7 @@ import {
   ApiParam,
   ApiQuery,
   ApiBody,
+  ApiConsumes,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TripService } from './trip.service';
@@ -259,6 +264,119 @@ export class TripController {
   ): Promise<BaseResponse<any>> {
     const trip = await this.tripService.duplicateTrip(tripId, req.user.id);
     return ResponseUtil.success(trip, HttpStatus.CREATED);
+  }
+
+  /**
+   * Upload trip images
+   */
+  @ApiOperation({
+    summary: 'Upload trip images',
+    description: 'Upload multiple images for a trip (max 10 files)',
+  })
+  @ApiParam({ name: 'id', description: 'Trip ID' })
+  @ApiConsumes('multipart/form-data')
+  @ApiResponse({
+    status: 200,
+    description: 'Images uploaded successfully',
+  })
+  @Post(':id/images')
+  @UseInterceptors(
+    FilesInterceptor('files', 10, {
+      limits: { fileSize: 5 * 1024 * 1024 }, // 5MB per file
+      fileFilter: (req, file, cb) => {
+        if (file.mimetype.match(/^image\/(jpeg|jpg|png|webp)$/)) {
+          cb(null, true);
+        } else {
+          cb(new BadRequestException('Only images allowed'), false);
+        }
+      },
+    }),
+  )
+  async uploadTripImages(
+    @Param('id') tripId: string,
+    @Req() req: AuthRequest,
+    @UploadedFiles() files: Express.Multer.File[],
+  ): Promise<BaseResponse<any>> {
+    if (!files || files.length === 0) {
+      throw new BadRequestException('No files uploaded');
+    }
+
+    const result = await this.tripService.addTripImages({
+      tripId,
+      userId: req.user.id,
+      files,
+    });
+
+    return ResponseUtil.success(result);
+  }
+
+  /**
+   * Remove trip image
+   */
+  @ApiOperation({
+    summary: 'Remove trip image',
+    description: 'Remove a specific image from a trip',
+  })
+  @ApiParam({ name: 'id', description: 'Trip ID' })
+  @ApiParam({ name: 'publicId', description: 'Image public ID' })
+  @Delete(':id/images/:publicId')
+  async removeTripImage(
+    @Param('id') tripId: string,
+    @Param('publicId') publicId: string,
+    @Req() req: AuthRequest,
+  ): Promise<BaseResponse<any>> {
+    const decodedPublicId = decodeURIComponent(publicId);
+
+    const result = await this.tripService.removeTripImage({
+      tripId,
+      userId: req.user.id,
+      publicId: decodedPublicId,
+    });
+
+    return ResponseUtil.success(result);
+  }
+
+  /**
+   * Set trip thumbnail
+   */
+  @ApiOperation({
+    summary: 'Set trip thumbnail',
+    description: 'Set an existing trip image as thumbnail',
+  })
+  @ApiParam({ name: 'id', description: 'Trip ID' })
+  @Put(':id/thumbnail')
+  async setTripThumbnail(
+    @Param('id') tripId: string,
+    @Body() body: { imageUrl: string },
+    @Req() req: AuthRequest,
+  ): Promise<BaseResponse<any>> {
+    const result = await this.tripService.setTripThumbnail({
+      tripId,
+      userId: req.user.id,
+      imageUrl: body.imageUrl,
+    });
+
+    return ResponseUtil.success(result);
+  }
+
+  /**
+   * Get trip with images
+   */
+  @ApiOperation({
+    summary: 'Get trip with image gallery',
+    description: 'Get trip details including image gallery',
+  })
+  @ApiParam({ name: 'id', description: 'Trip ID' })
+  @Get(':id/images')
+  async getTripWithImages(
+    @Param('id') tripId: string,
+    @Req() req: AuthRequest,
+  ): Promise<BaseResponse<any>> {
+    const result = await this.tripService.getTripWithImages(
+      tripId,
+      req.user.id,
+    );
+    return ResponseUtil.success(result);
   }
 
   /**

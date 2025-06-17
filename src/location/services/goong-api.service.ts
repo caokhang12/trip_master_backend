@@ -274,7 +274,7 @@ export class GoongApiService {
       });
 
       // Transform AutoComplete results to normalized GoongPlace format
-      let results: GoongPlace[] = rawResults.map((place) =>
+      const results: GoongPlace[] = rawResults.map((place) =>
         this.transformAutocompletePlace(place),
       );
 

@@ -13,6 +13,7 @@ import {
   UserProfileData,
   UserPreferencesData,
 } from '../shared/types/base-response.types';
+import { UploadService } from '../upload/upload.service';
 
 /**
  * Service for managing user operations
@@ -24,6 +25,7 @@ export class UserService {
     private readonly userRepository: Repository<UserEntity>,
     @InjectRepository(UserPreferencesEntity)
     private readonly preferencesRepository: Repository<UserPreferencesEntity>,
+    private readonly uploadService: UploadService,
   ) {}
 
   /**
@@ -242,19 +244,115 @@ export class UserService {
   }
 
   /**
-   * Transform user entity to profile data
+   * Updates user avatar through upload service integration
+   * @param userId - User identifier
+   * @param file - Avatar image file
+   * @returns Updated user with new avatar URL
    */
-  transformToProfileData(user: UserEntity): UserProfileData {
+  async updateUserAvatar(
+    userId: string,
+    file: Express.Multer.File,
+  ): Promise<UserProfileData> {
+    // Validate user exists
+    const user = await this.findById(userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Call upload service for avatar processing
+    await this.uploadService.uploadAvatar(userId, file);
+
+    // Get updated user data
+    const updatedUser = await this.findById(userId);
+    if (!updatedUser) {
+      throw new NotFoundException('User not found after update');
+    }
+
+    return this.transformToUserProfile(updatedUser);
+  }
+
+  /**
+   * Removes user avatar and cleans up Cloudinary storage
+   * @param userId - User identifier
+   * @returns Updated user without avatar
+   */
+  async removeUserAvatar(userId: string): Promise<UserProfileData> {
+    const user = await this.findById(userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (user.avatarUrl) {
+      // Extract public_id from current avatar_url
+      const publicId = this.extractPublicIdFromUrl(user.avatarUrl);
+      if (publicId) {
+        // Call upload service for file deletion
+        await this.uploadService.deleteFile(userId, publicId);
+      }
+    }
+
+    // Update user entity to remove avatar_url
+    await this.userRepository.update(userId, { avatarUrl: undefined });
+
+    // Get updated user data
+    const updatedUser = await this.findById(userId);
+    if (!updatedUser) {
+      throw new NotFoundException('User not found after update');
+    }
+
+    return this.transformToUserProfile(updatedUser);
+  }
+
+  /**
+   * Retrieves user profile with avatar URL
+   * @param userId - User identifier
+   * @returns User profile with avatar information
+   */
+  async getUserProfile(userId: string): Promise<UserProfileData> {
+    const user = await this.findById(userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    return this.transformToUserProfile(user);
+  }
+
+  /**
+   * Transform user entity to profile data
+   * @param user - User entity
+   * @returns User profile data
+   */
+  private transformToUserProfile(user: UserEntity): UserProfileData {
     return {
       id: user.id,
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
       avatarUrl: user.avatarUrl,
+      hasAvatar: Boolean(user.avatarUrl),
       role: user.role,
       emailVerified: user.emailVerified,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };
+  }
+
+  /**
+   * Transform user entity to profile data for legacy compatibility
+   * @param user - User entity
+   * @returns User profile data
+   */
+  transformToProfileData(user: UserEntity): UserProfileData {
+    return this.transformToUserProfile(user);
+  }
+
+  /**
+   * Extract Cloudinary public ID from URL
+   * @param url - Cloudinary URL
+   * @returns Public ID or null
+   */
+  private extractPublicIdFromUrl(url: string): string | null {
+    const match = url.match(/\/v\d+\/(.+)\.[a-zA-Z]{3,4}$/);
+    return match ? match[1] : null;
   }
 }

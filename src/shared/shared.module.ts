@@ -5,6 +5,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { ErrorUtilService } from './utils/error.util';
 import { PaginationUtilService } from './utils/pagination.util';
 import { AIService } from './services/ai.service';
+import { APIThrottleService } from './services/api-throttle.service';
 
 /**
  * Global shared module containing database, JWT, configuration, and utility services
@@ -40,13 +41,19 @@ import { AIService } from './services/ai.service';
       }),
     }),
   ],
-  providers: [ErrorUtilService, PaginationUtilService, AIService],
+  providers: [
+    ErrorUtilService,
+    PaginationUtilService,
+    AIService,
+    APIThrottleService,
+  ],
   exports: [
     ConfigModule,
     JwtModule,
     ErrorUtilService,
     PaginationUtilService,
     AIService,
+    APIThrottleService,
   ],
 })
 export class SharedModule {}

@@ -17,7 +17,8 @@ type SupportedServices =
   | 'geoapify'
   | 'openweather'
   | 'exchangerate'
-  | 'nominatim';
+  | 'nominatim'
+  | 'cloudinary';
 
 /**
  * Service to monitor and throttle API usage to stay within free tier limits
@@ -32,6 +33,7 @@ export class APIThrottleService {
     openweather: { daily: 1000, hourly: 100 },
     exchangerate: { monthly: 1500, daily: 50 },
     nominatim: { daily: 10000, hourly: 1000 }, // Very generous limits
+    cloudinary: { daily: 2000, monthly: 25000 }, // Free tier: 25GB storage, 25GB bandwidth
   };
 
   // In-memory storage for development - should use Redis in production

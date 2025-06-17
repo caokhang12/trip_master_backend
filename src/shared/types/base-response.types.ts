@@ -34,6 +34,7 @@ export interface UserProfileData {
   firstName?: string;
   lastName?: string;
   avatarUrl?: string;
+  hasAvatar?: boolean;
   role: UserRole;
   emailVerified: boolean;
   createdAt: Date;

@@ -24,6 +24,15 @@ import {
   TripSearchDto,
 } from './dto/trip-search.dto';
 import { TripDetails } from './interfaces/trip.interface';
+import { UploadService } from '../upload/upload.service';
+import {
+  TripImageUploadParams,
+  TripImageRemovalParams,
+  TripThumbnailParams,
+  TripDetailDto,
+  TripImageGallery,
+  TripImageItem,
+} from '../shared/types/upload-integration.types';
 
 /**
  * Service for managing trip operations
@@ -39,6 +48,7 @@ export class TripService {
     private readonly tripShareRepository: Repository<TripShareEntity>,
     private readonly countryDefaultsService: CountryDefaultsService,
     private readonly countryService: CountryService,
+    private readonly uploadService: UploadService,
   ) {}
 
   /**
@@ -247,13 +257,18 @@ export class TripService {
       viewCount: shareEntity.viewCount + 1,
     });
 
-    return {
-      ...shareEntity.trip,
-      itinerary: shareEntity.trip.itinerary.sort(
-        (a, b) => a.dayNumber - b.dayNumber,
-      ),
+    // Prepare trip details
+    const trip = shareEntity.trip;
+    trip.itinerary = shareEntity.trip.itinerary.sort(
+      (a, b) => a.dayNumber - b.dayNumber,
+    );
+
+    // Return as TripDetails with shareInfo
+    const tripDetails = Object.assign(trip, {
       shareInfo: shareEntity,
-    };
+    }) as TripDetails;
+
+    return tripDetails;
   }
 
   /**
@@ -312,6 +327,192 @@ export class TripService {
     }
 
     return newTrip;
+  }
+
+  /**
+   * Adds images to existing trip
+   * @param params - Trip ID, user ID, and image files
+   * @returns Updated trip with new image URLs
+   */
+  async addTripImages(params: TripImageUploadParams): Promise<TripDetailDto> {
+    const { tripId, userId, files } = params;
+
+    // Verify trip ownership
+    const trip = await this.findTripById(tripId, userId);
+    if (!trip) {
+      throw new NotFoundException('Trip not found or access denied');
+    }
+
+    // Validate image count limits (max 20 per trip)
+    const currentImageCount = trip.imageUrls?.length || 0;
+    const newImageCount = files.length;
+    const totalImages = currentImageCount + newImageCount;
+
+    if (totalImages > 20) {
+      throw new BadRequestException(
+        `Image limit exceeded. Current: ${currentImageCount}, Adding: ${newImageCount}, Max: 20`,
+      );
+    }
+
+    // Call upload service for batch image processing
+    await this.uploadService.uploadTripImages(userId, tripId, files);
+
+    // Get updated trip details
+    const updatedTrip = await this.findTripById(tripId, userId);
+    if (!updatedTrip) {
+      throw new NotFoundException('Trip not found after update');
+    }
+
+    return this.transformToTripDetail(updatedTrip);
+  }
+
+  /**
+   * Removes specific image from trip
+   * @param params - Trip ID, user ID, and image public ID
+   * @returns Updated trip without removed image
+   */
+  async removeTripImage(
+    params: TripImageRemovalParams,
+  ): Promise<TripDetailDto> {
+    const { tripId, userId, publicId } = params;
+
+    // Verify trip ownership and image exists
+    const trip = await this.findTripById(tripId, userId);
+    if (!trip) {
+      throw new NotFoundException('Trip not found or access denied');
+    }
+
+    // Check if image exists in trip
+    const imageExists = trip.imageUrls?.some((url) => url.includes(publicId));
+    if (!imageExists) {
+      throw new NotFoundException('Image not found in trip');
+    }
+
+    // Call upload service for file deletion
+    await this.uploadService.deleteFile(userId, publicId);
+
+    // Get updated trip details
+    const updatedTrip = await this.findTripById(tripId, userId);
+    if (!updatedTrip) {
+      throw new NotFoundException('Trip not found after update');
+    }
+
+    return this.transformToTripDetail(updatedTrip);
+  }
+
+  /**
+   * Sets trip thumbnail from existing images
+   * @param params - Trip ID, user ID, and image URL
+   * @returns Updated trip with new thumbnail
+   */
+  async setTripThumbnail(params: TripThumbnailParams): Promise<TripDetailDto> {
+    const { tripId, userId, imageUrl } = params;
+
+    // Verify trip ownership
+    const trip = await this.findTripById(tripId, userId);
+    if (!trip) {
+      throw new NotFoundException('Trip not found or access denied');
+    }
+
+    // Verify image belongs to trip
+    const imageExists = trip.imageUrls?.includes(imageUrl);
+    if (!imageExists) {
+      throw new BadRequestException('Image does not belong to this trip');
+    }
+
+    // Update thumbnail_url field
+    await this.tripRepository.update(tripId, { thumbnailUrl: imageUrl });
+
+    // Get updated trip details
+    const updatedTrip = await this.findTripById(tripId, userId);
+    if (!updatedTrip) {
+      throw new NotFoundException('Trip not found after update');
+    }
+
+    return this.transformToTripDetail(updatedTrip);
+  }
+
+  /**
+   * Retrieves trip with optimized image URLs
+   * @param tripId - Trip identifier
+   * @param userId - User identifier for ownership check
+   * @returns Trip details with image gallery
+   */
+  async getTripWithImages(
+    tripId: string,
+    userId: string,
+  ): Promise<TripDetailDto> {
+    const trip = await this.findTripById(tripId, userId);
+    if (!trip) {
+      throw new NotFoundException('Trip not found or access denied');
+    }
+
+    return this.transformToTripDetail(trip);
+  }
+
+  /**
+   * Transform trip entity to detailed DTO with image gallery
+   * @param trip - Trip entity
+   * @returns Trip detail DTO
+   */
+  private transformToTripDetail(trip: TripEntity): TripDetailDto {
+    const imageUrls = trip.imageUrls || [];
+    const thumbnailUrl = trip.thumbnailUrl || null;
+
+    return {
+      id: trip.id,
+      title: trip.title,
+      description: trip.description || '',
+      imageUrls,
+      thumbnailUrl,
+      imageCount: imageUrls.length,
+      hasImages: imageUrls.length > 0,
+      gallery: this.buildImageGallery(imageUrls, thumbnailUrl),
+    };
+  }
+
+  /**
+   * Build image gallery data with optimized URLs
+   * @param imageUrls - Array of image URLs
+   * @param thumbnailUrl - Current thumbnail URL
+   * @returns Image gallery data
+   */
+  private buildImageGallery(
+    imageUrls: string[],
+    thumbnailUrl: string | null,
+  ): TripImageGallery {
+    const images: TripImageItem[] = imageUrls.map((url) => ({
+      url,
+      publicId: this.extractPublicIdFromUrl(url) || '',
+      thumbnailUrl: this.generateThumbnailUrl(url),
+      isSelected: url === thumbnailUrl,
+    }));
+
+    return {
+      thumbnail: thumbnailUrl,
+      images,
+      totalCount: imageUrls.length,
+    };
+  }
+
+  /**
+   * Extract Cloudinary public ID from URL
+   * @param url - Cloudinary URL
+   * @returns Public ID or null
+   */
+  private extractPublicIdFromUrl(url: string): string | null {
+    const match = url.match(/\/v\d+\/(.+)\.[a-zA-Z]{3,4}$/);
+    return match ? match[1] : null;
+  }
+
+  /**
+   * Generate thumbnail URL with Cloudinary transformations
+   * @param originalUrl - Original image URL
+   * @returns Thumbnail URL
+   */
+  private generateThumbnailUrl(originalUrl: string): string {
+    // Simple transformation for thumbnail (300x200)
+    return originalUrl.replace('/upload/', '/upload/w_300,h_200,c_fill/');
   }
 
   /**

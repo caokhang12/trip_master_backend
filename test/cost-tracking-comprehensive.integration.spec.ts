@@ -197,10 +197,10 @@ describe('Cost Tracking Integration Tests', () => {
       };
 
       expect(testItinerary.costBreakdown).toBeDefined();
-      expect(testItinerary.costBreakdown.food).toBeGreaterThan(
+      expect(testItinerary.costBreakdown?.food).toBeGreaterThan(
         expectedCostRanges.food.min,
       );
-      expect(testItinerary.costBreakdown.shopping).toBeGreaterThan(
+      expect(testItinerary.costBreakdown?.shopping).toBeGreaterThan(
         expectedCostRanges.shopping.min,
       );
     });
