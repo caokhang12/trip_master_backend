@@ -1,6 +1,9 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { TripController, PublicTripController } from './trip.controller';
+import { TripController } from './trip.controller';
+import { PublicTripController } from './public-trip.controller';
+import { ItineraryController } from './itinerary.controller';
+import { CostTrackingController } from './cost-tracking.controller';
 import { TripService } from './trip.service';
 import { ItineraryService } from './itinerary.service';
 import { TripEntity } from '../schemas/trip.entity';
@@ -14,7 +17,7 @@ import { CountryModule } from '../shared/services/country.module';
 import { SharedModule } from '../shared/shared.module';
 
 /**
- * Trip module containing trip management services and controllers
+ * Modular trip module with separated controllers for better maintainability
  */
 @Module({
   imports: [
@@ -30,7 +33,12 @@ import { SharedModule } from '../shared/shared.module';
     CountryModule,
     SharedModule,
   ],
-  controllers: [TripController, PublicTripController],
+  controllers: [
+    TripController,
+    PublicTripController,
+    ItineraryController,
+    CostTrackingController,
+  ],
   providers: [TripService, ItineraryService],
   exports: [TripService, ItineraryService],
 })

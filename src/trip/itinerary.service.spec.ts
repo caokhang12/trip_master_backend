@@ -6,7 +6,7 @@ import { ItineraryService } from './itinerary.service';
 import { ItineraryEntity, Activity } from '../schemas/itinerary.entity';
 import { TripEntity, TripStatus } from '../schemas/trip.entity';
 import { UserEntity } from '../schemas/user.entity';
-import { UpdateItineraryDto, GenerateItineraryDto } from './dto/trip.dto';
+import { UpdateItineraryDto, GenerateItineraryDto } from './dto/itinerary.dto';
 
 describe('ItineraryService', () => {
   let itineraryService: ItineraryService;
@@ -99,9 +99,10 @@ describe('ItineraryService', () => {
 
   describe('generateItinerary', () => {
     const inputGenerateDto: GenerateItineraryDto = {
-      preferences: 'Cultural and historical sites',
+      travelStyle: 'cultural',
       interests: ['temples', 'museums', 'food'],
-      budgetPreference: 'moderate',
+      includeCosts: true,
+      maxActivitiesPerDay: 5,
     };
 
     it('should generate AI itinerary successfully', async () => {
@@ -252,13 +253,13 @@ describe('ItineraryService', () => {
     });
   });
 
-  describe('getDayItinerary', () => {
+  describe('findDayItinerary', () => {
     it('should return day itinerary', async () => {
       // Arrange
       itineraryRepository.findOne.mockResolvedValue(mockItineraryEntity);
 
       // Act
-      const actualResult = await itineraryService.getDayItinerary(
+      const actualResult = await itineraryService.findDayItinerary(
         mockTripEntity.id,
         1,
       );
@@ -275,7 +276,7 @@ describe('ItineraryService', () => {
       itineraryRepository.findOne.mockResolvedValue(null);
 
       // Act
-      const actualResult = await itineraryService.getDayItinerary(
+      const actualResult = await itineraryService.findDayItinerary(
         mockTripEntity.id,
         99,
       );
@@ -285,7 +286,7 @@ describe('ItineraryService', () => {
     });
   });
 
-  describe('getTripItinerary', () => {
+  describe('findTripItineraries', () => {
     it('should return all trip itinerary ordered by day', async () => {
       // Arrange
       const mockItineraries = [
@@ -295,7 +296,7 @@ describe('ItineraryService', () => {
       itineraryRepository.find.mockResolvedValue(mockItineraries);
 
       // Act
-      const actualResult = await itineraryService.getTripItinerary(
+      const actualResult = await itineraryService.findTripItineraries(
         mockTripEntity.id,
       );
 

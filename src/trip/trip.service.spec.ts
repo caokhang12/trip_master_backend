@@ -8,21 +8,17 @@ import {
 } from '@nestjs/common';
 import { TripService } from './trip.service';
 import { CountryDefaultsService } from '../shared/services/country-defaults.service';
-import {
-  CountryService,
-  CountryDetectionResult,
-} from '../shared/services/country.service';
+import { CountryService } from '../shared/services/country.service';
 import { TripEntity, TripStatus } from '../schemas/trip.entity';
 import { ItineraryEntity } from '../schemas/itinerary.entity';
 import { TripShareEntity } from '../schemas/trip-share.entity';
 import { UserEntity } from '../schemas/user.entity';
+import { CreateTripDto, UpdateTripDto } from './dto/trip.dto';
 import {
-  CreateTripDto,
-  UpdateTripDto,
   TripQueryDto,
   ShareTripDto,
   TripSearchDto,
-} from './dto/trip.dto';
+} from './dto/trip-search.dto';
 
 describe('TripService', () => {
   let tripService: TripService;
@@ -152,7 +148,7 @@ describe('TripService', () => {
         .mockReturnValue(['US', 'VN', 'GB', 'JP']),
       applyCountryDefaults: jest
         .fn()
-        .mockImplementation((countryCode: string, tripData: any) => {
+        .mockImplementation((countryCode: string, tripData: any): any => {
           if (countryCode === 'JP') {
             return {
               ...tripData,
@@ -289,7 +285,7 @@ describe('TripService', () => {
     });
   });
 
-  describe('getUserTrips', () => {
+  describe('findUserTrips', () => {
     const inputQueryDto: TripQueryDto = {
       page: 1,
       limit: 10,
@@ -309,7 +305,7 @@ describe('TripService', () => {
       tripRepository.createQueryBuilder.mockReturnValue(mockQueryBuilder);
 
       // Act
-      const actualResult = await tripService.getUserTrips(
+      const actualResult = await tripService.findUserTrips(
         'user-123',
         inputQueryDto,
       );
@@ -336,7 +332,7 @@ describe('TripService', () => {
     });
   });
 
-  describe('getTripById', () => {
+  describe('findTripById', () => {
     it('should return trip with itinerary for owner', async () => {
       // Arrange
       const tripWithItinerary = {
@@ -346,7 +342,7 @@ describe('TripService', () => {
       tripRepository.findOne.mockResolvedValue(tripWithItinerary);
 
       // Act
-      const actualResult = await tripService.getTripById(
+      const actualResult = await tripService.findTripById(
         mockTripEntity.id,
         'user-123',
       );
@@ -366,7 +362,7 @@ describe('TripService', () => {
 
       // Act & Assert
       await expect(
-        tripService.getTripById('invalid-id', 'user-123'),
+        tripService.findTripById('invalid-id', 'user-123'),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -376,7 +372,7 @@ describe('TripService', () => {
 
       // Act & Assert
       await expect(
-        tripService.getTripById(mockTripEntity.id, 'other-user'),
+        tripService.findTripById(mockTripEntity.id, 'other-user'),
       ).rejects.toThrow(ForbiddenException);
     });
   });
@@ -514,7 +510,7 @@ describe('TripService', () => {
     });
   });
 
-  describe('getSharedTrip', () => {
+  describe('findSharedTripByToken', () => {
     it('should return shared trip and increment view count', async () => {
       // Arrange
       const shareWithTrip = {
@@ -528,7 +524,8 @@ describe('TripService', () => {
       } as UpdateResult);
 
       // Act
-      const actualResult = await tripService.getSharedTrip('share-token-123');
+      const actualResult =
+        await tripService.findSharedTripByToken('share-token-123');
 
       // Assert
       expect(actualResult.id).toBe(mockTripEntity.id);
@@ -556,9 +553,9 @@ describe('TripService', () => {
       tripShareRepository.findOne.mockResolvedValue(null);
 
       // Act & Assert
-      await expect(tripService.getSharedTrip('invalid-token')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        tripService.findSharedTripByToken('invalid-token'),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('should throw BadRequestException for expired share link', async () => {
@@ -570,13 +567,13 @@ describe('TripService', () => {
       tripShareRepository.findOne.mockResolvedValue(expiredShare);
 
       // Act & Assert
-      await expect(tripService.getSharedTrip('expired-token')).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(
+        tripService.findSharedTripByToken('expired-token'),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 
-  describe('searchTrips', () => {
+  describe('searchTripsByQuery', () => {
     const inputSearchDto: TripSearchDto = {
       query: 'Japan',
       page: 1,
@@ -596,7 +593,7 @@ describe('TripService', () => {
       tripRepository.createQueryBuilder.mockReturnValue(mockQueryBuilder);
 
       // Act
-      const actualResult = await tripService.searchTrips(
+      const actualResult = await tripService.searchTripsByQuery(
         'user-123',
         inputSearchDto,
       );
@@ -613,8 +610,8 @@ describe('TripService', () => {
         },
       });
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        '(trip.title ILIKE :query OR trip.description ILIKE :query OR trip.destinationName ILIKE :query)',
-        { query: '%Japan%' },
+        '(trip.title ILIKE :search OR trip.description ILIKE :search OR trip.destinationName ILIKE :search)',
+        { search: '%Japan%' },
       );
     });
   });

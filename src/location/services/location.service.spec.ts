@@ -162,7 +162,7 @@ describe('LocationService', () => {
       mockCacheService.getSearchResults.mockReturnValue(cachedSmartLocations);
 
       // Act
-      const result = await service.searchLocationss(searchDto);
+      const result = await service.searchLocations(searchDto);
 
       // Assert
       expect(result.results).toHaveLength(1);
@@ -216,7 +216,7 @@ describe('LocationService', () => {
       );
 
       // Act
-      const result = await service.searchLocationss(searchDto);
+      const result = await service.searchLocations(searchDto);
 
       // Assert
       expect(result.results).toHaveLength(1);

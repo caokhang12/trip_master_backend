@@ -5,7 +5,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, SelectQueryBuilder } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import { TripEntity, TripStatus } from '../schemas/trip.entity';
 import { ItineraryEntity } from '../schemas/itinerary.entity';
@@ -17,18 +17,13 @@ import {
   CountryService,
   CountryDetectionResult,
 } from '../shared/services/country.service';
+import { CreateTripDto, UpdateTripDto } from './dto/trip.dto';
 import {
-  CreateTripDto,
-  UpdateTripDto,
   TripQueryDto,
   ShareTripDto,
   TripSearchDto,
-} from './dto/trip.dto';
-
-export interface TripWithItinerary extends TripEntity {
-  itinerary: ItineraryEntity[];
-  shareInfo?: TripShareEntity;
-}
+} from './dto/trip-search.dto';
+import { TripDetails } from './interfaces/trip.interface';
 
 /**
  * Service for managing trip operations
@@ -91,84 +86,31 @@ export class TripService {
   }
 
   /**
-   * Get user's trips with pagination and filtering
+   * Find user's trips with pagination and filtering
    */
-  async getUserTrips(
+  async findUserTrips(
     userId: string,
     queryDto: TripQueryDto,
   ): Promise<PaginationResult<TripEntity>> {
     const {
       page = 1,
       limit = 10,
-      status,
-      search,
       sortBy = 'createdAt',
       sortOrder = 'DESC',
-      destinationCountry,
-      destinationCity,
-      timezone,
-      defaultCurrency,
+      ...filters
     } = queryDto;
-    const { skip } = PaginationUtilService.validateAndNormalizePagination(
-      page,
-      limit,
+
+    return this.buildTripQuery(
+      userId,
+      { page, limit, sortBy, sortOrder },
+      filters,
     );
-
-    const queryBuilder = this.tripRepository
-      .createQueryBuilder('trip')
-      .where('trip.userId = :userId', { userId });
-
-    if (status) {
-      queryBuilder.andWhere('trip.status = :status', { status });
-    }
-
-    if (destinationCountry) {
-      queryBuilder.andWhere('trip.destinationCountry = :destinationCountry', {
-        destinationCountry,
-      });
-    }
-
-    if (destinationCity) {
-      queryBuilder.andWhere('trip.destinationCity ILIKE :destinationCity', {
-        destinationCity: `%${destinationCity}%`,
-      });
-    }
-
-    if (timezone) {
-      queryBuilder.andWhere('trip.timezone = :timezone', { timezone });
-    }
-
-    if (defaultCurrency) {
-      queryBuilder.andWhere('trip.defaultCurrency = :defaultCurrency', {
-        defaultCurrency,
-      });
-    }
-
-    if (search) {
-      queryBuilder.andWhere(
-        '(trip.title ILIKE :search OR trip.description ILIKE :search OR trip.destinationName ILIKE :search OR trip.destinationCity ILIKE :search OR trip.destinationProvince ILIKE :search)',
-        { search: `%${search}%` },
-      );
-    }
-
-    queryBuilder.orderBy(`trip.${sortBy}`, sortOrder).skip(skip).take(limit);
-
-    const [items, total] = await queryBuilder.getManyAndCount();
-
-    return PaginationUtilService.createPaginationResult(items, {
-      page,
-      limit,
-      total,
-    });
   }
 
   /**
-   * Get trip by ID with itinerary (ownership validation)
+   * Find trip by ID with itinerary (ownership validation)
    */
-  async getTripById(
-    tripId: string,
-    userId?: string,
-  ): Promise<TripWithItinerary> {
+  async findTripById(tripId: string, userId?: string): Promise<TripDetails> {
     const trip = await this.tripRepository.findOne({
       where: { id: tripId },
       relations: ['itinerary', 'shareInfo'],
@@ -179,16 +121,9 @@ export class TripService {
       },
     });
 
-    if (!trip) {
-      throw new NotFoundException('Trip not found');
-    }
+    this.validateTripAccess(trip, userId);
 
-    // Check access permissions
-    if (userId && trip.userId !== userId && !trip.isPublic) {
-      throw new ForbiddenException('Access denied to this trip');
-    }
-
-    return trip as TripWithItinerary;
+    return trip as TripDetails;
   }
 
   /**
@@ -199,20 +134,24 @@ export class TripService {
     userId: string,
     updateTripDto: UpdateTripDto,
   ): Promise<TripEntity> {
-    const trip = await this.findTripByIdAndUser(tripId, userId);
+    const trip = await this.tripRepository.findOne({
+      where: { id: tripId },
+    });
+
+    this.validateTripAccess(trip, userId, true);
 
     this.validateDateRange(updateTripDto.startDate, updateTripDto.endDate);
 
     // Validate status transitions
-    if (updateTripDto.status && updateTripDto.status !== trip.status) {
-      this.validateStatusTransition(trip.status, updateTripDto.status);
+    if (updateTripDto.status && updateTripDto.status !== trip!.status) {
+      this.validateStatusTransition(trip!.status, updateTripDto.status);
     }
 
     // Apply country-aware defaults if country code is provided and different from current
     let updateData = { ...updateTripDto };
     if (
       updateTripDto.destinationCountry &&
-      updateTripDto.destinationCountry !== trip.destinationCountry
+      updateTripDto.destinationCountry !== trip!.destinationCountry
     ) {
       updateData = this.countryDefaultsService.applyCountryDefaults(
         updateTripDto.destinationCountry,
@@ -242,7 +181,7 @@ export class TripService {
    * Delete trip and related data (with ownership validation)
    */
   async deleteTrip(tripId: string, userId: string): Promise<boolean> {
-    const trip = await this.findTripByIdAndUser(tripId, userId);
+    const trip = await this.findAndValidateTripOwnership(tripId, userId);
 
     // Cascade deletion is handled by database constraints
     await this.tripRepository.remove(trip);
@@ -257,7 +196,7 @@ export class TripService {
     userId: string,
     shareDto: ShareTripDto,
   ): Promise<TripShareEntity> {
-    await this.findTripByIdAndUser(tripId, userId);
+    await this.findAndValidateTripOwnership(tripId, userId);
 
     // Check if sharing link already exists
     let shareEntity = await this.tripShareRepository.findOne({
@@ -287,9 +226,9 @@ export class TripService {
   }
 
   /**
-   * Get shared trip by token (public access)
+   * Find shared trip by token (public access)
    */
-  async getSharedTrip(shareToken: string): Promise<TripWithItinerary> {
+  async findSharedTripByToken(shareToken: string): Promise<TripDetails> {
     const shareEntity = await this.tripShareRepository.findOne({
       where: { shareToken },
       relations: ['trip', 'trip.itinerary'],
@@ -314,47 +253,33 @@ export class TripService {
         (a, b) => a.dayNumber - b.dayNumber,
       ),
       shareInfo: shareEntity,
-    } as TripWithItinerary;
+    };
   }
 
   /**
-   * Search user's trips
+   * Search trips by query string
    */
-  async searchTrips(
+  async searchTripsByQuery(
     userId: string,
     searchDto: TripSearchDto,
   ): Promise<PaginationResult<TripEntity>> {
     const { query, page = 1, limit = 10 } = searchDto;
-    const { skip } = PaginationUtilService.validateAndNormalizePagination(
+    const paginationOptions = {
       page,
       limit,
-    );
+      sortBy: 'createdAt',
+      sortOrder: 'DESC' as const,
+    };
+    const filters = { search: query };
 
-    const queryBuilder = this.tripRepository
-      .createQueryBuilder('trip')
-      .where('trip.userId = :userId', { userId })
-      .andWhere(
-        '(trip.title ILIKE :query OR trip.description ILIKE :query OR trip.destinationName ILIKE :query)',
-        { query: `%${query}%` },
-      )
-      .orderBy('trip.createdAt', 'DESC')
-      .skip(skip)
-      .take(limit);
-
-    const [items, total] = await queryBuilder.getManyAndCount();
-
-    return PaginationUtilService.createPaginationResult(items, {
-      page,
-      limit,
-      total,
-    });
+    return await this.buildTripQuery(userId, paginationOptions, filters);
   }
 
   /**
-   * Duplicate existing trip
+   * Duplicate existing trip with optimized batch operations
    */
   async duplicateTrip(tripId: string, userId: string): Promise<TripEntity> {
-    const originalTrip = await this.getTripById(tripId, userId);
+    const originalTrip = await this.findTripById(tripId, userId);
 
     // Create new trip with copied data
     const duplicatedTripData = {
@@ -370,21 +295,20 @@ export class TripService {
 
     const newTrip = await this.createTrip(userId, duplicatedTripData);
 
-    // Copy itinerary if exists
-    if (originalTrip.itinerary && originalTrip.itinerary.length > 0) {
-      const itineraryPromises = originalTrip.itinerary.map(async (item) => {
-        const newItinerary = this.itineraryRepository.create({
+    // Batch copy itinerary if exists
+    if (originalTrip.itinerary?.length > 0) {
+      const itineraryEntities = originalTrip.itinerary.map((item) =>
+        this.itineraryRepository.create({
           tripId: newTrip.id,
           dayNumber: item.dayNumber,
           date: item.date,
           activities: item.activities,
           aiGenerated: item.aiGenerated,
-          userModified: false, // Reset modification flag
-        });
-        return await this.itineraryRepository.save(newItinerary);
-      });
+          userModified: false,
+        }),
+      );
 
-      await Promise.all(itineraryPromises);
+      await this.itineraryRepository.save(itineraryEntities);
     }
 
     return newTrip;
@@ -393,7 +317,7 @@ export class TripService {
   /**
    * Find trip by ID and validate ownership
    */
-  private async findTripByIdAndUser(
+  private async findAndValidateTripOwnership(
     tripId: string,
     userId: string,
   ): Promise<TripEntity> {
@@ -406,6 +330,72 @@ export class TripService {
     }
 
     return trip;
+  }
+
+  /**
+   * Build trip query with optimized filtering and pagination
+   */
+  private async buildTripQuery(
+    userId: string,
+    paginationOptions: {
+      page: number;
+      limit: number;
+      sortBy: string;
+      sortOrder: 'ASC' | 'DESC';
+    },
+    filters: Record<string, any>,
+  ): Promise<PaginationResult<TripEntity>> {
+    const { page, limit, sortBy, sortOrder } = paginationOptions;
+    const { skip } = PaginationUtilService.validateAndNormalizePagination(
+      page,
+      limit,
+    );
+
+    const queryBuilder = this.tripRepository
+      .createQueryBuilder('trip')
+      .where('trip.userId = :userId', { userId });
+
+    this.applyFilters(queryBuilder, filters);
+    queryBuilder.orderBy(`trip.${sortBy}`, sortOrder).skip(skip).take(limit);
+
+    const [items, total] = await queryBuilder.getManyAndCount();
+
+    return PaginationUtilService.createPaginationResult(items, {
+      page,
+      limit,
+      total,
+    });
+  }
+
+  /**
+   * Apply filters to query builder in a reusable way
+   */
+  private applyFilters(
+    queryBuilder: SelectQueryBuilder<TripEntity>,
+    filters: Record<string, string | undefined>,
+  ): void {
+    const filterMappings: Record<string, string> = {
+      status: 'trip.status = :status',
+      destinationCountry: 'trip.destinationCountry = :destinationCountry',
+      destinationCity: 'trip.destinationCity ILIKE :destinationCity',
+      timezone: 'trip.timezone = :timezone',
+      defaultCurrency: 'trip.defaultCurrency = :defaultCurrency',
+    };
+
+    Object.entries(filters).forEach(([key, value]) => {
+      if (!value) return;
+
+      if (key === 'search') {
+        queryBuilder.andWhere(
+          '(trip.title ILIKE :search OR trip.description ILIKE :search OR trip.destinationName ILIKE :search)',
+          { search: `%${value}%` },
+        );
+      } else if (key === 'destinationCity') {
+        queryBuilder.andWhere(filterMappings[key], { [key]: `%${value}%` });
+      } else if (filterMappings[key]) {
+        queryBuilder.andWhere(filterMappings[key], { [key]: value });
+      }
+    });
   }
 
   /**
@@ -501,5 +491,26 @@ export class TripService {
       }
     }
     return enhancedTripData;
+  }
+
+  /**
+   * Validate trip access permissions
+   */
+  private validateTripAccess(
+    trip: TripEntity | null,
+    userId?: string,
+    requireOwnership = false,
+  ): void {
+    if (!trip) {
+      throw new NotFoundException('Trip not found');
+    }
+
+    if (requireOwnership && trip.userId !== userId) {
+      throw new ForbiddenException('Access denied to this trip');
+    }
+
+    if (userId && trip.userId !== userId && !trip.isPublic) {
+      throw new ForbiddenException('Access denied to this trip');
+    }
   }
 }

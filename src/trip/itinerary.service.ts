@@ -9,14 +9,14 @@ import { ItineraryEntity } from '../schemas/itinerary.entity';
 import { TripEntity } from '../schemas/trip.entity';
 import { ActivityCostEntity } from '../schemas/activity-cost.entity';
 import { BudgetTrackingEntity } from '../schemas/budget-tracking.entity';
-import { UpdateItineraryDto, GenerateItineraryDto } from './dto/trip.dto';
+import { UpdateItineraryDto, GenerateItineraryDto } from './dto/itinerary.dto';
 import {
   ActivityCostDto,
   UpdateActivityCostDto,
   CostAnalysisDto,
   BudgetSummaryDto,
   BudgetCategoryDto,
-} from './dto/cost-tracking.dto';
+} from './dto/cost.dto';
 import { CurrencyService } from '../currency/services/currency.service';
 import { AIService } from '../shared/services/ai.service';
 
@@ -188,9 +188,9 @@ export class ItineraryService {
   }
 
   /**
-   * Get itinerary for a specific day
+   * Find itinerary for a specific day
    */
-  async getDayItinerary(
+  async findDayItinerary(
     tripId: string,
     dayNumber: number,
   ): Promise<ItineraryEntity | null> {
@@ -200,9 +200,9 @@ export class ItineraryService {
   }
 
   /**
-   * Get all itinerary for a trip
+   * Find all itineraries for a trip
    */
-  async getTripItinerary(tripId: string): Promise<ItineraryEntity[]> {
+  async findTripItineraries(tripId: string): Promise<ItineraryEntity[]> {
     return await this.itineraryRepository.find({
       where: { tripId },
       order: { dayNumber: 'ASC' },

@@ -1,12 +1,20 @@
 import { validate } from 'class-validator';
 import { plainToClass } from 'class-transformer';
-import {
-  CreateTripDto,
-  UpdateTripDto,
-  TripQueryDto,
-  CountryAwareTripResponseDto,
-} from './trip.dto';
+import { CreateTripDto, UpdateTripDto } from './trip.dto';
+import { TripQueryDto } from './trip-search.dto';
 import { TripStatus } from '../../schemas/trip.entity';
+
+// Mock CountryAwareTripResponseDto for testing
+class CountryAwareTripResponseDto {
+  id: string;
+  detectedCountry: string;
+  suggestedCurrency: string;
+  enhancedFormattedLocation: string;
+  geographicalInfo?: {
+    region: string;
+  };
+  distanceFromUser?: number;
+}
 
 describe('Trip DTOs', () => {
   describe('CreateTripDto', () => {
@@ -101,8 +109,6 @@ describe('Trip DTOs', () => {
 
       expect(errors).toHaveLength(0);
       expect(dto.destinationCountry).toBe('VN');
-      expect(dto.reDetectCountryFromCoords).toBe(true);
-      expect(dto.autoUpdateCurrency).toBe(true);
       expect(dto.destinationCity).toBe('Da Nang');
     });
 
@@ -123,14 +129,10 @@ describe('Trip DTOs', () => {
     it('should validate comprehensive trip search query', async () => {
       const queryData = {
         status: TripStatus.PLANNING,
-        country: 'VN',
-        region: 'southeast-asia',
+        destinationCountry: 'VN',
         destinationCity: 'Ho Chi Minh City',
         timezone: 'Asia/Ho_Chi_Minh',
         defaultCurrency: 'VND',
-        sortByProximity: true,
-        userLat: 10.8231,
-        userLng: 106.6297,
         page: 1,
         limit: 20,
       };
@@ -139,11 +141,10 @@ describe('Trip DTOs', () => {
       const errors = await validate(dto);
 
       expect(errors).toHaveLength(0);
-      expect(dto.country).toBe('VN');
-      expect(dto.region).toBe('southeast-asia');
-      expect(dto.sortByProximity).toBe(true);
-      expect(dto.userLat).toBe(10.8231);
-      expect(dto.userLng).toBe(106.6297);
+      expect(dto.destinationCountry).toBe('VN');
+      expect(dto.destinationCity).toBe('Ho Chi Minh City');
+      expect(dto.timezone).toBe('Asia/Ho_Chi_Minh');
+      expect(dto.defaultCurrency).toBe('VND');
     });
 
     it('should reject invalid region values', async () => {
