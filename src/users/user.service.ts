@@ -16,7 +16,7 @@ import {
 import { UploadService } from '../upload/upload.service';
 
 /**
- * Service for managing user operations
+ * User management service with profile data transformation and password security
  */
 @Injectable()
 export class UserService {
@@ -28,9 +28,6 @@ export class UserService {
     private readonly uploadService: UploadService,
   ) {}
 
-  /**
-   * Find user by ID
-   */
   async findById(id: string): Promise<UserEntity | null> {
     return this.userRepository.findOne({
       where: { id },
@@ -38,9 +35,6 @@ export class UserService {
     });
   }
 
-  /**
-   * Find user by email
-   */
   async findByEmail(email: string): Promise<UserEntity | null> {
     return this.userRepository.findOne({
       where: { email },
@@ -268,7 +262,7 @@ export class UserService {
       throw new NotFoundException('User not found after update');
     }
 
-    return this.transformToUserProfile(updatedUser);
+    return this.transformToProfileData(updatedUser);
   }
 
   /**
@@ -283,38 +277,27 @@ export class UserService {
     }
 
     if (user.avatarUrl) {
-      // Extract public_id from current avatar_url
-      const publicId = this.extractPublicIdFromUrl(user.avatarUrl);
+      // Extract public_id from current avatar_url using CloudinaryService
+      const publicId = this.uploadService.extractPublicIdFromUrl(
+        user.avatarUrl,
+      );
       if (publicId) {
         // Call upload service for file deletion
+        // This will also cleanup the database reference
         await this.uploadService.deleteFile(userId, publicId);
       }
+    } else {
+      // If no avatar exists, just return current profile
+      return this.transformToProfileData(user);
     }
 
-    // Update user entity to remove avatar_url
-    await this.userRepository.update(userId, { avatarUrl: undefined });
-
-    // Get updated user data
+    // Get updated user data after cleanup
     const updatedUser = await this.findById(userId);
     if (!updatedUser) {
       throw new NotFoundException('User not found after update');
     }
 
-    return this.transformToUserProfile(updatedUser);
-  }
-
-  /**
-   * Retrieves user profile with avatar URL
-   * @param userId - User identifier
-   * @returns User profile with avatar information
-   */
-  async getUserProfile(userId: string): Promise<UserProfileData> {
-    const user = await this.findById(userId);
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    return this.transformToUserProfile(user);
+    return this.transformToProfileData(updatedUser);
   }
 
   /**
@@ -322,7 +305,7 @@ export class UserService {
    * @param user - User entity
    * @returns User profile data
    */
-  private transformToUserProfile(user: UserEntity): UserProfileData {
+  transformToProfileData(user: UserEntity): UserProfileData {
     return {
       id: user.id,
       email: user.email,
@@ -335,24 +318,5 @@ export class UserService {
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };
-  }
-
-  /**
-   * Transform user entity to profile data for legacy compatibility
-   * @param user - User entity
-   * @returns User profile data
-   */
-  transformToProfileData(user: UserEntity): UserProfileData {
-    return this.transformToUserProfile(user);
-  }
-
-  /**
-   * Extract Cloudinary public ID from URL
-   * @param url - Cloudinary URL
-   * @returns Public ID or null
-   */
-  private extractPublicIdFromUrl(url: string): string | null {
-    const match = url.match(/\/v\d+\/(.+)\.[a-zA-Z]{3,4}$/);
-    return match ? match[1] : null;
   }
 }

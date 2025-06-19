@@ -1,9 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { UserRole, TravelStyle } from '../types/base-response.types';
 
-/**
- * Base response DTO for all API responses
- */
 export class BaseResponseDto<T = any> {
   @ApiProperty({
     description: 'Response result indicator',
@@ -24,9 +21,6 @@ export class BaseResponseDto<T = any> {
   data: T;
 }
 
-/**
- * Error response data DTO
- */
 export class ErrorResponseDataDto {
   @ApiProperty({
     description: 'Error message',
@@ -50,9 +44,6 @@ export class ErrorResponseDataDto {
   code?: string;
 }
 
-/**
- * User profile data DTO
- */
 export class UserProfileDataDto {
   @ApiProperty({
     description: 'User unique identifier',
@@ -129,9 +120,6 @@ export class UserProfileDataDto {
   updatedAt: Date;
 }
 
-/**
- * Budget range DTO for user preferences
- */
 export class BudgetRangeDto {
   @ApiProperty({
     description: 'Minimum budget amount',
@@ -154,9 +142,6 @@ export class BudgetRangeDto {
   currency: string;
 }
 
-/**
- * User preferences data DTO
- */
 export class UserPreferencesDataDto {
   @ApiProperty({
     description: 'Preferred travel styles',
@@ -199,9 +184,6 @@ export class UserPreferencesDataDto {
   accessibilityNeeds?: string[];
 }
 
-/**
- * Authentication response data DTO
- */
 export class AuthResponseDataDto {
   @ApiProperty({
     description: 'JWT access token',

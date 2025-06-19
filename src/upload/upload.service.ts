@@ -12,6 +12,7 @@ import {
 } from '../shared/services/cloudinary.service';
 import { UserEntity } from '../schemas/user.entity';
 import { TripEntity } from '../schemas/trip.entity';
+import { FileValidationUtil } from '../shared/utils/file-validation.util';
 
 /**
  * Simplified upload service
@@ -35,7 +36,7 @@ export class UploadService {
     userId: string,
     file: Express.Multer.File,
   ): Promise<CloudinaryResult> {
-    this.validateFile(file);
+    FileValidationUtil.validateSingleFile(file);
 
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) {
@@ -74,15 +75,7 @@ export class UploadService {
     tripId: string,
     files: Express.Multer.File[],
   ): Promise<CloudinaryResult[]> {
-    if (!files || files.length === 0) {
-      throw new BadRequestException('No files provided');
-    }
-
-    if (files.length > 10) {
-      throw new BadRequestException('Maximum 10 files allowed');
-    }
-
-    files.forEach((file) => this.validateFile(file));
+    FileValidationUtil.validateMultipleFiles(files, 10);
 
     // Verify trip ownership
     const trip = await this.tripRepository.findOne({
@@ -91,6 +84,16 @@ export class UploadService {
 
     if (!trip) {
       throw new NotFoundException('Trip not found or access denied');
+    }
+
+    // Check image limit (max 20 per trip)
+    const currentImageCount = trip.imageUrls?.length || 0;
+    const totalAfterUpload = currentImageCount + files.length;
+
+    if (totalAfterUpload > 20) {
+      throw new BadRequestException(
+        `Image limit exceeded. Current: ${currentImageCount}, Adding: ${files.length}, Max: 20`,
+      );
     }
 
     // Upload files
@@ -127,7 +130,9 @@ export class UploadService {
     publicId: string,
   ): Promise<{ success: boolean }> {
     // Verify ownership
-    if (!this.isOwner(userId, publicId)) {
+    const isOwner = await this.isOwner(userId, publicId);
+
+    if (!isOwner) {
       throw new BadRequestException('Access denied');
     }
 
@@ -142,30 +147,42 @@ export class UploadService {
   }
 
   /**
-   * Validate uploaded file
+   * Extract Cloudinary public ID from URL (delegated to CloudinaryService)
    */
-  private validateFile(file: Express.Multer.File): void {
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-
-    if (!file?.mimetype || !allowedTypes.includes(file.mimetype)) {
-      throw new BadRequestException('Only JPEG, PNG, and WebP images allowed');
-    }
-
-    if (!file?.size || file.size > maxSize) {
-      throw new BadRequestException('File size must be less than 5MB');
-    }
+  extractPublicIdFromUrl(url: string): string | null {
+    return this.cloudinaryService.extractPublicId(url);
   }
 
   /**
    * Check if user owns the file
    */
-  private isOwner(userId: string, publicId: string): boolean {
-    return (
-      publicId.includes(`avatars/user_${userId}`) ||
-      publicId.includes(`trips/`) ||
-      publicId.includes(`general/${userId}`)
-    );
+  private async isOwner(userId: string, publicId: string): Promise<boolean> {
+    // Check avatar ownership
+    if (publicId.includes('tripmaster/avatars')) {
+      const user = await this.userRepository.findOne({ where: { id: userId } });
+      if (user?.avatarUrl) {
+        const userAvatarPublicId = this.cloudinaryService.extractPublicId(
+          user.avatarUrl,
+        );
+        return userAvatarPublicId === publicId;
+      }
+      return false;
+    }
+
+    // Check trip image ownership
+    if (publicId.includes('tripmaster/trips')) {
+      const tripIdMatch = publicId.match(/tripmaster\/trips\/([^/]+)/);
+      if (tripIdMatch) {
+        const tripId = tripIdMatch[1];
+        const trip = await this.tripRepository.findOne({
+          where: { id: tripId, userId },
+        });
+        return !!trip;
+      }
+      return false;
+    }
+
+    return false;
   }
 
   /**
@@ -176,13 +193,34 @@ export class UploadService {
     publicId: string,
   ): Promise<void> {
     // Clean avatar reference
-    if (publicId.includes('avatars')) {
-      await this.userRepository.update(userId, { avatarUrl: undefined });
+    if (publicId.includes('tripmaster/avatars')) {
+      this.logger.log(`Detected avatar cleanup for user: ${userId}`);
+
+      // Check current user state before update
+      const userBefore = await this.userRepository.findOne({
+        where: { id: userId },
+      });
+      this.logger.log(
+        `User before update - avatarUrl: ${userBefore?.avatarUrl}`,
+      );
+
+      const updateResult = await this.userRepository.update(userId, {
+        avatarUrl: null,
+      });
+      this.logger.log(`Update result:`, updateResult);
+
+      // Check user state after update
+      const userAfter = await this.userRepository.findOne({
+        where: { id: userId },
+      });
+      this.logger.log(`User after update - avatarUrl: ${userAfter?.avatarUrl}`);
+
+      this.logger.log(`Cleaned avatar reference for user: ${userId}`);
     }
 
     // Clean trip image references
-    if (publicId.includes('trips')) {
-      const tripIdMatch = publicId.match(/trips\/([^/]+)/);
+    if (publicId.includes('tripmaster/trips')) {
+      const tripIdMatch = publicId.match(/tripmaster\/trips\/([^/]+)/);
       if (tripIdMatch) {
         const tripId = tripIdMatch[1];
         const trip = await this.tripRepository.findOne({

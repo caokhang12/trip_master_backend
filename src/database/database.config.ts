@@ -19,9 +19,6 @@ import { BudgetTrackingEntity } from '../schemas/budget-tracking.entity';
 export class DatabaseConfig implements TypeOrmOptionsFactory {
   constructor(private readonly configService: ConfigService) {}
 
-  /**
-   * Creates TypeORM configuration options
-   */
   createTypeOrmOptions(): TypeOrmModuleOptions {
     const nodeEnv = this.configService.get<string>('NODE_ENV', 'development');
     const isProduction = nodeEnv === 'production';

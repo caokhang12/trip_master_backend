@@ -1,10 +1,34 @@
-import { IsString, IsOptional, IsEnum, IsDateString } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsEnum,
+  IsDateString,
+  IsIn,
+  IsNumber,
+  Min,
+  Max,
+} from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { TripStatus } from '../../schemas/trip.entity';
 import {
   ExtendedPaginationDto,
   PaginationDto,
 } from '../../shared/dto/pagination.dto';
+
+// Valid region values
+const VALID_REGIONS = [
+  'southeast-asia',
+  'east-asia',
+  'south-asia',
+  'central-asia',
+  'western-asia',
+  'europe',
+  'north-america',
+  'south-america',
+  'africa',
+  'oceania',
+] as const;
 
 /**
  * Trip query DTO for filtering and pagination
@@ -18,6 +42,44 @@ export class TripQueryDto extends ExtendedPaginationDto {
   @IsOptional()
   @IsEnum(TripStatus)
   status?: TripStatus;
+
+  @ApiPropertyOptional({
+    description: 'Filter by geographical region',
+    enum: VALID_REGIONS,
+    example: 'southeast-asia',
+  })
+  @IsOptional()
+  @IsString()
+  @IsIn(VALID_REGIONS, {
+    message: 'Region must be a valid geographical region',
+  })
+  region?: string;
+
+  @ApiPropertyOptional({
+    description: 'User latitude for distance calculation',
+    example: 10.8231,
+    minimum: -90,
+    maximum: 90,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({}, { message: 'Latitude must be a number' })
+  @Min(-90, { message: 'Latitude must be between -90 and 90' })
+  @Max(90, { message: 'Latitude must be between -90 and 90' })
+  userLat?: number;
+
+  @ApiPropertyOptional({
+    description: 'User longitude for distance calculation',
+    example: 106.6297,
+    minimum: -180,
+    maximum: 180,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({}, { message: 'Longitude must be a number' })
+  @Min(-180, { message: 'Longitude must be between -180 and 180' })
+  @Max(180, { message: 'Longitude must be between -180 and 180' })
+  userLng?: number;
 
   @ApiPropertyOptional({
     description: 'Filter by destination country',

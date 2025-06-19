@@ -19,27 +19,11 @@ import {
 } from './dto/cost.dto';
 import { CurrencyService } from '../currency/services/currency.service';
 import { AIService } from '../shared/services/ai.service';
-
-/**
- * Interface for itinerary with cost tracking
- */
-export interface ItineraryWithCosts extends ItineraryEntity {
-  activities: ActivityWithCosts[];
-}
-
-/**
- * Interface for activity with cost information
- */
-export interface ActivityWithCosts {
-  time: string;
-  title: string;
-  description?: string;
-  location?: string;
-  duration?: number;
-  cost?: number;
-  type?: string;
-  costEstimate?: ActivityCostDto;
-}
+import { TripValidationUtil } from '../shared/utils/trip-validation.util';
+import {
+  ActivityWithCosts,
+  ItineraryWithCosts,
+} from './interfaces/trip.interface';
 
 /**
  * Service for managing trip itineraries and AI integration with cost tracking
@@ -77,22 +61,29 @@ export class ItineraryService {
     userId: string,
     generateDto: GenerateItineraryDto,
   ): Promise<ItineraryWithCosts[]> {
-    // Validate trip ownership
-    const trip = await this.tripRepository.findOne({
-      where: { id: tripId, userId },
-    });
+    // Validate trip ownership and dates
+    const trip = await TripValidationUtil.validateTripOwnership(
+      this.tripRepository,
+      tripId,
+      userId,
+    );
 
-    if (!trip) {
-      throw new BadRequestException('Trip not found or access denied');
-    }
+    TripValidationUtil.validateTripDates(trip);
 
-    if (!trip.startDate || !trip.endDate) {
+    if (!trip.destinationName) {
       throw new BadRequestException(
-        'Trip must have start and end dates for itinerary generation',
+        'Trip must have a destination for itinerary generation',
       );
     }
 
-    // Calculate trip duration
+    // Validate dates exist (additional check after validateTripDates)
+    if (!trip.startDate || !trip.endDate) {
+      throw new BadRequestException(
+        'Trip must have valid start and end dates for itinerary generation',
+      );
+    }
+
+    // Calculate trip duration - dates are guaranteed to exist after validation
     const startDate = new Date(trip.startDate);
     const endDate = new Date(trip.endDate);
     const tripDays =
@@ -152,13 +143,11 @@ export class ItineraryService {
     updateDto: UpdateItineraryDto,
   ): Promise<ItineraryEntity> {
     // Validate trip ownership
-    const trip = await this.tripRepository.findOne({
-      where: { id: tripId, userId },
-    });
-
-    if (!trip) {
-      throw new BadRequestException('Trip not found or access denied');
-    }
+    await TripValidationUtil.validateTripOwnership(
+      this.tripRepository,
+      tripId,
+      userId,
+    );
 
     // Find existing itinerary for the day
     let itinerary = await this.itineraryRepository.findOne({
@@ -376,13 +365,12 @@ export class ItineraryService {
     updateDto: UpdateActivityCostDto,
   ): Promise<ActivityCostEntity> {
     // Validate trip ownership
-    const trip = await this.tripRepository.findOne({
-      where: { id: tripId, userId },
-    });
-
-    if (!trip) {
-      throw new NotFoundException('Trip not found or access denied');
-    }
+    const trip = await TripValidationUtil.validateTripOwnership(
+      this.tripRepository,
+      tripId,
+      userId,
+      true, // throw NotFoundException
+    );
 
     // Find activity cost
     const activityCost = await this.activityCostRepository.findOne({
@@ -419,13 +407,12 @@ export class ItineraryService {
     userId: string,
   ): Promise<CostAnalysisDto> {
     // Validate trip ownership
-    const trip = await this.tripRepository.findOne({
-      where: { id: tripId, userId },
-    });
-
-    if (!trip) {
-      throw new NotFoundException('Trip not found or access denied');
-    }
+    const trip = await TripValidationUtil.validateTripOwnership(
+      this.tripRepository,
+      tripId,
+      userId,
+      true, // throw NotFoundException
+    );
 
     if (!trip.enableCostTracking) {
       throw new BadRequestException(
@@ -529,13 +516,12 @@ export class ItineraryService {
     userId: string,
   ): Promise<BudgetSummaryDto> {
     // Validate trip ownership
-    const trip = await this.tripRepository.findOne({
-      where: { id: tripId, userId },
-    });
-
-    if (!trip) {
-      throw new NotFoundException('Trip not found or access denied');
-    }
+    const trip = await TripValidationUtil.validateTripOwnership(
+      this.tripRepository,
+      tripId,
+      userId,
+      true, // throw NotFoundException
+    );
 
     if (!trip.enableCostTracking) {
       throw new BadRequestException(

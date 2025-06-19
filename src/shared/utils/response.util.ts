@@ -5,9 +5,6 @@ import { BaseResponse, ErrorResponseData } from '../types/base-response.types';
  * Utility class for creating standardized API responses
  */
 export class ResponseUtil {
-  /**
-   * Create a success response
-   */
   static success<T>(
     data: T,
     status: HttpStatus = HttpStatus.OK,
@@ -19,9 +16,6 @@ export class ResponseUtil {
     };
   }
 
-  /**
-   * Create an error response
-   */
   static error(
     message: string,
     status: HttpStatus = HttpStatus.BAD_REQUEST,
@@ -39,9 +33,6 @@ export class ResponseUtil {
     };
   }
 
-  /**
-   * Create a validation error response
-   */
   static validationError(
     details: string[],
     message: string = 'Validation failed',
@@ -54,9 +45,6 @@ export class ResponseUtil {
     );
   }
 
-  /**
-   * Create an unauthorized error response
-   */
   static unauthorized(
     message: string = 'Unauthorized access',
   ): BaseResponse<ErrorResponseData> {
@@ -68,18 +56,12 @@ export class ResponseUtil {
     );
   }
 
-  /**
-   * Create a not found error response
-   */
   static notFound(
     message: string = 'Resource not found',
   ): BaseResponse<ErrorResponseData> {
     return this.error(message, HttpStatus.NOT_FOUND, undefined, 'NOT_FOUND');
   }
 
-  /**
-   * Create a conflict error response
-   */
   static conflict(
     message: string = 'Resource already exists',
   ): BaseResponse<ErrorResponseData> {

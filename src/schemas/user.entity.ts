@@ -33,7 +33,7 @@ export class UserEntity {
   lastName?: string;
 
   @Column({ name: 'avatar_url', type: 'text', nullable: true })
-  avatarUrl?: string;
+  avatarUrl?: string | null;
 
   @Column({ name: 'home_country', length: 100, nullable: true })
   homeCountry?: string;
@@ -116,9 +116,6 @@ export class UserEntity {
     return this.avatarUrl;
   }
 
-  /**
-   * Gets user display name
-   */
   get displayName(): string {
     if (this.firstName && this.lastName) {
       return `${this.firstName} ${this.lastName}`;

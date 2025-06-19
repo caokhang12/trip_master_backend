@@ -381,9 +381,6 @@ export class CountryService {
     return parts.join(', ');
   }
 
-  /**
-   * Clear country detection cache
-   */
   clearCache(): void {
     this.countryCache.clear();
     this.logger.log('Country detection cache cleared');

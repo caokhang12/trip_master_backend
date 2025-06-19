@@ -29,9 +29,6 @@ export interface CostEstimationResponse {
 export class AIService {
   private readonly logger = new Logger(AIService.name);
 
-  /**
-   * Estimate activity cost for itinerary service
-   */
   async estimateActivityCost(
     activity: any,
     country: string,
@@ -261,9 +258,6 @@ export class AIService {
     }
   }
 
-  /**
-   * Map activity type to cost category
-   */
   private mapActivityType(type?: string): string {
     if (!type) return 'miscellaneous';
 
@@ -278,9 +272,6 @@ export class AIService {
     return typeMap[type.toLowerCase()] || 'miscellaneous';
   }
 
-  /**
-   * Get country code from country name
-   */
   private getCountryCode(country: string): string {
     const countryMap: Record<string, string> = {
       Vietnam: 'VN',

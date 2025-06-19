@@ -478,9 +478,6 @@ export class LocationService {
     }
   }
 
-  /**
-   * Get Vietnamese administrative regions
-   */
   async getVietnameseRegions(): Promise<any[]> {
     try {
       const cachedProvinces = await this.vietnamLocationRepository.find({

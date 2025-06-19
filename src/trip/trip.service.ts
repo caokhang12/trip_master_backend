@@ -483,7 +483,7 @@ export class TripService {
   ): TripImageGallery {
     const images: TripImageItem[] = imageUrls.map((url) => ({
       url,
-      publicId: this.extractPublicIdFromUrl(url) || '',
+      publicId: this.uploadService.extractPublicIdFromUrl(url) || '',
       thumbnailUrl: this.generateThumbnailUrl(url),
       isSelected: url === thumbnailUrl,
     }));
@@ -493,16 +493,6 @@ export class TripService {
       images,
       totalCount: imageUrls.length,
     };
-  }
-
-  /**
-   * Extract Cloudinary public ID from URL
-   * @param url - Cloudinary URL
-   * @returns Public ID or null
-   */
-  private extractPublicIdFromUrl(url: string): string | null {
-    const match = url.match(/\/v\d+\/(.+)\.[a-zA-Z]{3,4}$/);
-    return match ? match[1] : null;
   }
 
   /**

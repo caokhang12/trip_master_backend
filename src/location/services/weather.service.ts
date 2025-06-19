@@ -119,9 +119,6 @@ export class WeatherService {
     private apiThrottleService: APIThrottleService,
   ) {}
 
-  /**
-   * Get current weather and forecast for location
-   */
   async getWeather(
     lat: number,
     lng: number,
@@ -228,9 +225,6 @@ export class WeatherService {
     };
   }
 
-  /**
-   * Get 7-day weather forecast
-   */
   private async getWeatherForecast(
     lat: number,
     lng: number,
@@ -291,9 +285,6 @@ export class WeatherService {
     return dailyForecasts;
   }
 
-  /**
-   * Get location name from coordinates
-   */
   private async getLocationName(
     lat: number,
     lng: number,

@@ -37,6 +37,7 @@ import {
 } from './dto/trip-search.dto';
 import { BaseResponseDto, ErrorResponseDto } from '../shared/dto/response.dto';
 import { AuthRequest } from '../shared/interfaces/auth.interface';
+import { FileValidationUtil } from '../shared/utils/file-validation.util';
 
 /**
  * Simplified controller for core trip management operations
@@ -48,9 +49,6 @@ import { AuthRequest } from '../shared/interfaces/auth.interface';
 export class TripController {
   constructor(private readonly tripService: TripService) {}
 
-  /**
-   * Create new trip
-   */
   @ApiOperation({
     summary: 'Create a new trip',
     description: 'Creates a new trip for the authenticated user.',
@@ -70,9 +68,6 @@ export class TripController {
     return ResponseUtil.success(trip, HttpStatus.CREATED);
   }
 
-  /**
-   * Get user's trips with pagination
-   */
   @ApiOperation({
     summary: 'Get user trips',
     description:
@@ -129,9 +124,6 @@ export class TripController {
     });
   }
 
-  /**
-   * Get trip details by ID
-   */
   @ApiOperation({
     summary: 'Get trip details',
     description: 'Retrieves detailed information about a specific trip.',
@@ -156,9 +148,6 @@ export class TripController {
     return ResponseUtil.success(trip);
   }
 
-  /**
-   * Update trip details
-   */
   @ApiOperation({
     summary: 'Update trip',
     description: 'Updates trip information. Only the trip owner can update.',
@@ -189,9 +178,6 @@ export class TripController {
     return ResponseUtil.success(trip);
   }
 
-  /**
-   * Delete trip
-   */
   @ApiOperation({
     summary: 'Delete trip',
     description: 'Permanently deletes a trip and all associated data.',
@@ -244,9 +230,6 @@ export class TripController {
     return ResponseUtil.success(shareInfo, HttpStatus.CREATED);
   }
 
-  /**
-   * Duplicate existing trip
-   */
   @ApiOperation({
     summary: 'Duplicate trip',
     description: 'Creates a complete copy of an existing trip.',
@@ -266,9 +249,6 @@ export class TripController {
     return ResponseUtil.success(trip, HttpStatus.CREATED);
   }
 
-  /**
-   * Upload trip images
-   */
   @ApiOperation({
     summary: 'Upload trip images',
     description: 'Upload multiple images for a trip (max 10 files)',
@@ -282,14 +262,8 @@ export class TripController {
   @Post(':id/images')
   @UseInterceptors(
     FilesInterceptor('files', 10, {
-      limits: { fileSize: 5 * 1024 * 1024 }, // 5MB per file
-      fileFilter: (req, file, cb) => {
-        if (file.mimetype.match(/^image\/(jpeg|jpg|png|webp)$/)) {
-          cb(null, true);
-        } else {
-          cb(new BadRequestException('Only images allowed'), false);
-        }
-      },
+      limits: FileValidationUtil.getMulterLimits(),
+      fileFilter: FileValidationUtil.getMulterFileFilter(),
     }),
   )
   async uploadTripImages(
@@ -336,9 +310,6 @@ export class TripController {
     return ResponseUtil.success(result);
   }
 
-  /**
-   * Set trip thumbnail
-   */
   @ApiOperation({
     summary: 'Set trip thumbnail',
     description: 'Set an existing trip image as thumbnail',
@@ -359,9 +330,6 @@ export class TripController {
     return ResponseUtil.success(result);
   }
 
-  /**
-   * Get trip with images
-   */
   @ApiOperation({
     summary: 'Get trip with image gallery',
     description: 'Get trip details including image gallery',

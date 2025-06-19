@@ -20,7 +20,7 @@ import {
 import { AuthResponseData } from '../shared/types/base-response.types';
 
 /**
- * Service for handling authentication operations
+ * Authentication service with JWT token management and security validation
  */
 @Injectable()
 export class AuthService {
@@ -30,9 +30,6 @@ export class AuthService {
     private readonly configService: ConfigService,
   ) {}
 
-  /**
-   * Register a new user
-   */
   async register(registerDto: RegisterDto): Promise<AuthResponseData> {
     const user = await this.userService.createUser({
       email: registerDto.email,
@@ -41,7 +38,7 @@ export class AuthService {
       lastName: registerDto.lastName,
     });
 
-    // Generate email verification token
+    // Generate email verification token for account activation
     const verificationToken = uuidv4();
     await this.userService.setEmailVerificationToken(
       user.id,
@@ -60,9 +57,6 @@ export class AuthService {
     };
   }
 
-  /**
-   * Login user with email and password
-   */
   async login(loginDto: LoginDto): Promise<AuthResponseData> {
     const user = await this.userService.findByEmail(loginDto.email);
     if (!user) {
@@ -86,9 +80,6 @@ export class AuthService {
     };
   }
 
-  /**
-   * Refresh access token using refresh token
-   */
   async refreshToken(
     refreshTokenDto: RefreshTokenDto,
   ): Promise<AuthResponseData> {

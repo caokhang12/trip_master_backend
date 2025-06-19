@@ -33,7 +33,7 @@ export interface UserProfileData {
   email: string;
   firstName?: string;
   lastName?: string;
-  avatarUrl?: string;
+  avatarUrl?: string | null;
   hasAvatar?: boolean;
   role: UserRole;
   emailVerified: boolean;

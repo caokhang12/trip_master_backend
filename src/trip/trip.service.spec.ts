@@ -9,6 +9,7 @@ import {
 import { TripService } from './trip.service';
 import { CountryDefaultsService } from '../shared/services/country-defaults.service';
 import { CountryService } from '../shared/services/country.service';
+import { UploadService } from '../upload/upload.service';
 import { TripEntity, TripStatus } from '../schemas/trip.entity';
 import { ItineraryEntity } from '../schemas/itinerary.entity';
 import { TripShareEntity } from '../schemas/trip-share.entity';
@@ -26,13 +27,18 @@ describe('TripService', () => {
   let itineraryRepository: jest.Mocked<Repository<ItineraryEntity>>;
   let tripShareRepository: jest.Mocked<Repository<TripShareEntity>>;
 
-  const mockTripEntity: TripEntity = {
+  const mockTripEntity = {
     id: '123e4567-e89b-12d3-a456-426614174000',
     userId: 'user-123',
     title: 'Amazing Japan Trip',
     description: 'Exploring Tokyo and Kyoto',
     destinationName: 'Tokyo, Japan',
     destinationCoords: { lat: 35.6762, lng: 139.6503 },
+    destinationCountry: 'JP',
+    destinationProvince: 'Tokyo',
+    destinationCity: 'Tokyo',
+    timezone: 'Asia/Tokyo',
+    defaultCurrency: 'JPY',
     startDate: new Date('2024-03-15'),
     endDate: new Date('2024-03-22'),
     budget: 3000.0,
@@ -48,7 +54,23 @@ describe('TripService', () => {
     itinerary: [],
     shareInfo: undefined,
     budgetTracking: [],
-  };
+    // Computed properties
+    get imageCount(): number {
+      return 0;
+    },
+    get hasImages(): boolean {
+      return false;
+    },
+    get hasThumbnail(): boolean {
+      return false;
+    },
+    getImageGallery: jest.fn().mockReturnValue({
+      thumbnail: null,
+      images: [],
+      totalCount: 0,
+    }),
+    getOptimizedImageUrl: jest.fn().mockReturnValue(''),
+  } as unknown as TripEntity;
 
   const mockItineraryEntity: ItineraryEntity = {
     id: 'itinerary-123',
@@ -196,6 +218,16 @@ describe('TripService', () => {
       getCacheStats: jest.fn(),
     };
 
+    const mockUploadService = {
+      uploadAvatar: jest.fn(),
+      removeAvatar: jest.fn(),
+      uploadTripImages: jest.fn(),
+      removeTripImage: jest.fn(),
+      setTripThumbnail: jest.fn(),
+      removeTripThumbnail: jest.fn(),
+      getTripImageGallery: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TripService,
@@ -218,6 +250,10 @@ describe('TripService', () => {
         {
           provide: CountryService,
           useValue: mockCountryService,
+        },
+        {
+          provide: UploadService,
+          useValue: mockUploadService,
         },
       ],
     }).compile();
@@ -340,7 +376,7 @@ describe('TripService', () => {
       const tripWithItinerary = {
         ...mockTripEntity,
         itinerary: [mockItineraryEntity],
-      };
+      } as unknown as TripEntity;
       tripRepository.findOne.mockResolvedValue(tripWithItinerary);
 
       // Act
@@ -393,7 +429,7 @@ describe('TripService', () => {
           ...mockTripEntity,
           title: inputUpdateDto.title || mockTripEntity.title,
           budget: inputUpdateDto.budget || mockTripEntity.budget,
-        }); // For return value
+        } as unknown as TripEntity); // For return value
       tripRepository.update.mockResolvedValue({ affected: 1 } as UpdateResult);
 
       // Act
@@ -424,7 +460,10 @@ describe('TripService', () => {
 
     it('should validate status transitions', async () => {
       // Arrange
-      const completedTrip = { ...mockTripEntity, status: TripStatus.COMPLETED };
+      const completedTrip = {
+        ...mockTripEntity,
+        status: TripStatus.COMPLETED,
+      } as unknown as TripEntity;
       tripRepository.findOne.mockResolvedValue(completedTrip);
 
       const invalidUpdateDto = { status: TripStatus.PLANNING };
@@ -518,7 +557,10 @@ describe('TripService', () => {
       const shareWithTrip = {
         ...mockShareEntity,
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Always 7 days in the future
-        trip: { ...mockTripEntity, itinerary: [mockItineraryEntity] },
+        trip: {
+          ...mockTripEntity,
+          itinerary: [mockItineraryEntity],
+        } as unknown as TripEntity,
       };
       tripShareRepository.findOne.mockResolvedValue(shareWithTrip);
       tripShareRepository.update.mockResolvedValue({
@@ -624,16 +666,16 @@ describe('TripService', () => {
       const originalTripWithItinerary = {
         ...mockTripEntity,
         itinerary: [mockItineraryEntity],
-      };
+      } as unknown as TripEntity;
       tripRepository.findOne.mockResolvedValue(originalTripWithItinerary);
       tripRepository.create.mockReturnValue({
         ...mockTripEntity,
         title: 'Amazing Japan Trip (Copy)',
-      });
+      } as unknown as TripEntity);
       tripRepository.save.mockResolvedValue({
         ...mockTripEntity,
         title: 'Amazing Japan Trip (Copy)',
-      });
+      } as unknown as TripEntity);
       itineraryRepository.create.mockReturnValue(mockItineraryEntity);
       itineraryRepository.save.mockResolvedValue(mockItineraryEntity);
 

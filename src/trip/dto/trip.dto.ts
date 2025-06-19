@@ -6,6 +6,7 @@ import {
   IsBoolean,
   IsNotEmpty,
   MaxLength,
+  MinLength,
   Min,
   IsArray,
 } from 'class-validator';
@@ -15,9 +16,6 @@ import { TripStatus, DestinationCoords } from '../../schemas/trip.entity';
 import { OptionalDateRangeDto } from '../../shared/dto/date.dto';
 import { BaseCoordinateDto } from '../../shared/dto/coordinate.dto';
 
-/**
- * Base trip DTO with core fields
- */
 export class TripDto extends OptionalDateRangeDto {
   @ApiPropertyOptional({
     description: 'Total budget for the trip',
@@ -40,9 +38,6 @@ export class TripDto extends OptionalDateRangeDto {
   currency?: string = 'USD';
 }
 
-/**
- * Create trip DTO
- */
 export class CreateTripDto extends TripDto {
   @ApiProperty({
     description: 'Trip title',
@@ -113,9 +108,13 @@ export class CreateTripDto extends TripDto {
   @ApiPropertyOptional({
     description: 'Destination country code',
     example: 'JP',
+    maxLength: 2,
+    minLength: 2,
   })
   @IsOptional()
   @IsString()
+  @MinLength(2, { message: 'Country code must be exactly 2 characters' })
+  @MaxLength(2, { message: 'Country code must be exactly 2 characters' })
   destinationCountry?: string;
 
   @ApiPropertyOptional({
@@ -153,23 +152,25 @@ export class CreateTripDto extends TripDto {
   @ApiPropertyOptional({
     description: 'Preferred country for auto-detection',
     example: 'JP',
+    maxLength: 2,
+    minLength: 2,
   })
   @IsOptional()
   @IsString()
+  @MinLength(2, { message: 'Country code must be exactly 2 characters' })
+  @MaxLength(2, { message: 'Country code must be exactly 2 characters' })
   preferredCountry?: string;
 
   @ApiPropertyOptional({
     description: 'Auto-detect country from coordinates',
     example: true,
+    default: true,
   })
   @IsOptional()
   @IsBoolean()
-  detectCountryFromCoords?: boolean;
+  detectCountryFromCoords?: boolean = true;
 }
 
-/**
- * Update trip DTO - all fields optional
- */
 export class UpdateTripDto extends TripDto {
   @ApiPropertyOptional({
     description: 'Trip title',

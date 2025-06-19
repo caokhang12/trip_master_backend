@@ -5,6 +5,7 @@ import { UploadService } from './upload.service';
 import { CloudinaryService } from '../shared/services/cloudinary.service';
 import { UserEntity } from '../schemas/user.entity';
 import { TripEntity } from '../schemas/trip.entity';
+import { FileValidationUtil } from '../shared/utils/file-validation.util';
 
 describe('UploadService', () => {
   let service: UploadService;
@@ -70,19 +71,21 @@ describe('UploadService', () => {
     });
 
     it('should validate file correctly', () => {
-      expect(() => service['validateFile'](mockFile)).not.toThrow();
+      expect(() =>
+        FileValidationUtil.validateSingleFile(mockFile),
+      ).not.toThrow();
     });
 
     it('should reject invalid file types', () => {
       const invalidFile = { ...mockFile, mimetype: 'text/plain' };
-      expect(() => service['validateFile'](invalidFile)).toThrow(
+      expect(() => FileValidationUtil.validateSingleFile(invalidFile)).toThrow(
         BadRequestException,
       );
     });
 
     it('should reject files that are too large', () => {
       const largeFile = { ...mockFile, size: 10 * 1024 * 1024 }; // 10MB
-      expect(() => service['validateFile'](largeFile)).toThrow(
+      expect(() => FileValidationUtil.validateSingleFile(largeFile)).toThrow(
         BadRequestException,
       );
     });

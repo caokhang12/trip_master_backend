@@ -10,9 +10,6 @@ import {
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
-/**
- * DTO for user registration
- */
 export class RegisterDto {
   @ApiProperty({
     description: 'User email address',
@@ -24,12 +21,12 @@ export class RegisterDto {
 
   @ApiProperty({
     description:
-      'User password - must contain at least 8 characters with uppercase, lowercase, number and special character',
+      'Password with 8+ chars, uppercase, lowercase, number and special character',
     example: 'SecurePass123!',
     minLength: 8,
   })
-  @IsString({ message: 'Password must be a string' })
-  @MinLength(8, { message: 'Password must be at least 8 characters long' })
+  @IsString()
+  @MinLength(8)
   @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/, {
     message:
       'Password must contain at least one uppercase letter, one lowercase letter, one number and one special character',
@@ -43,8 +40,8 @@ export class RegisterDto {
     maxLength: 50,
   })
   @IsOptional()
-  @IsString({ message: 'First name must be a string' })
-  @MaxLength(50, { message: 'First name must not exceed 50 characters' })
+  @IsString()
+  @MaxLength(50)
   firstName?: string;
 
   @ApiProperty({
@@ -54,8 +51,8 @@ export class RegisterDto {
     maxLength: 50,
   })
   @IsOptional()
-  @IsString({ message: 'Last name must be a string' })
-  @MaxLength(50, { message: 'Last name must not exceed 50 characters' })
+  @IsString()
+  @MaxLength(50)
   lastName?: string;
 
   @ApiProperty({
@@ -66,8 +63,8 @@ export class RegisterDto {
     maxLength: 100,
   })
   @IsOptional()
-  @IsString({ message: 'Home country must be a string' })
-  @MaxLength(100, { message: 'Home country must not exceed 100 characters' })
+  @IsString()
+  @MaxLength(100)
   homeCountry?: string;
 
   @ApiProperty({
@@ -77,17 +74,11 @@ export class RegisterDto {
     required: false,
   })
   @IsOptional()
-  @IsString({ message: 'Preferred language must be a string' })
-  @IsIn(['en', 'vi', 'zh', 'ja', 'ko', 'th', 'fr', 'de', 'es'], {
-    message:
-      'Preferred language must be one of: en, vi, zh, ja, ko, th, fr, de, es',
-  })
+  @IsString()
+  @IsIn(['en', 'vi', 'zh', 'ja', 'ko', 'th', 'fr', 'de', 'es'])
   preferredLanguage?: string;
 }
 
-/**
- * DTO for user login
- */
 export class LoginDto {
   @ApiProperty({
     description: 'User email address',
@@ -105,9 +96,6 @@ export class LoginDto {
   password: string;
 }
 
-/**
- * DTO for token refresh
- */
 export class RefreshTokenDto {
   @ApiProperty({
     description: 'JWT refresh token',
@@ -118,9 +106,6 @@ export class RefreshTokenDto {
   refreshToken: string;
 }
 
-/**
- * DTO for email verification
- */
 export class VerifyEmailDto {
   @ApiProperty({
     description: 'Email verification token received via email',
@@ -130,9 +115,6 @@ export class VerifyEmailDto {
   token: string;
 }
 
-/**
- * DTO for resend email verification
- */
 export class ResendVerificationDto {
   @ApiProperty({
     description: 'User email address to resend verification to',
@@ -143,9 +125,6 @@ export class ResendVerificationDto {
   email: string;
 }
 
-/**
- * DTO for forgot password request
- */
 export class ForgotPasswordDto {
   @ApiProperty({
     description: 'User email address to send password reset instructions',
@@ -156,9 +135,6 @@ export class ForgotPasswordDto {
   email: string;
 }
 
-/**
- * DTO for password reset
- */
 export class ResetPasswordDto {
   @ApiProperty({
     description: 'Password reset token received via email',
@@ -182,9 +158,6 @@ export class ResetPasswordDto {
   newPassword: string;
 }
 
-/**
- * DTO for social login
- */
 export class SocialLoginDto {
   @ApiProperty({
     description: 'Social media provider',

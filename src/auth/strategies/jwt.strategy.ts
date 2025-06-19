@@ -16,7 +16,7 @@ interface AuthRequest {
 }
 
 /**
- * JWT access token strategy for authentication
+ * JWT access token strategy with user validation for protected routes
  */
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
@@ -31,9 +31,6 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     });
   }
 
-  /**
-   * Validate JWT payload and return user
-   */
   async validate(
     payload: JwtPayload,
   ): Promise<{ id: string; email: string; role: string }> {
@@ -50,7 +47,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
 }
 
 /**
- * JWT refresh token strategy for token refresh
+ * JWT refresh token strategy with additional security validation
  */
 @Injectable()
 export class JwtRefreshStrategy extends PassportStrategy(
@@ -70,9 +67,6 @@ export class JwtRefreshStrategy extends PassportStrategy(
     });
   }
 
-  /**
-   * Validate refresh token and return user
-   */
   async validate(
     req: AuthRequest,
     payload: JwtPayload,

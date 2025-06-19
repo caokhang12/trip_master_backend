@@ -20,11 +20,26 @@ describe('AuthService', () => {
     passwordHash: '$2a$12$hashedPassword',
     firstName: 'John',
     lastName: 'Doe',
+    avatarUrl: undefined,
+    homeCountry: undefined,
     role: UserRole.USER,
     emailVerified: false,
+    emailVerificationToken: undefined,
+    emailVerificationExpires: undefined,
+    passwordResetToken: undefined,
+    passwordResetExpires: undefined,
+    refreshToken: 'mockRefreshToken',
     createdAt: new Date(),
     updatedAt: new Date(),
-    refreshToken: 'mockRefreshToken',
+    preferences: undefined,
+    // Computed properties
+    get hasAvatar(): boolean {
+      return false;
+    },
+    getAvatarUrl: jest.fn().mockReturnValue(null),
+    get displayName(): string {
+      return 'John Doe';
+    },
   };
 
   const mockUserService = {

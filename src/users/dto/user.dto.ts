@@ -13,9 +13,6 @@ import { UserBudgetRangeDto } from '../../shared/dto/money.dto';
 
 // Using shared UserBudgetRangeDto instead of local BudgetRangeDto
 
-/**
- * DTO for updating user profile
- */
 export class UpdateProfileDto extends BaseUserProfileDto {
   // Explicitly declare inherited properties for TypeScript compilation
   declare firstName?: string;
@@ -23,9 +20,6 @@ export class UpdateProfileDto extends BaseUserProfileDto {
   declare avatarUrl?: string;
 }
 
-/**
- * DTO for updating user preferences
- */
 export class UpdatePreferencesDto {
   @ApiProperty({
     description: 'Preferred travel styles',
@@ -35,11 +29,8 @@ export class UpdatePreferencesDto {
     example: [TravelStyle.ADVENTURE, TravelStyle.CULTURAL],
   })
   @IsOptional()
-  @IsArray({ message: 'Travel style must be an array' })
-  @IsEnum(TravelStyle, {
-    each: true,
-    message: 'Each travel style must be a valid option',
-  })
+  @IsArray()
+  @IsEnum(TravelStyle, { each: true })
   travelStyle?: TravelStyle[];
 
   @ApiProperty({
@@ -59,8 +50,8 @@ export class UpdatePreferencesDto {
     example: ['photography', 'hiking', 'museums', 'local cuisine'],
   })
   @IsOptional()
-  @IsArray({ message: 'Interests must be an array' })
-  @IsString({ each: true, message: 'Each interest must be a string' })
+  @IsArray()
+  @IsString({ each: true })
   interests?: string[];
 
   @ApiProperty({
@@ -70,11 +61,8 @@ export class UpdatePreferencesDto {
     example: ['vegetarian', 'gluten-free', 'halal'],
   })
   @IsOptional()
-  @IsArray({ message: 'Dietary restrictions must be an array' })
-  @IsString({
-    each: true,
-    message: 'Each dietary restriction must be a string',
-  })
+  @IsArray()
+  @IsString({ each: true })
   dietaryRestrictions?: string[];
 
   @ApiProperty({
@@ -88,14 +76,11 @@ export class UpdatePreferencesDto {
     ],
   })
   @IsOptional()
-  @IsArray({ message: 'Accessibility needs must be an array' })
-  @IsString({ each: true, message: 'Each accessibility need must be a string' })
+  @IsArray()
+  @IsString({ each: true })
   accessibilityNeeds?: string[];
 }
 
-/**
- * Combined DTO for updating user profile and preferences
- */
 export class UpdateUserDto extends UpdateProfileDto {
   // Inherited properties from UpdateProfileDto
   declare firstName?: string;

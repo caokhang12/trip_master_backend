@@ -25,7 +25,8 @@ export interface TripDetails extends TripEntity {
 /**
  * Itinerary with cost tracking information
  */
-export interface ItineraryDetails extends ItineraryEntity {
+export interface ItineraryWithCosts extends ItineraryEntity {
+  activities: ActivityWithCosts[];
   totalCost?: number;
   costBreakdown?: {
     accommodation?: number;
@@ -47,8 +48,10 @@ export interface ActivityWithCosts {
   location?: string;
   duration?: number;
   type?: string;
+  cost?: number;
   estimatedCost?: number;
   actualCost?: number;
   costCategory?: string;
+  costEstimate?: any; // ActivityCostDto - using any to avoid circular dependency
   notes?: string;
 }

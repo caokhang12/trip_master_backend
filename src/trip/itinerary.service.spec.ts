@@ -5,21 +5,34 @@ import { BadRequestException } from '@nestjs/common';
 import { ItineraryService } from './itinerary.service';
 import { ItineraryEntity, Activity } from '../schemas/itinerary.entity';
 import { TripEntity, TripStatus } from '../schemas/trip.entity';
+import { ActivityCostEntity } from '../schemas/activity-cost.entity';
+import { BudgetTrackingEntity } from '../schemas/budget-tracking.entity';
 import { UserEntity } from '../schemas/user.entity';
+import { CurrencyService } from '../currency/services/currency.service';
+import { AIService } from '../shared/services/ai.service';
 import { UpdateItineraryDto, GenerateItineraryDto } from './dto/itinerary.dto';
 
 describe('ItineraryService', () => {
   let itineraryService: ItineraryService;
   let itineraryRepository: jest.Mocked<Repository<ItineraryEntity>>;
   let tripRepository: jest.Mocked<Repository<TripEntity>>;
+  let activityCostRepository: jest.Mocked<Repository<ActivityCostEntity>>;
+  let budgetTrackingRepository: jest.Mocked<Repository<BudgetTrackingEntity>>;
+  let currencyService: jest.Mocked<CurrencyService>;
+  let aiService: jest.Mocked<AIService>;
 
-  const mockTripEntity: TripEntity = {
+  const mockTripEntity = {
     id: '123e4567-e89b-12d3-a456-426614174000',
     userId: 'user-123',
     title: 'Amazing Japan Trip',
     description: 'Exploring Tokyo and Kyoto',
     destinationName: 'Tokyo, Japan',
     destinationCoords: { lat: 35.6762, lng: 139.6503 },
+    destinationCountry: 'JP',
+    destinationProvince: 'Tokyo',
+    destinationCity: 'Tokyo',
+    timezone: 'Asia/Tokyo',
+    defaultCurrency: 'JPY',
     startDate: new Date('2024-03-15'),
     endDate: new Date('2024-03-22'),
     budget: 3000.0,
@@ -35,7 +48,23 @@ describe('ItineraryService', () => {
     itinerary: [],
     shareInfo: undefined,
     budgetTracking: [],
-  };
+    // Computed properties
+    get imageCount(): number {
+      return 0;
+    },
+    get hasImages(): boolean {
+      return false;
+    },
+    get hasThumbnail(): boolean {
+      return false;
+    },
+    getImageGallery: jest.fn().mockReturnValue({
+      thumbnail: null,
+      images: [],
+      totalCount: 0,
+    }),
+    getOptimizedImageUrl: jest.fn().mockReturnValue(''),
+  } as unknown as TripEntity;
 
   const mockActivity: Activity = {
     time: '09:00',
@@ -70,10 +99,81 @@ describe('ItineraryService', () => {
       create: jest.fn(),
       save: jest.fn(),
       delete: jest.fn(),
+      createQueryBuilder: jest.fn().mockReturnValue({
+        leftJoin: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue([]),
+      }),
     };
 
     const mockTripRepository = {
       findOne: jest.fn(),
+    };
+
+    const mockActivityCostRepository = {
+      find: jest.fn(),
+      create: jest.fn(),
+      save: jest.fn(),
+      delete: jest.fn(),
+      findOne: jest.fn(),
+      createQueryBuilder: jest.fn().mockReturnValue({
+        leftJoin: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue([]),
+      }),
+    };
+
+    const mockBudgetTrackingRepository = {
+      find: jest.fn(),
+      create: jest.fn(),
+      save: jest.fn(),
+      delete: jest.fn(),
+      findOne: jest.fn(),
+      createQueryBuilder: jest.fn().mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue([]),
+        getOne: jest.fn().mockResolvedValue(null),
+      }),
+    };
+
+    const mockCurrencyService = {
+      convertCurrency: jest.fn(),
+      getExchangeRates: jest.fn(),
+      getSupportedCurrencies: jest.fn(),
+    };
+
+    const mockAIService = {
+      generateItinerary: jest.fn().mockResolvedValue([
+        {
+          dayNumber: 1,
+          date: '2024-03-15',
+          activities: [
+            {
+              time: '09:00',
+              title: 'Visit Tokyo Station',
+              description: 'Explore the historic station',
+              location: 'Tokyo Station',
+              duration: 120,
+              cost: 25.0,
+              type: 'sightseeing',
+              costEstimate: {
+                category: 'transport',
+                estimatedCost: 25.0,
+                currency: 'USD',
+                confidence: 0.8,
+              },
+            },
+          ],
+        },
+      ]),
+      enhanceActivity: jest.fn(),
+      estimateActivityCost: jest.fn().mockResolvedValue({
+        category: 'entertainment',
+        estimatedCost: 25.0,
+        currency: 'USD',
+        confidence: 0.8,
+      }),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -87,12 +187,34 @@ describe('ItineraryService', () => {
           provide: getRepositoryToken(TripEntity),
           useValue: mockTripRepository,
         },
+        {
+          provide: getRepositoryToken(ActivityCostEntity),
+          useValue: mockActivityCostRepository,
+        },
+        {
+          provide: getRepositoryToken(BudgetTrackingEntity),
+          useValue: mockBudgetTrackingRepository,
+        },
+        {
+          provide: CurrencyService,
+          useValue: mockCurrencyService,
+        },
+        {
+          provide: AIService,
+          useValue: mockAIService,
+        },
       ],
     }).compile();
 
     itineraryService = module.get<ItineraryService>(ItineraryService);
     itineraryRepository = module.get(getRepositoryToken(ItineraryEntity));
     tripRepository = module.get(getRepositoryToken(TripEntity));
+    activityCostRepository = module.get(getRepositoryToken(ActivityCostEntity));
+    budgetTrackingRepository = module.get(
+      getRepositoryToken(BudgetTrackingEntity),
+    );
+    currencyService = module.get(CurrencyService);
+    aiService = module.get(AIService);
   });
 
   afterEach(() => {
@@ -113,6 +235,8 @@ describe('ItineraryService', () => {
       itineraryRepository.delete.mockResolvedValue({} as DeleteResult);
       itineraryRepository.create.mockReturnValue(mockItineraryEntity);
       itineraryRepository.save.mockResolvedValue(mockItineraryEntity);
+      activityCostRepository.create.mockReturnValue({} as ActivityCostEntity);
+      activityCostRepository.save.mockResolvedValue({} as ActivityCostEntity);
 
       // Act
       const actualResult = await itineraryService.generateItinerary(
@@ -153,7 +277,7 @@ describe('ItineraryService', () => {
         ...mockTripEntity,
         startDate: undefined,
         endDate: undefined,
-      };
+      } as unknown as TripEntity;
       tripRepository.findOne.mockResolvedValue(tripWithoutDates);
 
       // Act & Assert

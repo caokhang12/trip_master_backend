@@ -149,9 +149,6 @@ export class CurrencyService {
     }
   }
 
-  /**
-   * Convert currency amount
-   */
   async convertCurrency(
     amount: number,
     from: string,

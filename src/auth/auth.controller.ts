@@ -53,21 +53,14 @@ interface RequestWithUser extends Request {
 }
 
 /**
- * Controller for handling authentication operations
+ * Authentication controller with JWT-based user management
  */
 @ApiTags('Authentication')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  /**
-   * Register a new user
-   */
-  @ApiOperation({
-    summary: 'Register a new user account',
-    description:
-      'Create a new user account with email and password. Email verification will be sent.',
-  })
+  @ApiOperation({ summary: 'Register new user account' })
   @ApiBody({ type: RegisterDto })
   @ApiResponse({
     status: 201,
@@ -94,14 +87,7 @@ export class AuthController {
     return ResponseUtil.success(result, HttpStatus.CREATED);
   }
 
-  /**
-   * Login user with email and password
-   */
-  @ApiOperation({
-    summary: 'User login',
-    description:
-      'Authenticate user with email and password. Returns JWT tokens on success.',
-  })
+  @ApiOperation({ summary: 'Authenticate user with email and password' })
   @ApiBody({ type: LoginDto })
   @ApiResponse({
     status: 200,
@@ -129,13 +115,7 @@ export class AuthController {
     return ResponseUtil.success(result);
   }
 
-  /**
-   * Refresh access token using refresh token
-   */
-  @ApiOperation({
-    summary: 'Refresh access token',
-    description: 'Generate new access token using valid refresh token',
-  })
+  @ApiOperation({ summary: 'Refresh access token using refresh token' })
   @ApiBody({ type: RefreshTokenDto })
   @ApiResponse({
     status: 200,
@@ -162,9 +142,6 @@ export class AuthController {
     return ResponseUtil.success(result);
   }
 
-  /**
-   * Social login with provider
-   */
   @ApiOperation({
     summary: 'Social media login',
     description:
@@ -196,9 +173,6 @@ export class AuthController {
     return ResponseUtil.success(result);
   }
 
-  /**
-   * Verify email with verification token
-   */
   @ApiOperation({
     summary: 'Verify email address',
     description: 'Verify user email address using token sent via email',
@@ -229,9 +203,6 @@ export class AuthController {
     return ResponseUtil.success({ verified: result });
   }
 
-  /**
-   * Resend email verification
-   */
   @ApiOperation({
     summary: 'Resend email verification',
     description: 'Resend email verification link to user email address',
@@ -262,9 +233,6 @@ export class AuthController {
     return ResponseUtil.success({ sent: result });
   }
 
-  /**
-   * Send forgot password email
-   */
   @ApiOperation({
     summary: 'Request password reset',
     description: 'Send password reset instructions to user email address',
@@ -295,9 +263,6 @@ export class AuthController {
     return ResponseUtil.success({ sent: result });
   }
 
-  /**
-   * Reset password with reset token
-   */
   @ApiOperation({
     summary: 'Reset password',
     description: 'Reset user password using token received via email',
@@ -328,9 +293,6 @@ export class AuthController {
     return ResponseUtil.success({ reset: result });
   }
 
-  /**
-   * Logout user (requires authentication)
-   */
   @ApiOperation({
     summary: 'User logout',
     description:

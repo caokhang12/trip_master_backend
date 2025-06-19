@@ -1,23 +1,5 @@
-import {
-  Controller,
-  Post,
-  Delete,
-  Param,
-  UseGuards,
-  UseInterceptors,
-  UploadedFile,
-  UploadedFiles,
-  Request,
-  BadRequestException,
-  ParseUUIDPipe,
-} from '@nestjs/common';
-import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiConsumes,
-  ApiBearerAuth,
-} from '@nestjs/swagger';
+import { Controller, Delete, Param, UseGuards, Request } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { UploadService } from './upload.service';
 
@@ -26,7 +8,9 @@ interface AuthRequest extends Request {
 }
 
 /**
- * Simplified upload controller
+ * Simplified upload controller for direct file operations
+ * Note: Trip image uploads are handled by TripController for better business logic
+ * Note: Avatar uploads are handled by UserController for better business logic
  */
 @ApiTags('Upload')
 @Controller('api/v1/upload')
@@ -34,65 +18,6 @@ interface AuthRequest extends Request {
 @ApiBearerAuth()
 export class UploadController {
   constructor(private readonly uploadService: UploadService) {}
-
-  /**
-   * Upload user avatar
-   */
-  @Post('avatar')
-  @ApiOperation({ summary: 'Upload user avatar' })
-  @ApiConsumes('multipart/form-data')
-  @UseInterceptors(
-    FileInterceptor('file', {
-      limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
-      fileFilter: (req, file, cb) => {
-        if (file.mimetype.match(/^image\/(jpeg|jpg|png|webp)$/)) {
-          cb(null, true);
-        } else {
-          cb(new BadRequestException('Only images allowed'), false);
-        }
-      },
-    }),
-  )
-  async uploadAvatar(
-    @Request() req: AuthRequest,
-    @UploadedFile() file: Express.Multer.File,
-  ) {
-    if (!file) {
-      throw new BadRequestException('No file uploaded');
-    }
-
-    return this.uploadService.uploadAvatar(req.user.id, file);
-  }
-
-  /**
-   * Upload trip images
-   */
-  @Post('trip/:tripId/images')
-  @ApiOperation({ summary: 'Upload trip images' })
-  @ApiConsumes('multipart/form-data')
-  @UseInterceptors(
-    FilesInterceptor('files', 10, {
-      limits: { fileSize: 5 * 1024 * 1024 }, // 5MB per file
-      fileFilter: (req, file, cb) => {
-        if (file.mimetype.match(/^image\/(jpeg|jpg|png|webp)$/)) {
-          cb(null, true);
-        } else {
-          cb(new BadRequestException('Only images allowed'), false);
-        }
-      },
-    }),
-  )
-  async uploadTripImages(
-    @Request() req: AuthRequest,
-    @Param('tripId', ParseUUIDPipe) tripId: string,
-    @UploadedFiles() files: Express.Multer.File[],
-  ) {
-    if (!files || files.length === 0) {
-      throw new BadRequestException('No files uploaded');
-    }
-
-    return this.uploadService.uploadTripImages(req.user.id, tripId, files);
-  }
 
   /**
    * Delete file

@@ -1,10 +1,24 @@
-import { Controller, Get, Put, Body, UseGuards, Req } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Put,
+  Post,
+  Delete,
+  Body,
+  UseGuards,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
+  Req,
+} from '@nestjs/common';
 import { Request } from 'express';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiTags,
   ApiOperation,
   ApiResponse,
   ApiBody,
+  ApiConsumes,
   ApiBearerAuth,
   ApiUnauthorizedResponse,
   ApiBadRequestResponse,
@@ -26,39 +40,24 @@ import {
   AdminTestResponseDto,
 } from '../shared/dto/response.dto';
 import {
-  Post,
-  Delete,
-  UseInterceptors,
-  UploadedFile,
-  BadRequestException,
-} from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiConsumes } from '@nestjs/swagger';
-import {
   FileUploadDto,
   UserProfileWithAvatarDto,
 } from '../shared/dto/file-operations.dto';
+import { FileValidationUtil } from '../shared/utils/file-validation.util';
 
 interface RequestWithUser extends Request {
   user: { id: string };
 }
 
 /**
- * Controller for handling user profile operations
+ * User profile management with avatar upload integration
  */
 @ApiTags('Users')
 @Controller('users')
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
-  /**
-   * Get user profile (requires authentication)
-   */
-  @ApiOperation({
-    summary: 'Get user profile',
-    description:
-      'Retrieve authenticated user profile information including preferences',
-  })
+  @ApiOperation({ summary: 'Get authenticated user profile and preferences' })
   @ApiBearerAuth()
   @ApiResponse({
     status: 200,
@@ -92,9 +91,6 @@ export class UserController {
     return ResponseUtil.success(profileData);
   }
 
-  /**
-   * Update user profile (requires authentication)
-   */
   @ApiOperation({
     summary: 'Update user profile',
     description:
@@ -154,9 +150,6 @@ export class UserController {
     });
   }
 
-  /**
-   * Upload user avatar
-   */
   @ApiOperation({
     summary: 'Upload user avatar',
     description: 'Upload and set user profile avatar image',
@@ -176,14 +169,8 @@ export class UserController {
   @UseGuards(JwtAuthGuard)
   @UseInterceptors(
     FileInterceptor('file', {
-      limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
-      fileFilter: (req, file, cb) => {
-        if (file.mimetype.match(/^image\/(jpeg|jpg|png|webp)$/)) {
-          cb(null, true);
-        } else {
-          cb(new BadRequestException('Only images allowed'), false);
-        }
-      },
+      limits: FileValidationUtil.getMulterLimits(),
+      fileFilter: FileValidationUtil.getMulterFileFilter(),
     }),
   )
   @Post('avatar')
@@ -203,9 +190,6 @@ export class UserController {
     return ResponseUtil.success(updatedProfile);
   }
 
-  /**
-   * Remove user avatar
-   */
   @ApiOperation({
     summary: 'Remove user avatar',
     description: 'Remove current user profile avatar',
@@ -223,27 +207,5 @@ export class UserController {
   ): Promise<BaseResponse<UserProfileData>> {
     const updatedProfile = await this.userService.removeUserAvatar(req.user.id);
     return ResponseUtil.success(updatedProfile);
-  }
-
-  /**
-   * Get enhanced user profile with avatar info
-   */
-  @ApiOperation({
-    summary: 'Get enhanced user profile',
-    description: 'Get user profile with avatar and image information',
-  })
-  @ApiBearerAuth()
-  @ApiResponse({
-    status: 200,
-    description: 'Enhanced profile retrieved successfully',
-    type: UserProfileWithAvatarDto,
-  })
-  @UseGuards(JwtAuthGuard)
-  @Get('profile/enhanced')
-  async getEnhancedProfile(
-    @Req() req: RequestWithUser,
-  ): Promise<BaseResponse<UserProfileData>> {
-    const profile = await this.userService.getUserProfile(req.user.id);
-    return ResponseUtil.success(profile);
   }
 }
