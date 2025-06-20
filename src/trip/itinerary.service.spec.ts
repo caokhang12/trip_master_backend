@@ -10,7 +10,10 @@ import { BudgetTrackingEntity } from '../schemas/budget-tracking.entity';
 import { UserEntity } from '../schemas/user.entity';
 import { CurrencyService } from '../currency/services/currency.service';
 import { AIService } from '../shared/services/ai.service';
-import { UpdateItineraryDto, GenerateItineraryDto } from './dto/itinerary.dto';
+import {
+  UpdateItineraryDto,
+  GenerateItineraryOptionsDto,
+} from './dto/itinerary.dto';
 
 describe('ItineraryService', () => {
   let itineraryService: ItineraryService;
@@ -222,7 +225,7 @@ describe('ItineraryService', () => {
   });
 
   describe('generateItinerary', () => {
-    const inputGenerateDto: GenerateItineraryDto = {
+    const inputGenerateDto: GenerateItineraryOptionsDto = {
       travelStyle: 'cultural',
       interests: ['temples', 'museums', 'food'],
       includeCosts: true,

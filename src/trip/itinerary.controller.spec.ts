@@ -3,7 +3,10 @@ import { ItineraryController } from './itinerary.controller';
 import { ItineraryService } from './itinerary.service';
 import { ResponseUtil } from '../shared/utils/response.util';
 import { HttpStatus } from '@nestjs/common';
-import { UpdateItineraryDto, GenerateItineraryDto } from './dto/itinerary.dto';
+import {
+  UpdateItineraryDto,
+  GenerateItineraryOptionsDto,
+} from './dto/itinerary.dto';
 import { UpdateActivityCostDto } from './dto/cost.dto';
 import { AuthRequest } from './interfaces/trip.interface';
 
@@ -38,7 +41,7 @@ describe('ItineraryController', () => {
   describe('generateItinerary', () => {
     it('should generate AI-powered itinerary successfully', async () => {
       const tripId = 'trip-123';
-      const generateDto: GenerateItineraryDto = {
+      const generateDto: GenerateItineraryOptionsDto = {
         travelStyle: 'cultural',
         interests: ['temples', 'food'],
         includeCosts: true,

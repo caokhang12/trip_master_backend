@@ -4,8 +4,6 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
 import { ErrorUtilService } from './utils/error.util';
 import { PaginationUtilService } from './utils/pagination.util';
-import { AIService } from './services/ai.service';
-import { APIThrottleService } from './services/api-throttle.service';
 
 /**
  * Global shared module containing database, JWT, configuration, and utility services
@@ -41,19 +39,7 @@ import { APIThrottleService } from './services/api-throttle.service';
       }),
     }),
   ],
-  providers: [
-    ErrorUtilService,
-    PaginationUtilService,
-    AIService,
-    APIThrottleService,
-  ],
-  exports: [
-    ConfigModule,
-    JwtModule,
-    ErrorUtilService,
-    PaginationUtilService,
-    AIService,
-    APIThrottleService,
-  ],
+  providers: [ErrorUtilService, PaginationUtilService],
+  exports: [ConfigModule, JwtModule, ErrorUtilService, PaginationUtilService],
 })
 export class SharedModule {}

@@ -4,6 +4,7 @@ import { TripController } from './trip.controller';
 import { PublicTripController } from './public-trip.controller';
 import { ItineraryController } from './itinerary.controller';
 import { CostTrackingController } from './cost-tracking.controller';
+import { TripAIController } from './trip-ai.controller';
 import { TripService } from './trip.service';
 import { ItineraryService } from './itinerary.service';
 import { TripEntity } from '../schemas/trip.entity';
@@ -16,6 +17,7 @@ import { CurrencyModule } from '../currency/currency.module';
 import { CountryModule } from '../shared/services/country.module';
 import { SharedModule } from '../shared/shared.module';
 import { UploadModule } from '../upload/upload.module';
+import { AIModule } from '../shared/ai.module';
 
 /**
  * Modular trip module with separated controllers for better maintainability
@@ -34,12 +36,14 @@ import { UploadModule } from '../upload/upload.module';
     CountryModule,
     SharedModule,
     UploadModule,
+    AIModule,
   ],
   controllers: [
     TripController,
     PublicTripController,
     ItineraryController,
     CostTrackingController,
+    TripAIController,
   ],
   providers: [TripService, ItineraryService],
   exports: [TripService, ItineraryService],

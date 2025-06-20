@@ -16,15 +16,21 @@ import {
   ApiParam,
   ApiBody,
 } from '@nestjs/swagger';
-import { Request } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ItineraryService } from './itinerary.service';
 import { ResponseUtil } from '../shared/utils/response.util';
 import { BaseResponse } from '../shared/types/base-response.types';
-import { UpdateItineraryDto, GenerateItineraryDto } from './dto/itinerary.dto';
+import {
+  UpdateItineraryDto,
+  GenerateItineraryOptionsDto,
+} from './dto/itinerary.dto';
 import { UpdateActivityCostDto } from './dto/cost.dto';
 import { BaseResponseDto, ErrorResponseDto } from '../shared/dto/response.dto';
 import { AuthRequest } from '../shared/interfaces/auth.interface';
+import {
+  LocationSuggestionsDto,
+  CostEstimationDto,
+} from '../shared/dto/ai-request.dto';
 
 /**
  * Controller for itinerary and cost tracking operations
@@ -51,7 +57,7 @@ export class ItineraryController {
     example: '123e4567-e89b-12d3-a456-426614174000',
   })
   @ApiBody({
-    type: GenerateItineraryDto,
+    type: GenerateItineraryOptionsDto,
     description: 'AI generation preferences and parameters',
     required: false,
   })
@@ -69,7 +75,7 @@ export class ItineraryController {
   async generateItinerary(
     @Req() req: AuthRequest,
     @Param('tripId') tripId: string,
-    @Body() generateDto: GenerateItineraryDto,
+    @Body() generateDto: GenerateItineraryOptionsDto,
   ): Promise<BaseResponse<any>> {
     const itinerary = await this.itineraryService.generateItinerary(
       tripId,
@@ -165,5 +171,79 @@ export class ItineraryController {
       updateDto,
     );
     return ResponseUtil.success(result);
+  }
+
+  /**
+   * Generate AI-powered location suggestions
+   */
+  @ApiOperation({
+    summary: 'Generate AI-powered location suggestions',
+    description:
+      'Get personalized activity suggestions based on location and preferences',
+  })
+  @ApiParam({
+    name: 'tripId',
+    type: String,
+    description: 'Trip ID (UUID)',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @ApiBody({
+    type: LocationSuggestionsDto,
+    description: 'Location and preference parameters for suggestions',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'AI suggestions generated successfully',
+    type: BaseResponseDto,
+  })
+  @Post('ai/suggestions')
+  async generateLocationSuggestions(
+    @Req() req: AuthRequest,
+    @Param('tripId') tripId: string,
+    @Body() suggestionsDto: LocationSuggestionsDto,
+  ): Promise<BaseResponse<any>> {
+    const suggestions = await this.itineraryService.generateLocationSuggestions(
+      tripId,
+      req.user.id,
+      suggestionsDto,
+    );
+    return ResponseUtil.success(suggestions);
+  }
+
+  /**
+   * Generate AI-powered cost estimation
+   */
+  @ApiOperation({
+    summary: 'Generate AI-powered cost estimation',
+    description:
+      'Get intelligent cost estimates for activities and destinations',
+  })
+  @ApiParam({
+    name: 'tripId',
+    type: String,
+    description: 'Trip ID (UUID)',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @ApiBody({
+    type: CostEstimationDto,
+    description: 'Cost estimation parameters',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Cost estimation generated successfully',
+    type: BaseResponseDto,
+  })
+  @Post('ai/cost-estimation')
+  async generateCostEstimation(
+    @Req() req: AuthRequest,
+    @Param('tripId') tripId: string,
+    @Body() costDto: CostEstimationDto,
+  ): Promise<BaseResponse<any>> {
+    const estimation = await this.itineraryService.generateCostEstimation(
+      tripId,
+      req.user.id,
+      costDto,
+    );
+    return ResponseUtil.success(estimation);
   }
 }

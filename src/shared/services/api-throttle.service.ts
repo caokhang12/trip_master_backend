@@ -1,4 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { AIUsageMetrics } from '../interfaces/ai.interface';
 
 interface ServiceLimits {
   daily?: number;
@@ -18,7 +20,8 @@ type SupportedServices =
   | 'openweather'
   | 'exchangerate'
   | 'nominatim'
-  | 'cloudinary';
+  | 'cloudinary'
+  | 'openai';
 
 /**
  * Service to monitor and throttle API usage to stay within free tier limits
@@ -34,6 +37,7 @@ export class APIThrottleService {
     exchangerate: { monthly: 1500, daily: 50 },
     nominatim: { daily: 10000, hourly: 1000 }, // Very generous limits
     cloudinary: { daily: 2000, monthly: 25000 }, // Free tier: 25GB storage, 25GB bandwidth
+    openai: { daily: 100, hourly: 10 }, // Conservative limits for cost control
   };
 
   // In-memory storage for development - should use Redis in production
@@ -211,5 +215,69 @@ export class APIThrottleService {
       daily: Math.max(0, nextDayReset.getTime() - now.getTime()),
       monthly: Math.max(0, nextMonthReset.getTime() - now.getTime()),
     };
+  }
+
+  /**
+   * Check OpenAI rate limits and track usage with error handling
+   */
+  checkRateLimit(userId: string, requestType: string): void {
+    const canUse = this.checkAndLog('openai', userId);
+    if (!canUse) {
+      const stats = this.getUsageStats('openai', userId);
+      this.logger.warn(`Rate limit check for ${requestType}`);
+      throw new BadRequestException(
+        `OpenAI rate limit exceeded. Current usage: ${stats.usage.hourly}/${stats.limits?.hourly} hourly, ${stats.usage.daily}/${stats.limits?.daily} daily`,
+      );
+    }
+  }
+
+  /**
+   * Log OpenAI API usage with token and cost tracking
+   */
+  logUsage(userId: string, metrics: AIUsageMetrics): void {
+    try {
+      // Log basic usage through existing system
+      this.checkAndLog('openai', userId);
+
+      // Additional logging for cost tracking
+      this.logger.debug(
+        `OpenAI usage logged for user ${userId}: ${metrics.tokensUsed} tokens, $${metrics.cost.toFixed(4)} cost, type: ${metrics.requestType}`,
+      );
+
+      if (!metrics.success) {
+        this.logger.warn(
+          `Failed OpenAI request for user ${userId}: ${metrics.requestType}`,
+        );
+      }
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(
+        `Failed to log OpenAI usage for user ${userId}: ${errorMessage}`,
+      );
+    }
+  }
+
+  /**
+   * Calculate estimated cost for OpenAI request
+   */
+  calculateOpenAICost(tokens: number, model: string = 'gpt-3.5-turbo'): number {
+    // GPT-3.5-turbo pricing (approximate average for input/output)
+    const costPerToken = model.includes('gpt-4') ? 0.00006 : 0.000002;
+    return tokens * costPerToken;
+  }
+
+  /**
+   * Check if user can make OpenAI request
+   */
+  canMakeOpenAIRequest(userId: string): boolean {
+    return this.checkAndLog('openai', userId);
+  }
+
+  /**
+   * Get OpenAI usage statistics for user
+   */
+  getOpenAIUsageStats(userId: string) {
+    return this.getUsageStats('openai', userId);
   }
 }

@@ -153,7 +153,7 @@ export class UpdateItineraryDto {
 /**
  * Generate AI itinerary DTO
  */
-export class GenerateItineraryDto {
+export class GenerateItineraryOptionsDto {
   @ApiPropertyOptional({
     description: 'Travel style preference',
     example: 'cultural',

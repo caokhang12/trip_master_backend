@@ -2,6 +2,7 @@ import {
   Injectable,
   BadRequestException,
   NotFoundException,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -9,7 +10,10 @@ import { ItineraryEntity } from '../schemas/itinerary.entity';
 import { TripEntity } from '../schemas/trip.entity';
 import { ActivityCostEntity } from '../schemas/activity-cost.entity';
 import { BudgetTrackingEntity } from '../schemas/budget-tracking.entity';
-import { UpdateItineraryDto, GenerateItineraryDto } from './dto/itinerary.dto';
+import {
+  UpdateItineraryDto,
+  GenerateItineraryOptionsDto,
+} from './dto/itinerary.dto';
 import {
   ActivityCostDto,
   UpdateActivityCostDto,
@@ -17,6 +21,10 @@ import {
   BudgetSummaryDto,
   BudgetCategoryDto,
 } from './dto/cost.dto';
+import {
+  LocationSuggestionsDto,
+  CostEstimationDto,
+} from '../shared/dto/ai-request.dto';
 import { CurrencyService } from '../currency/services/currency.service';
 import { AIService } from '../shared/services/ai.service';
 import { TripValidationUtil } from '../shared/utils/trip-validation.util';
@@ -24,12 +32,18 @@ import {
   ActivityWithCosts,
   ItineraryWithCosts,
 } from './interfaces/trip.interface';
+import {
+  SaveGeneratedItineraryDto,
+  SaveItineraryResponseDto,
+} from '../shared/dto/save-itinerary.dto';
 
 /**
  * Service for managing trip itineraries and AI integration with cost tracking
  */
 @Injectable()
 export class ItineraryService {
+  private readonly logger = new Logger(ItineraryService.name);
+
   constructor(
     @InjectRepository(ItineraryEntity)
     private readonly itineraryRepository: Repository<ItineraryEntity>,
@@ -59,7 +73,7 @@ export class ItineraryService {
   async generateItinerary(
     tripId: string,
     userId: string,
-    generateDto: GenerateItineraryDto,
+    generateDto: GenerateItineraryOptionsDto,
   ): Promise<ItineraryWithCosts[]> {
     // Validate trip ownership and dates
     const trip = await TripValidationUtil.validateTripOwnership(
@@ -205,7 +219,7 @@ export class ItineraryService {
   private generateAIItinerary(
     trip: TripEntity,
     tripDays: number,
-    generateDto: GenerateItineraryDto,
+    generateDto: GenerateItineraryOptionsDto,
   ): any[][] {
     // This is a placeholder implementation
     // In a real implementation, you would call an AI service like OpenAI
@@ -312,7 +326,7 @@ export class ItineraryService {
       const activity = activities[index];
 
       // Get cost estimation from AI service
-      const costEstimate = await this.aiService.estimateActivityCost(
+      const costEstimate = this.aiService.estimateActivityCost(
         activity,
         trip.destinationCountry || trip.destinationName,
         trip.currency,
@@ -577,6 +591,70 @@ export class ItineraryService {
   }
 
   /**
+   * Generate AI-powered location suggestions
+   */
+  async generateLocationSuggestions(
+    tripId: string,
+    userId: string,
+    suggestionsDto: LocationSuggestionsDto,
+  ): Promise<any[]> {
+    // Validate trip ownership
+    await TripValidationUtil.validateTripOwnership(
+      this.tripRepository,
+      tripId,
+      userId,
+    );
+
+    try {
+      const suggestions = await this.aiService.generateLocationSuggestions(
+        suggestionsDto.location,
+        suggestionsDto.travelStyle,
+        suggestionsDto.budget,
+        suggestionsDto.interests,
+      );
+
+      return suggestions;
+    } catch (error) {
+      this.logger.error(
+        `Failed to generate location suggestions: ${error.message}`,
+      );
+      throw new BadRequestException('Failed to generate location suggestions');
+    }
+  }
+
+  /**
+   * Generate AI-powered cost estimation
+   */
+  async generateCostEstimation(
+    tripId: string,
+    userId: string,
+    costDto: CostEstimationDto,
+  ): Promise<any> {
+    // Validate trip ownership
+    await TripValidationUtil.validateTripOwnership(
+      this.tripRepository,
+      tripId,
+      userId,
+    );
+
+    try {
+      const estimation = await this.aiService.generateCostEstimation(
+        costDto.destination,
+        costDto.activityType,
+        costDto.duration,
+        costDto.travelers || 1,
+        costDto.travelStyle || 'mid-range',
+        userId,
+      );
+
+      return estimation;
+    } catch (error) {
+      this.logger.error(`Failed to generate cost estimation: ${error.message}`);
+      throw new BadRequestException('Failed to generate cost estimation');
+    }
+  }
+
+  /**
    * Update itinerary costs based on activity costs
    */
   private async updateItineraryCosts(itineraryId: string): Promise<void> {
@@ -632,6 +710,106 @@ export class ItineraryService {
         existingEntry.spentAmount = spentAmount;
         await this.budgetTrackingRepository.save(existingEntry);
       }
+    }
+  }
+
+  /**
+   * Save generated AI itinerary to database if user chooses to
+   */
+  async saveGeneratedItinerary(
+    tripId: string,
+    userId: string,
+    saveDto: SaveGeneratedItineraryDto,
+  ): Promise<SaveItineraryResponseDto> {
+    // If user chose not to save, return appropriate response
+    if (!saveDto.saveToDatabase) {
+      return {
+        saved: false,
+        message: 'Itinerary not saved as per user preference',
+      };
+    }
+
+    // Validate trip ownership
+    const trip = await TripValidationUtil.validateTripOwnership(
+      this.tripRepository,
+      tripId,
+      userId,
+    );
+
+    // Clear existing itinerary if any
+    await this.itineraryRepository.delete({ tripId });
+
+    const itineraryIds: string[] = [];
+
+    try {
+      // Save each day's itinerary
+      for (const day of saveDto.itinerary.days) {
+        const itineraryEntity = this.itineraryRepository.create({
+          tripId,
+          dayNumber: day.dayNumber,
+          date: new Date(day.date),
+          activities: day.activities,
+          aiGenerated: true, // This is AI-generated
+          userModified: false,
+          estimatedCost: day.dailyBudget || 0,
+          costCurrency: saveDto.itinerary.currency || 'VND',
+        });
+
+        const saved = await this.itineraryRepository.save(itineraryEntity);
+        itineraryIds.push(saved.id);
+
+        // Create activity costs for each activity with estimated costs
+        for (
+          let activityIndex = 0;
+          activityIndex < day.activities.length;
+          activityIndex++
+        ) {
+          const activity = day.activities[activityIndex];
+          if (activity.estimatedCost && activity.estimatedCost > 0) {
+            const activityCost = this.activityCostRepository.create({
+              itineraryId: saved.id,
+              activityIndex,
+              costType: activity.category || 'activities',
+              estimatedAmount: activity.estimatedCost,
+              currency: saveDto.itinerary.currency || 'VND',
+              costSource: 'AI_GENERATED',
+              notes: `AI estimated cost for ${activity.name}`,
+            });
+
+            await this.activityCostRepository.save(activityCost);
+          }
+        }
+      }
+
+      // Update trip with total estimated cost
+      if (saveDto.itinerary.totalEstimatedCost) {
+        trip.budget = saveDto.itinerary.totalEstimatedCost;
+        trip.currency = saveDto.itinerary.currency || 'VND';
+        await this.tripRepository.save(trip);
+      }
+
+      this.logger.log(
+        `Saved AI-generated itinerary for trip ${tripId} with ${itineraryIds.length} days`,
+      );
+
+      return {
+        saved: true,
+        message: `Itinerary saved successfully with ${itineraryIds.length} days`,
+        itineraryIds,
+      };
+    } catch (error) {
+      this.logger.error(
+        `Failed to save AI-generated itinerary for trip ${tripId}: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`,
+      );
+
+      // Cleanup partially saved data
+      if (itineraryIds.length > 0) {
+        await this.itineraryRepository.delete(itineraryIds);
+      }
+
+      throw new BadRequestException('Failed to save itinerary to database');
     }
   }
 }
