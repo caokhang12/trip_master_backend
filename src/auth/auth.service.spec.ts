@@ -8,6 +8,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { UserService } from '../users/user.service';
+import { AuthTokenUtil } from './utils/auth-token.util';
 import { UserEntity } from '../schemas/user.entity';
 import { UserRole } from '../shared/types/base-response.types';
 
@@ -70,7 +71,7 @@ describe('AuthService', () => {
       };
       return config[key];
     }),
-  };
+  } as any;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -83,6 +84,9 @@ describe('AuthService', () => {
     }).compile();
 
     authService = module.get<AuthService>(AuthService);
+
+    // Initialize AuthTokenUtil with config service
+    AuthTokenUtil.initialize(mockConfigService);
   });
 
   afterEach(() => {

@@ -9,7 +9,7 @@ interface JwtPayload {
   email: string;
 }
 
-interface AuthRequest {
+interface RefreshTokenRequest {
   body: {
     refreshToken: string;
   };
@@ -68,7 +68,7 @@ export class JwtRefreshStrategy extends PassportStrategy(
   }
 
   async validate(
-    req: AuthRequest,
+    req: RefreshTokenRequest,
     payload: JwtPayload,
   ): Promise<{ id: string; email: string; role: string }> {
     const refreshToken = req.body.refreshToken;

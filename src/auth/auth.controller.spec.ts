@@ -1,13 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { HttpStatus } from '@nestjs/common';
-import { Request } from 'express';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { UserRole } from '../shared/types/base-response.types';
-
-interface RequestWithUser extends Request {
-  user: { id: string };
-}
+import { AuthRequest } from '../shared/interfaces/auth.interface';
 
 describe('AuthController', () => {
   let authController: AuthController;
@@ -207,8 +203,11 @@ describe('AuthController', () => {
     it('should logout user successfully', async () => {
       // Arrange
       const mockRequest = {
-        user: { id: '123e4567-e89b-12d3-a456-426614174000' },
-      } as RequestWithUser;
+        user: {
+          id: '123e4567-e89b-12d3-a456-426614174000',
+          email: 'test@example.com',
+        },
+      } as AuthRequest;
       mockAuthService.logout.mockResolvedValue(true);
 
       // Act

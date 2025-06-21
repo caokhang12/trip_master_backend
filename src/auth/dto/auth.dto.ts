@@ -1,38 +1,13 @@
-import {
-  IsEmail,
-  IsString,
-  MinLength,
-  IsOptional,
-  IsEnum,
-  Matches,
-  MaxLength,
-  IsIn,
-} from 'class-validator';
+import { IsOptional, IsEnum, IsString, IsIn, MaxLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import {
+  BaseEmailDto,
+  BaseTokenDto,
+  BaseEmailPasswordDto,
+  BaseTokenNewPasswordDto,
+} from './base-auth.dto';
 
-export class RegisterDto {
-  @ApiProperty({
-    description: 'User email address',
-    example: 'john.doe@example.com',
-    format: 'email',
-  })
-  @IsEmail({}, { message: 'Please provide a valid email address' })
-  email: string;
-
-  @ApiProperty({
-    description:
-      'Password with 8+ chars, uppercase, lowercase, number and special character',
-    example: 'SecurePass123!',
-    minLength: 8,
-  })
-  @IsString()
-  @MinLength(8)
-  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/, {
-    message:
-      'Password must contain at least one uppercase letter, one lowercase letter, one number and one special character',
-  })
-  password: string;
-
+export class RegisterDto extends BaseEmailPasswordDto {
   @ApiProperty({
     description: 'User first name',
     example: 'John',
@@ -79,22 +54,7 @@ export class RegisterDto {
   preferredLanguage?: string;
 }
 
-export class LoginDto {
-  @ApiProperty({
-    description: 'User email address',
-    example: 'admin@tripmaster.com',
-    format: 'email',
-  })
-  @IsEmail({}, { message: 'Please provide a valid email address' })
-  email: string;
-
-  @ApiProperty({
-    description: 'User password',
-    example: 'admin123',
-  })
-  @IsString({ message: 'Password must be a string' })
-  password: string;
-}
+export class LoginDto extends BaseEmailPasswordDto {}
 
 export class RefreshTokenDto {
   @ApiProperty({
@@ -106,57 +66,13 @@ export class RefreshTokenDto {
   refreshToken: string;
 }
 
-export class VerifyEmailDto {
-  @ApiProperty({
-    description: 'Email verification token received via email',
-    example: 'abc123def456ghi789jkl012mno345pqr678stu901',
-  })
-  @IsString({ message: 'Verification token must be a string' })
-  token: string;
-}
+export class VerifyEmailDto extends BaseTokenDto {}
 
-export class ResendVerificationDto {
-  @ApiProperty({
-    description: 'User email address to resend verification to',
-    example: 'john.doe@example.com',
-    format: 'email',
-  })
-  @IsEmail({}, { message: 'Please provide a valid email address' })
-  email: string;
-}
+export class ResendVerificationDto extends BaseEmailDto {}
 
-export class ForgotPasswordDto {
-  @ApiProperty({
-    description: 'User email address to send password reset instructions',
-    example: 'john.doe@example.com',
-    format: 'email',
-  })
-  @IsEmail({}, { message: 'Please provide a valid email address' })
-  email: string;
-}
+export class ForgotPasswordDto extends BaseEmailDto {}
 
-export class ResetPasswordDto {
-  @ApiProperty({
-    description: 'Password reset token received via email',
-    example: 'abc123def456ghi789jkl012mno345pqr678stu901',
-  })
-  @IsString({ message: 'Reset token must be a string' })
-  token: string;
-
-  @ApiProperty({
-    description:
-      'New password - must contain at least 8 characters with uppercase, lowercase, number and special character',
-    example: 'NewSecurePass123!',
-    minLength: 8,
-  })
-  @IsString({ message: 'Password must be a string' })
-  @MinLength(8, { message: 'Password must be at least 8 characters long' })
-  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/, {
-    message:
-      'Password must contain at least one uppercase letter, one lowercase letter, one number and one special character',
-  })
-  newPassword: string;
-}
+export class ResetPasswordDto extends BaseTokenNewPasswordDto {}
 
 export class SocialLoginDto {
   @ApiProperty({

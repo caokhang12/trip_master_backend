@@ -2,10 +2,10 @@ import {
   Injectable,
   UnauthorizedException,
   BadRequestException,
+  OnModuleInit,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { v4 as uuidv4 } from 'uuid';
 import { UserService } from '../users/user.service';
 import {
   RegisterDto,
@@ -18,17 +18,28 @@ import {
   SocialLoginDto,
 } from './dto/auth.dto';
 import { AuthResponseData } from '../shared/types/base-response.types';
+import { AuthValidationUtil } from './utils/auth-validation.util';
+import { AuthTokenUtil } from './utils/auth-token.util';
+import { AuthResponseUtil } from './utils/auth-response.util';
 
 /**
  * Authentication service with JWT token management and security validation
+ * Optimized for performance and reduced code duplication
  */
 @Injectable()
-export class AuthService {
+export class AuthService implements OnModuleInit {
   constructor(
     private readonly userService: UserService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
   ) {}
+
+  /**
+   * Initialize service with cached configuration values
+   */
+  onModuleInit(): void {
+    AuthTokenUtil.initialize(this.configService);
+  }
 
   async register(registerDto: RegisterDto): Promise<AuthResponseData> {
     const user = await this.userService.createUser({
@@ -39,7 +50,7 @@ export class AuthService {
     });
 
     // Generate email verification token for account activation
-    const verificationToken = uuidv4();
+    const verificationToken = AuthResponseUtil.generateToken();
     await this.userService.setEmailVerificationToken(
       user.id,
       verificationToken,
@@ -48,13 +59,13 @@ export class AuthService {
     // TODO: Send verification email
     // await this.emailService.sendVerificationEmail(user.email, verificationToken);
 
-    const tokens = this.generateTokens(user.id, user.email);
-    await this.userService.updateRefreshToken(user.id, tokens.refresh_token);
+    const tokens = AuthTokenUtil.generateTokens(
+      this.jwtService,
+      user.id,
+      user.email,
+    );
 
-    return {
-      ...tokens,
-      user_profile: this.userService.transformToProfileData(user),
-    };
+    return AuthResponseUtil.executeAuthFlow(this.userService, tokens, user);
   }
 
   async login(loginDto: LoginDto): Promise<AuthResponseData> {
@@ -71,36 +82,36 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const tokens = this.generateTokens(user.id, user.email);
-    await this.userService.updateRefreshToken(user.id, tokens.refresh_token);
+    const tokens = AuthTokenUtil.generateTokens(
+      this.jwtService,
+      user.id,
+      user.email,
+    );
 
-    return {
-      ...tokens,
-      user_profile: this.userService.transformToProfileData(user),
-    };
+    return AuthResponseUtil.executeAuthFlow(this.userService, tokens, user);
   }
 
   async refreshToken(
     refreshTokenDto: RefreshTokenDto,
   ): Promise<AuthResponseData> {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-      const payload = this.jwtService.verify(refreshTokenDto.refreshToken, {
-        secret: this.configService.get('JWT_REFRESH_SECRET'),
-      }) as { sub: string; email: string };
+      const payload = AuthTokenUtil.verifyRefreshToken(
+        this.jwtService,
+        refreshTokenDto.refreshToken,
+      );
 
       const user = await this.userService.findById(payload.sub);
       if (!user || user.refreshToken !== refreshTokenDto.refreshToken) {
         throw new UnauthorizedException('Invalid refresh token');
       }
 
-      const tokens = this.generateTokens(user.id, user.email);
-      await this.userService.updateRefreshToken(user.id, tokens.refresh_token);
+      const tokens = AuthTokenUtil.generateTokens(
+        this.jwtService,
+        user.id,
+        user.email,
+      );
 
-      return {
-        ...tokens,
-        user_profile: this.userService.transformToProfileData(user),
-      };
+      return AuthResponseUtil.executeAuthFlow(this.userService, tokens, user);
     } catch {
       throw new UnauthorizedException('Invalid refresh token');
     }
@@ -111,9 +122,10 @@ export class AuthService {
    */
   async verifyEmail(verifyEmailDto: VerifyEmailDto): Promise<boolean> {
     const isVerified = await this.userService.verifyEmail(verifyEmailDto.token);
-    if (!isVerified) {
-      throw new BadRequestException('Invalid or expired verification token');
-    }
+    AuthValidationUtil.validateTokenOperation(
+      isVerified,
+      'Invalid or expired verification token',
+    );
     return true;
   }
 
@@ -130,7 +142,7 @@ export class AuthService {
       throw new BadRequestException('Email already verified');
     }
 
-    const verificationToken = uuidv4();
+    const verificationToken = AuthResponseUtil.generateToken();
     await this.userService.setEmailVerificationToken(
       user.id,
       verificationToken,
@@ -146,7 +158,7 @@ export class AuthService {
    * Send forgot password email
    */
   async forgotPassword(forgotPasswordDto: ForgotPasswordDto): Promise<boolean> {
-    const resetToken = uuidv4();
+    const resetToken = AuthResponseUtil.generateToken();
     const isUserExists = await this.userService.setPasswordResetToken(
       forgotPasswordDto.email,
       resetToken,
@@ -170,9 +182,10 @@ export class AuthService {
       resetPasswordDto.newPassword,
     );
 
-    if (!isReset) {
-      throw new BadRequestException('Invalid or expired reset token');
-    }
+    AuthValidationUtil.validateTokenOperation(
+      isReset,
+      'Invalid or expired reset token',
+    );
 
     return true;
   }
@@ -198,30 +211,5 @@ export class AuthService {
   async logout(userId: string): Promise<boolean> {
     await this.userService.updateRefreshToken(userId, null);
     return true;
-  }
-
-  /**
-   * Generate access and refresh tokens
-   */
-  private generateTokens(
-    userId: string,
-    email: string,
-  ): { access_token: string; refresh_token: string } {
-    const payload = { sub: userId, email };
-
-    const accessToken = this.jwtService.sign(payload, {
-      secret: this.configService.get('JWT_ACCESS_SECRET'),
-      expiresIn: this.configService.get('JWT_ACCESS_EXPIRES_IN'),
-    });
-
-    const refreshToken = this.jwtService.sign(payload, {
-      secret: this.configService.get('JWT_REFRESH_SECRET'),
-      expiresIn: this.configService.get('JWT_REFRESH_EXPIRES_IN'),
-    });
-
-    return {
-      access_token: accessToken,
-      refresh_token: refreshToken,
-    };
   }
 }
