@@ -8,6 +8,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { UserService } from '../users/user.service';
+import { EmailService } from '../email/email.service';
 import { AuthTokenUtil } from './utils/auth-token.util';
 import { UserEntity } from '../schemas/user.entity';
 import { UserRole } from '../shared/types/base-response.types';
@@ -51,6 +52,7 @@ describe('AuthService', () => {
     updateRefreshToken: jest.fn(),
     setEmailVerificationToken: jest.fn(),
     verifyEmail: jest.fn(),
+    verifyEmailAndGetUser: jest.fn(),
     setPasswordResetToken: jest.fn(),
     resetPassword: jest.fn(),
     transformToProfileData: jest.fn(),
@@ -59,6 +61,12 @@ describe('AuthService', () => {
   const mockJwtService = {
     sign: jest.fn(),
     verify: jest.fn(),
+  };
+
+  const mockEmailService = {
+    sendVerificationEmail: jest.fn(),
+    sendPasswordResetEmail: jest.fn(),
+    sendWelcomeEmail: jest.fn(),
   };
 
   const mockConfigService = {
@@ -80,6 +88,7 @@ describe('AuthService', () => {
         { provide: UserService, useValue: mockUserService },
         { provide: JwtService, useValue: mockJwtService },
         { provide: ConfigService, useValue: mockConfigService },
+        { provide: EmailService, useValue: mockEmailService },
       ],
     }).compile();
 
@@ -91,6 +100,9 @@ describe('AuthService', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+    mockEmailService.sendVerificationEmail.mockResolvedValue(true);
+    mockEmailService.sendPasswordResetEmail.mockResolvedValue(true);
+    mockEmailService.sendWelcomeEmail.mockResolvedValue(true);
   });
 
   describe('register', () => {
@@ -310,21 +322,32 @@ describe('AuthService', () => {
 
     it('should verify email successfully with valid token', async () => {
       // Arrange
-      mockUserService.verifyEmail.mockResolvedValue(true);
+      const mockVerifiedUser = {
+        id: '123e4567-e89b-12d3-a456-426614174000',
+        email: 'test@example.com',
+        firstName: 'John',
+        preferredLanguage: 'en',
+      };
+      mockUserService.verifyEmailAndGetUser.mockResolvedValue(mockVerifiedUser);
 
       // Act
       const actualResult = await authService.verifyEmail(inputVerifyEmailDto);
 
       // Assert
       expect(actualResult).toBe(true);
-      expect(mockUserService.verifyEmail).toHaveBeenCalledWith(
+      expect(mockUserService.verifyEmailAndGetUser).toHaveBeenCalledWith(
         inputVerifyEmailDto.token,
+      );
+      expect(mockEmailService.sendWelcomeEmail).toHaveBeenCalledWith(
+        mockVerifiedUser.email,
+        mockVerifiedUser.firstName,
+        'en',
       );
     });
 
     it('should throw BadRequestException when token is invalid', async () => {
       // Arrange
-      mockUserService.verifyEmail.mockResolvedValue(false);
+      mockUserService.verifyEmailAndGetUser.mockResolvedValue(null);
 
       // Act & Assert
       await expect(

@@ -5,7 +5,6 @@ import {
   HttpStatus,
   HttpCode,
   UseGuards,
-  Get,
   Req,
 } from '@nestjs/common';
 import {
@@ -17,6 +16,7 @@ import {
   ApiBadRequestResponse,
   ApiConflictResponse,
   ApiInternalServerErrorResponse,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
@@ -133,22 +133,18 @@ export class AuthController {
   }
 
   @ApiOperation({
-    summary: 'Social media login',
+    summary: 'Social media authentication',
     description:
-      'Authenticate user using social media provider (Google, Facebook, Apple)',
+      'Authenticate user using social media provider (Google, Facebook, Apple). Currently not implemented - returns 501 Not Implemented.',
   })
   @ApiBody({ type: SocialLoginDto })
   @ApiResponse({
-    status: 200,
-    description: 'User successfully authenticated via social provider',
-    type: AuthSuccessResponseDto,
+    status: 501,
+    description: 'Social login not yet implemented',
+    type: ErrorResponseDto,
   })
   @ApiBadRequestResponse({
     description: 'Invalid input data or validation errors',
-    type: ErrorResponseDto,
-  })
-  @ApiUnauthorizedResponse({
-    description: 'Invalid social provider token',
     type: ErrorResponseDto,
   })
   @ApiInternalServerErrorResponse({
@@ -193,6 +189,24 @@ export class AuthController {
     return AuthControllerUtil.createAuthResponse({ verified: result });
   }
 
+  @ApiOperation({
+    summary: 'Resend email verification',
+    description: 'Resend verification email to user if not yet verified',
+  })
+  @ApiBody({ type: ResendVerificationDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Verification email sent successfully',
+    type: VerificationSuccessResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'User not found or email already verified',
+    type: ErrorResponseDto,
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error',
+    type: ErrorResponseDto,
+  })
   @Post('resend-verification')
   async resendVerification(
     @Body() resendDto: ResendVerificationDto,
@@ -201,6 +215,25 @@ export class AuthController {
     return AuthControllerUtil.createAuthResponse({ sent: result });
   }
 
+  @ApiOperation({
+    summary: 'Request password reset',
+    description: 'Send password reset email to user',
+  })
+  @ApiBody({ type: ForgotPasswordDto })
+  @ApiResponse({
+    status: 200,
+    description:
+      'Password reset email sent (always returns success to prevent email enumeration)',
+    type: VerificationSuccessResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid input data or validation errors',
+    type: ErrorResponseDto,
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error',
+    type: ErrorResponseDto,
+  })
   @Post('forgot-password')
   async forgotPassword(
     @Body() forgotPasswordDto: ForgotPasswordDto,
@@ -209,6 +242,28 @@ export class AuthController {
     return AuthControllerUtil.createAuthResponse({ sent: result });
   }
 
+  @ApiOperation({
+    summary: 'Reset password with token',
+    description: 'Reset user password using token from email',
+  })
+  @ApiBody({ type: ResetPasswordDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Password successfully reset',
+    type: VerificationSuccessResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid input data or validation errors',
+    type: ErrorResponseDto,
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Invalid or expired reset token',
+    type: ErrorResponseDto,
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error',
+    type: ErrorResponseDto,
+  })
   @Post('reset-password')
   async resetPassword(
     @Body() resetPasswordDto: ResetPasswordDto,
@@ -217,6 +272,24 @@ export class AuthController {
     return AuthControllerUtil.createAuthResponse({ reset: result });
   }
 
+  @ApiOperation({
+    summary: 'Logout user',
+    description: 'Logout user by invalidating refresh token',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'User successfully logged out',
+    type: VerificationSuccessResponseDto,
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Invalid or missing JWT token',
+    type: ErrorResponseDto,
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error',
+    type: ErrorResponseDto,
+  })
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @Post('logout')
   async logout(
@@ -224,13 +297,5 @@ export class AuthController {
   ): Promise<BaseResponse<{ logout: boolean }>> {
     const result = await this.authService.logout(req.user.id);
     return AuthControllerUtil.createAuthResponse({ logout: result });
-  }
-
-  /**
-   * Admin test endpoint for smoke testing
-   */
-  @Get('admin/test')
-  adminTest(): BaseResponse<{ message: string; timestamp: Date }> {
-    return AuthControllerUtil.createAdminTestResponse('Auth');
   }
 }

@@ -4,6 +4,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { SharedModule } from './shared/shared.module';
+import { EmailModule } from './email/email.module';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './users/user.module';
 import { TripModule } from './trip/trip.module';
@@ -23,6 +24,7 @@ import { GlobalValidationPipe } from './shared/pipes/global-validation.pipe';
     }),
     DatabaseModule,
     SharedModule,
+    EmailModule,
     AuthModule,
     UserModule,
     TripModule,

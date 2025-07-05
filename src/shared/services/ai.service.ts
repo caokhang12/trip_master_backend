@@ -682,7 +682,7 @@ Return JSON format:
       // Try to complete the partial JSON
       const completed = this.completePartialJson(cleaned);
       if (completed) {
-        const parsed = JSON.parse(completed) as any;
+        const parsed = JSON.parse(completed);
 
         // Validate and enhance the parsed object
         if (

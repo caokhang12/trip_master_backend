@@ -59,7 +59,12 @@ export class JwtRefreshStrategy extends PassportStrategy(
     private readonly userService: UserService,
   ) {
     super({
-      jwtFromRequest: ExtractJwt.fromBodyField('refreshToken'),
+      jwtFromRequest: ExtractJwt.fromExtractors([
+        (request: Request) => {
+          // Extract refresh token from httpOnly cookie
+          return request?.cookies?.refreshToken;
+        },
+      ]),
       ignoreExpiration: false,
       secretOrKey:
         configService.get('JWT_REFRESH_SECRET') || 'fallback-refresh-secret',
@@ -71,7 +76,7 @@ export class JwtRefreshStrategy extends PassportStrategy(
     req: RefreshTokenRequest,
     payload: JwtPayload,
   ): Promise<{ id: string; email: string; role: string }> {
-    const refreshToken = req.body.refreshToken;
+    const refreshToken = req.cookies?.refreshToken;
     const user = await this.userService.findById(payload.sub);
 
     if (!user || user.refreshToken !== refreshToken) {

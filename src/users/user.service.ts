@@ -174,6 +174,33 @@ export class UserService {
   }
 
   /**
+   * Verify email with token and return user data
+   */
+  async verifyEmailAndGetUser(token: string): Promise<UserEntity | null> {
+    const user = await this.userRepository.findOne({
+      where: {
+        emailVerificationToken: token,
+      },
+    });
+
+    if (
+      !user ||
+      !user.emailVerificationExpires ||
+      user.emailVerificationExpires < new Date()
+    ) {
+      return null;
+    }
+
+    await this.userRepository.update(user.id, {
+      emailVerified: true,
+      emailVerificationToken: undefined,
+      emailVerificationExpires: undefined,
+    });
+
+    return user;
+  }
+
+  /**
    * Set password reset token
    */
   async setPasswordResetToken(email: string, token: string): Promise<boolean> {

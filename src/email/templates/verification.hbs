@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{#if isVietnamese}}Xác minh tài khoản{{else}}Verify Account{{/if}}</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            line-height: 1.6; 
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .container { 
+            max-width: 600px; 
+            margin: 0 auto; 
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 2px solid #007bff;
+            margin-bottom: 30px;
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+        }
+        .content {
+            padding: 0 20px;
+        }
+        h1 {
+            color: #007bff;
+            text-align: center;
+        }
+        .button { 
+            display: inline-block; 
+            padding: 15px 30px; 
+            background-color: #007bff; 
+            color: white !important; 
+            text-decoration: none; 
+            border-radius: 5px;
+            font-weight: bold;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .button:hover {
+            background-color: #0056b3;
+        }
+        .button-container {
+            text-align: center;
+        }
+        .footer { 
+            margin-top: 40px; 
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            font-size: 12px; 
+            color: #666; 
+            text-align: center;
+        }
+        .url-fallback {
+            word-break: break-all;
+            color: #007bff;
+            margin: 10px 0;
+        }
+        @media only screen and (max-width: 600px) {
+            .container {
+                margin: 10px;
+                padding: 15px;
+            }
+            .content {
+                padding: 0 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🧳 TripMaster</div>
+        </div>
+        
+        <div class="content">
+            {{#if isVietnamese}}
+                <h1>Xin chào {{firstName}}!</h1>
+                <p>Cảm ơn bạn đã đăng ký TripMaster. Chúng tôi rất vui mừng khi có bạn tham gia!</p>
+                <p>Để hoàn tất quá trình đăng ký và bắt đầu khám phá những chuyến đi tuyệt vời, vui lòng nhấp vào nút bên dưới để xác minh địa chỉ email của bạn:</p>
+                
+                <div class="button-container">
+                    <a href="{{verificationUrl}}" class="button">✅ Xác minh tài khoản</a>
+                </div>
+                
+                <p>Nếu nút không hoạt động, hãy sao chép và dán liên kết sau vào trình duyệt của bạn:</p>
+                <div class="url-fallback">{{verificationUrl}}</div>
+                
+                <p><strong>Lưu ý:</strong> Liên kết xác minh này sẽ hết hạn sau 24 giờ vì lý do bảo mật.</p>
+                <p>Nếu bạn không tạo tài khoản này, vui lòng bỏ qua email này hoặc liên hệ với chúng tôi nếu bạn có thắc mắc.</p>
+            {{else}}
+                <h1>Hello {{firstName}}!</h1>
+                <p>Thank you for signing up for TripMaster. We're excited to have you on board!</p>
+                <p>To complete your registration and start exploring amazing trips, please click the button below to verify your email address:</p>
+                
+                <div class="button-container">
+                    <a href="{{verificationUrl}}" class="button">✅ Verify Account</a>
+                </div>
+                
+                <p>If the button doesn't work, copy and paste this link into your browser:</p>
+                <div class="url-fallback">{{verificationUrl}}</div>
+                
+                <p><strong>Note:</strong> This verification link will expire in 24 hours for security reasons.</p>
+                <p>If you didn't create this account, please ignore this email or contact us if you have any concerns.</p>
+            {{/if}}
+        </div>
+        
+        <div class="footer">
+            <p>© 2025 TripMaster. All rights reserved.</p>
+            <p>{{#if isVietnamese}}Email này được gửi tự động, vui lòng không trả lời.{{else}}This is an automated email, please do not reply.{{/if}}</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -3,10 +3,12 @@ import {
   UnauthorizedException,
   BadRequestException,
   OnModuleInit,
+  Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { UserService } from '../users/user.service';
+import { EmailService } from '../email/email.service';
 import {
   RegisterDto,
   LoginDto,
@@ -28,10 +30,13 @@ import { AuthResponseUtil } from './utils/auth-response.util';
  */
 @Injectable()
 export class AuthService implements OnModuleInit {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly userService: UserService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly emailService: EmailService,
   ) {}
 
   /**
@@ -56,8 +61,17 @@ export class AuthService implements OnModuleInit {
       verificationToken,
     );
 
-    // TODO: Send verification email
-    // await this.emailService.sendVerificationEmail(user.email, verificationToken);
+    // Send verification email
+    const emailSent = await this.emailService.sendVerificationEmail(
+      user.email,
+      verificationToken,
+      user.firstName,
+      'en',
+    );
+
+    if (!emailSent) {
+      this.logger.warn(`Failed to send verification email to ${user.email}`);
+    }
 
     const tokens = AuthTokenUtil.generateTokens(
       this.jwtService,
@@ -121,11 +135,29 @@ export class AuthService implements OnModuleInit {
    * Verify email with verification token
    */
   async verifyEmail(verifyEmailDto: VerifyEmailDto): Promise<boolean> {
-    const isVerified = await this.userService.verifyEmail(verifyEmailDto.token);
+    // Get user details before verification for welcome email
+    const userResult = await this.userService.verifyEmailAndGetUser(
+      verifyEmailDto.token,
+    );
+
     AuthValidationUtil.validateTokenOperation(
-      isVerified,
+      userResult !== null,
       'Invalid or expired verification token',
     );
+
+    // Send welcome email after successful verification
+    if (userResult) {
+      const welcomeEmailSent = await this.emailService.sendWelcomeEmail(
+        userResult.email,
+        userResult.firstName,
+        (userResult.preferredLanguage as 'en' | 'vi') || 'en',
+      );
+
+      if (!welcomeEmailSent) {
+        this.logger.warn(`Failed to send welcome email to ${userResult.email}`);
+      }
+    }
+
     return true;
   }
 
@@ -148,8 +180,17 @@ export class AuthService implements OnModuleInit {
       verificationToken,
     );
 
-    // TODO: Send verification email
-    // await this.emailService.sendVerificationEmail(user.email, verificationToken);
+    // Send verification email
+    const emailSent = await this.emailService.sendVerificationEmail(
+      user.email,
+      verificationToken,
+      user.firstName,
+      (user.preferredLanguage as 'en' | 'vi') || 'en',
+    );
+
+    if (!emailSent) {
+      this.logger.warn(`Failed to send verification email to ${user.email}`);
+    }
 
     return true;
   }
@@ -165,8 +206,22 @@ export class AuthService implements OnModuleInit {
     );
 
     if (isUserExists) {
-      // TODO: Send password reset email
-      // await this.emailService.sendPasswordResetEmail(forgotPasswordDto.email, resetToken);
+      // Get user details for personalized email
+      const user = await this.userService.findByEmail(forgotPasswordDto.email);
+      if (user) {
+        const emailSent = await this.emailService.sendPasswordResetEmail(
+          forgotPasswordDto.email,
+          resetToken,
+          user.firstName,
+          (user.preferredLanguage as 'en' | 'vi') || 'en',
+        );
+
+        if (!emailSent) {
+          this.logger.warn(
+            `Failed to send password reset email to ${forgotPasswordDto.email}`,
+          );
+        }
+      }
     }
 
     // Always return true to prevent email enumeration
@@ -191,18 +246,17 @@ export class AuthService implements OnModuleInit {
   }
 
   /**
-   * Social login (placeholder implementation)
+   * Social login (not yet implemented)
+   * TODO: Implement social login validation with respective providers
    */
   socialLogin(socialLoginDto: SocialLoginDto): Promise<AuthResponseData> {
-    // TODO: Implement social login validation with respective providers
-    // For now, this is a placeholder that would validate the access token
-    // with the respective social provider and create/login user
-    console.log(
-      'Social login attempted for provider:',
-      socialLoginDto.provider,
+    this.logger.warn(
+      `Social login attempted for provider: ${socialLoginDto.provider} - Feature not implemented`,
     );
 
-    throw new BadRequestException('Social login not implemented yet');
+    throw new BadRequestException(
+      'Social login feature is not yet implemented. Please use email/password registration.',
+    );
   }
 
   /**
