@@ -6,7 +6,14 @@ import {
   HttpCode,
   UseGuards,
   Req,
+  Res,
+  Get,
+  Delete,
+  Param,
+  UnauthorizedException,
 } from '@nestjs/common';
+import { Request, Response } from 'express';
+import { Throttle } from '@nestjs/throttler';
 import {
   ApiTags,
   ApiOperation,
@@ -17,22 +24,26 @@ import {
   ApiConflictResponse,
   ApiInternalServerErrorResponse,
   ApiBearerAuth,
+  ApiParam,
+  ApiCookieAuth,
 } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+// import { AuthRateLimitGuard } from './guards/auth-rate-limit.guard';
 import {
   RegisterDto,
   LoginDto,
-  RefreshTokenDto,
   VerifyEmailDto,
   ResendVerificationDto,
   ForgotPasswordDto,
   ResetPasswordDto,
   SocialLoginDto,
 } from './dto/auth.dto';
+import { SessionDto } from './dto/session.dto';
 import {
   BaseResponse,
-  AuthResponseData,
+  SecureAuthResponseData,
+  SessionData,
 } from '../shared/types/base-response.types';
 import {
   AuthSuccessResponseDto,
@@ -40,6 +51,7 @@ import {
   VerificationSuccessResponseDto,
 } from '../shared/dto/response.dto';
 import { AuthControllerUtil } from './utils/auth-controller.util';
+import { DeviceInfoUtil } from './utils/device-info.util';
 import { AuthRequest } from '../shared/interfaces/auth.interface';
 
 /**
@@ -72,7 +84,7 @@ export class AuthController {
   @Post('register')
   async register(
     @Body() registerDto: RegisterDto,
-  ): Promise<BaseResponse<AuthResponseData>> {
+  ): Promise<BaseResponse<SecureAuthResponseData>> {
     const result = await this.authService.register(registerDto);
     return AuthControllerUtil.createAuthResponse(result, HttpStatus.CREATED);
   }
@@ -81,7 +93,8 @@ export class AuthController {
   @ApiBody({ type: LoginDto })
   @ApiResponse({
     status: 200,
-    description: 'User successfully authenticated',
+    description:
+      'User successfully authenticated. Refresh token set in HTTP-only cookie.',
     type: AuthSuccessResponseDto,
   })
   @ApiBadRequestResponse({
@@ -89,32 +102,48 @@ export class AuthController {
     type: ErrorResponseDto,
   })
   @ApiUnauthorizedResponse({
-    description: 'Invalid credentials or unverified email',
+    description: 'Invalid credentials, unverified email, or account locked',
     type: ErrorResponseDto,
   })
   @ApiInternalServerErrorResponse({
     description: 'Internal server error',
     type: ErrorResponseDto,
   })
+  @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 attempts per minute
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(
     @Body() loginDto: LoginDto,
-  ): Promise<BaseResponse<AuthResponseData>> {
-    const result = await this.authService.login(loginDto);
-    return AuthControllerUtil.createAuthResponse(result);
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<BaseResponse<SecureAuthResponseData>> {
+    const deviceInfo = DeviceInfoUtil.extractFromRequest(request);
+    const result = await this.authService.login(loginDto, deviceInfo);
+
+    // Set refresh token in HTTP-only cookie
+    response.cookie('refreshToken', result.refresh_token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      path: '/auth/refresh', // Only send cookie to refresh endpoint
+    });
+
+    // Return response without refresh_token
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { refresh_token, ...responseData } = result;
+    return AuthControllerUtil.createAuthResponse(responseData);
   }
 
-  @ApiOperation({ summary: 'Refresh access token using refresh token' })
-  @ApiBody({ type: RefreshTokenDto })
+  @ApiOperation({
+    summary: 'Refresh access token using refresh token from HTTP-only cookie',
+  })
+  @ApiCookieAuth('refreshToken')
   @ApiResponse({
     status: 200,
-    description: 'New access token generated successfully',
+    description:
+      'New access token generated successfully. New refresh token set in HTTP-only cookie.',
     type: AuthSuccessResponseDto,
-  })
-  @ApiBadRequestResponse({
-    description: 'Invalid input data or validation errors',
-    type: ErrorResponseDto,
   })
   @ApiUnauthorizedResponse({
     description: 'Invalid or expired refresh token',
@@ -124,12 +153,35 @@ export class AuthController {
     description: 'Internal server error',
     type: ErrorResponseDto,
   })
+  @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 attempts per minute
   @Post('refresh')
   async refreshToken(
-    @Body() refreshTokenDto: RefreshTokenDto,
-  ): Promise<BaseResponse<AuthResponseData>> {
-    const result = await this.authService.refreshToken(refreshTokenDto);
-    return AuthControllerUtil.createAuthResponse(result);
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<BaseResponse<SecureAuthResponseData>> {
+    const refreshToken = request.cookies?.refreshToken as string;
+    if (!refreshToken) {
+      throw new UnauthorizedException('Refresh token not found');
+    }
+
+    const deviceInfo = DeviceInfoUtil.extractFromRequest(request);
+    const result = await this.authService.refreshToken(
+      refreshToken,
+      deviceInfo,
+    );
+
+    // Update refresh token cookie
+    response.cookie('refreshToken', result.refresh_token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: '/auth/refresh',
+    });
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { refresh_token, ...responseData } = result;
+    return AuthControllerUtil.createAuthResponse(responseData);
   }
 
   @ApiOperation({
@@ -154,7 +206,7 @@ export class AuthController {
   @Post('social-login')
   async socialLogin(
     @Body() socialLoginDto: SocialLoginDto,
-  ): Promise<BaseResponse<AuthResponseData>> {
+  ): Promise<BaseResponse<SecureAuthResponseData>> {
     const result = await this.authService.socialLogin(socialLoginDto);
     return AuthControllerUtil.createAuthResponse(result);
   }
@@ -294,8 +346,78 @@ export class AuthController {
   @Post('logout')
   async logout(
     @Req() req: AuthRequest,
+    @Res({ passthrough: true }) response: Response,
   ): Promise<BaseResponse<{ logout: boolean }>> {
-    const result = await this.authService.logout(req.user.id);
+    const refreshToken = req.cookies?.refreshToken as string;
+    const result = await this.authService.logout(req.user.id, refreshToken);
+
+    // Clear refresh token cookie
+    response.clearCookie('refreshToken', {
+      path: '/auth/refresh',
+    });
+
     return AuthControllerUtil.createAuthResponse({ logout: result });
+  }
+
+  @ApiOperation({ summary: 'Logout user from all devices' })
+  @ApiResponse({
+    status: 200,
+    description: 'User logged out from all devices successfully',
+  })
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @Post('logout-all')
+  async logoutAll(
+    @Req() req: AuthRequest,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<BaseResponse<{ logout: boolean }>> {
+    const result = await this.authService.logoutAll(req.user.id);
+
+    // Clear refresh token cookie
+    response.clearCookie('refreshToken', {
+      path: '/auth/refresh',
+    });
+
+    return AuthControllerUtil.createAuthResponse({ logout: result });
+  }
+
+  @ApiOperation({ summary: 'Get active sessions for current user' })
+  @ApiResponse({
+    status: 200,
+    description: 'Active sessions retrieved successfully',
+    type: [SessionDto],
+  })
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @Get('sessions')
+  async getActiveSessions(
+    @Req() req: AuthRequest,
+  ): Promise<BaseResponse<SessionData[]>> {
+    const refreshToken = req.cookies?.refreshToken as string;
+    const sessions = await this.authService.getActiveSessions(
+      req.user.id,
+      refreshToken,
+    );
+    return AuthControllerUtil.createAuthResponse(sessions);
+  }
+
+  @ApiOperation({ summary: 'Revoke a specific session' })
+  @ApiParam({ name: 'sessionId', description: 'Session ID to revoke' })
+  @ApiResponse({
+    status: 200,
+    description: 'Session revoked successfully',
+  })
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @Delete('sessions/:sessionId')
+  async revokeSession(
+    @Req() req: AuthRequest,
+    @Param('sessionId') sessionId: string,
+  ): Promise<BaseResponse<{ success: boolean }>> {
+    const success = await this.authService.revokeSession(
+      req.user.id,
+      sessionId,
+    );
+    return AuthControllerUtil.createAuthResponse({ success });
   }
 }

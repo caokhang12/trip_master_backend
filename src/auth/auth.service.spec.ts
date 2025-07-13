@@ -9,8 +9,10 @@ import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { UserService } from '../users/user.service';
 import { EmailService } from '../email/email.service';
+import { RefreshTokenService } from './services/refresh-token.service';
 import { AuthTokenUtil } from './utils/auth-token.util';
 import { UserEntity } from '../schemas/user.entity';
+import { RefreshTokenEntity } from '../schemas/refresh-token.entity';
 import { UserRole } from '../shared/types/base-response.types';
 
 describe('AuthService', () => {
@@ -25,12 +27,16 @@ describe('AuthService', () => {
     avatarUrl: undefined,
     homeCountry: undefined,
     role: UserRole.USER,
-    emailVerified: false,
+    emailVerified: true,
     emailVerificationToken: undefined,
     emailVerificationExpires: undefined,
     passwordResetToken: undefined,
     passwordResetExpires: undefined,
-    refreshToken: 'mockRefreshToken',
+    failedLoginAttempts: 0,
+    lockedUntil: undefined,
+    lastLoginAt: undefined,
+    lastLoginIp: undefined,
+    refreshTokens: [],
     createdAt: new Date(),
     updatedAt: new Date(),
     preferences: undefined,
@@ -42,6 +48,42 @@ describe('AuthService', () => {
     get displayName(): string {
       return 'John Doe';
     },
+    get isLocked(): boolean {
+      return false;
+    },
+    shouldLock: jest.fn().mockReturnValue(false),
+    resetFailedAttempts: jest.fn(),
+    incrementFailedAttempts: jest.fn(),
+  };
+
+  const mockRefreshToken: RefreshTokenEntity = {
+    id: 'token-id-123',
+    token: 'refresh-token-hash',
+    userId: mockUser.id,
+    user: mockUser,
+    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    isActive: true,
+    lastUsedAt: undefined,
+    deviceInfo: {
+      userAgent: 'test-agent',
+      ip: '127.0.0.1',
+    },
+    createdAt: new Date(),
+    get isValid(): boolean {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+      return this.isActive && this.expiresAt > new Date();
+    },
+    get sanitizedDeviceInfo(): Partial<{
+      userAgent?: string;
+      ip?: string;
+      deviceType?: 'web' | 'mobile' | 'tablet';
+      deviceName?: string;
+    }> {
+      return {
+        deviceType: this.deviceInfo?.deviceType as 'web' | 'mobile' | 'tablet',
+        deviceName: this.deviceInfo?.deviceName,
+      };
+    },
   };
 
   const mockUserService = {
@@ -49,13 +91,27 @@ describe('AuthService', () => {
     findByEmail: jest.fn(),
     findById: jest.fn(),
     verifyPassword: jest.fn(),
-    updateRefreshToken: jest.fn(),
+    updateUserSecurity: jest.fn(),
+    updateUserFields: jest.fn(),
     setEmailVerificationToken: jest.fn(),
     verifyEmail: jest.fn(),
     verifyEmailAndGetUser: jest.fn(),
     setPasswordResetToken: jest.fn(),
     resetPassword: jest.fn(),
     transformToProfileData: jest.fn(),
+  };
+
+  const mockRefreshTokenService = {
+    createRefreshToken: jest.fn(),
+    findValidToken: jest.fn(),
+    updateLastUsed: jest.fn(),
+    revokeToken: jest.fn(),
+    revokeAllUserTokens: jest.fn(),
+    revokeOtherUserTokens: jest.fn(),
+    cleanupExpiredTokens: jest.fn(),
+    getUserActiveSessions: jest.fn(),
+    getUserActiveSessionCount: jest.fn(),
+    revokeSession: jest.fn(),
   };
 
   const mockJwtService = {
@@ -86,6 +142,7 @@ describe('AuthService', () => {
       providers: [
         AuthService,
         { provide: UserService, useValue: mockUserService },
+        { provide: RefreshTokenService, useValue: mockRefreshTokenService },
         { provide: JwtService, useValue: mockJwtService },
         { provide: ConfigService, useValue: mockConfigService },
         { provide: EmailService, useValue: mockEmailService },
@@ -96,6 +153,15 @@ describe('AuthService', () => {
 
     // Initialize AuthTokenUtil with config service
     AuthTokenUtil.initialize(mockConfigService);
+
+    // Mock static methods
+    jest.spyOn(AuthTokenUtil, 'generateTokens').mockReturnValue({
+      access_token: 'accessToken',
+      refresh_token: 'refreshToken',
+    });
+    jest
+      .spyOn(AuthTokenUtil, 'calculateRefreshTokenExpiry')
+      .mockReturnValue(new Date());
   });
 
   afterEach(() => {
@@ -123,7 +189,9 @@ describe('AuthService', () => {
 
       mockUserService.createUser.mockResolvedValue(mockUser);
       mockUserService.setEmailVerificationToken.mockResolvedValue(undefined);
-      mockUserService.updateRefreshToken.mockResolvedValue(undefined);
+      mockRefreshTokenService.createRefreshToken.mockResolvedValue(
+        mockRefreshToken,
+      );
       mockUserService.transformToProfileData.mockReturnValue(
         expectedProfileData,
       );
@@ -144,9 +212,10 @@ describe('AuthService', () => {
         mockUser.id,
         expect.any(String),
       );
-      expect(mockUserService.updateRefreshToken).toHaveBeenCalledWith(
-        mockUser.id,
+      expect(mockRefreshTokenService.createRefreshToken).toHaveBeenCalledWith(
+        mockUser,
         expectedTokens.refresh_token,
+        expect.any(Date),
       );
     });
 
@@ -180,7 +249,9 @@ describe('AuthService', () => {
 
       mockUserService.findByEmail.mockResolvedValue(mockUser);
       mockUserService.verifyPassword.mockResolvedValue(true);
-      mockUserService.updateRefreshToken.mockResolvedValue(undefined);
+      mockRefreshTokenService.createRefreshToken.mockResolvedValue(
+        mockRefreshToken,
+      );
       mockUserService.transformToProfileData.mockReturnValue(
         expectedProfileData,
       );
@@ -235,83 +306,70 @@ describe('AuthService', () => {
   });
 
   describe('refreshToken', () => {
-    const inputRefreshTokenDto = {
-      refreshToken: 'validRefreshToken',
-    };
+    const inputRefreshToken = 'validRefreshToken';
 
     it('should refresh tokens successfully with valid refresh token', async () => {
       // Arrange
-      const mockPayload = { sub: mockUser.id, email: mockUser.email };
       const expectedTokens = {
         access_token: 'newAccessToken',
         refresh_token: 'newRefreshToken',
       };
       const expectedProfileData = { id: mockUser.id, email: mockUser.email };
 
-      mockJwtService.verify.mockReturnValue(mockPayload);
-      mockUserService.findById.mockResolvedValue({
-        ...mockUser,
-        refreshToken: inputRefreshTokenDto.refreshToken,
-      });
-      mockUserService.updateRefreshToken.mockResolvedValue(undefined);
+      mockRefreshTokenService.findValidToken.mockResolvedValue(
+        mockRefreshToken,
+      );
+      mockRefreshTokenService.revokeToken.mockResolvedValue(undefined);
+      mockRefreshTokenService.createRefreshToken.mockResolvedValue(
+        mockRefreshToken,
+      );
+      mockRefreshTokenService.updateLastUsed.mockResolvedValue(undefined);
       mockUserService.transformToProfileData.mockReturnValue(
         expectedProfileData,
       );
-      mockJwtService.sign
-        .mockReturnValueOnce('newAccessToken')
-        .mockReturnValueOnce('newRefreshToken');
+
+      // Mock generateTokens to return new tokens for refresh
+      jest.spyOn(AuthTokenUtil, 'generateTokens').mockReturnValueOnce({
+        access_token: 'newAccessToken',
+        refresh_token: 'newRefreshToken',
+      });
 
       // Act
-      const actualResult = await authService.refreshToken(inputRefreshTokenDto);
+      const actualResult = await authService.refreshToken(inputRefreshToken);
 
       // Assert
       expect(actualResult).toEqual({
         ...expectedTokens,
         user_profile: expectedProfileData,
       });
-      expect(mockJwtService.verify).toHaveBeenCalledWith(
-        inputRefreshTokenDto.refreshToken,
-        { secret: 'refresh-secret' },
+      expect(mockRefreshTokenService.findValidToken).toHaveBeenCalledWith(
+        inputRefreshToken,
+      );
+      expect(mockRefreshTokenService.revokeToken).toHaveBeenCalledWith(
+        inputRefreshToken,
+      );
+      expect(mockRefreshTokenService.createRefreshToken).toHaveBeenCalledWith(
+        mockUser,
+        expectedTokens.refresh_token,
+        expect.any(Date),
+        undefined,
+      );
+      expect(mockRefreshTokenService.updateLastUsed).toHaveBeenCalledWith(
+        mockRefreshToken.id,
       );
     });
 
     it('should throw UnauthorizedException when refresh token is invalid', async () => {
       // Arrange
-      mockJwtService.verify.mockImplementation(() => {
-        throw new Error('Invalid token');
-      });
+      mockRefreshTokenService.findValidToken.mockResolvedValue(null);
 
       // Act & Assert
-      await expect(
-        authService.refreshToken(inputRefreshTokenDto),
-      ).rejects.toThrow(UnauthorizedException);
-    });
-
-    it('should throw UnauthorizedException when user not found', async () => {
-      // Arrange
-      const mockPayload = { sub: 'invalidUserId', email: 'test@example.com' };
-      mockJwtService.verify.mockReturnValue(mockPayload);
-      mockUserService.findById.mockResolvedValue(null);
-
-      // Act & Assert
-      await expect(
-        authService.refreshToken(inputRefreshTokenDto),
-      ).rejects.toThrow(UnauthorizedException);
-    });
-
-    it('should throw UnauthorizedException when refresh token does not match', async () => {
-      // Arrange
-      const mockPayload = { sub: mockUser.id, email: mockUser.email };
-      mockJwtService.verify.mockReturnValue(mockPayload);
-      mockUserService.findById.mockResolvedValue({
-        ...mockUser,
-        refreshToken: 'differentRefreshToken',
-      });
-
-      // Act & Assert
-      await expect(
-        authService.refreshToken(inputRefreshTokenDto),
-      ).rejects.toThrow(UnauthorizedException);
+      await expect(authService.refreshToken(inputRefreshToken)).rejects.toThrow(
+        UnauthorizedException,
+      );
+      expect(mockRefreshTokenService.findValidToken).toHaveBeenCalledWith(
+        inputRefreshToken,
+      );
     });
   });
 
@@ -430,17 +488,120 @@ describe('AuthService', () => {
     it('should logout user successfully', async () => {
       // Arrange
       const inputUserId = mockUser.id;
-      mockUserService.updateRefreshToken.mockResolvedValue(undefined);
+      const inputRefreshToken = 'refresh-token';
+      mockRefreshTokenService.revokeToken.mockResolvedValue(undefined);
+
+      // Act
+      const actualResult = await authService.logout(
+        inputUserId,
+        inputRefreshToken,
+      );
+
+      // Assert
+      expect(actualResult).toBe(true);
+      expect(mockRefreshTokenService.revokeToken).toHaveBeenCalledWith(
+        inputRefreshToken,
+      );
+    });
+
+    it('should logout all sessions when no specific token provided', async () => {
+      // Arrange
+      const inputUserId = mockUser.id;
+      mockRefreshTokenService.revokeAllUserTokens.mockResolvedValue(undefined);
 
       // Act
       const actualResult = await authService.logout(inputUserId);
 
       // Assert
       expect(actualResult).toBe(true);
-      expect(mockUserService.updateRefreshToken).toHaveBeenCalledWith(
+      expect(mockRefreshTokenService.revokeAllUserTokens).toHaveBeenCalledWith(
         inputUserId,
-        null,
       );
+    });
+  });
+
+  describe('logoutAll', () => {
+    it('should logout all user sessions successfully', async () => {
+      // Arrange
+      const inputUserId = mockUser.id;
+      mockRefreshTokenService.revokeAllUserTokens.mockResolvedValue(undefined);
+
+      // Act
+      const actualResult = await authService.logoutAll(inputUserId);
+
+      // Assert
+      expect(actualResult).toBe(true);
+      expect(mockRefreshTokenService.revokeAllUserTokens).toHaveBeenCalledWith(
+        inputUserId,
+      );
+    });
+  });
+
+  describe('getActiveSessions', () => {
+    it('should return active sessions successfully', async () => {
+      // Arrange
+      const inputUserId = mockUser.id;
+      const mockSessions = [mockRefreshToken];
+      mockRefreshTokenService.getUserActiveSessions.mockResolvedValue(
+        mockSessions,
+      );
+
+      // Act
+      const actualResult = await authService.getActiveSessions(inputUserId);
+
+      // Assert
+      expect(actualResult).toEqual([
+        {
+          id: mockRefreshToken.id,
+          createdAt: mockRefreshToken.createdAt,
+          lastUsedAt: mockRefreshToken.lastUsedAt,
+          expiresAt: mockRefreshToken.expiresAt,
+          isCurrent: false,
+          deviceInfo: mockRefreshToken.sanitizedDeviceInfo,
+        },
+      ]);
+      expect(
+        mockRefreshTokenService.getUserActiveSessions,
+      ).toHaveBeenCalledWith(inputUserId);
+    });
+  });
+
+  describe('revokeSession', () => {
+    it('should revoke session successfully', async () => {
+      // Arrange
+      const inputUserId = mockUser.id;
+      const inputSessionId = 'session-id';
+      mockRefreshTokenService.revokeSession.mockResolvedValue(true);
+
+      // Act
+      const actualResult = await authService.revokeSession(
+        inputUserId,
+        inputSessionId,
+      );
+
+      // Assert
+      expect(actualResult).toBe(true);
+      expect(mockRefreshTokenService.revokeSession).toHaveBeenCalledWith(
+        inputUserId,
+        inputSessionId,
+      );
+    });
+  });
+
+  describe('cleanupExpiredTokens', () => {
+    it('should cleanup expired tokens successfully', async () => {
+      // Arrange
+      const expectedCount = 5;
+      mockRefreshTokenService.cleanupExpiredTokens.mockResolvedValue(
+        expectedCount,
+      );
+
+      // Act
+      const actualResult = await authService.cleanupExpiredTokens();
+
+      // Assert
+      expect(actualResult).toBe(expectedCount);
+      expect(mockRefreshTokenService.cleanupExpiredTokens).toHaveBeenCalled();
     });
   });
 });

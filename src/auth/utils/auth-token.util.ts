@@ -1,27 +1,26 @@
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { AuthConfig } from '../config/auth.config';
+import { TokenExpiryUtil } from './token-expiry.util';
 
 /**
  * JWT token utility for optimized token generation and validation
  * Centralizes token operations and caches configuration values
  */
 export class AuthTokenUtil {
-  private static accessSecret: string;
-  private static refreshSecret: string;
-  private static accessExpiresIn: string;
-  private static refreshExpiresIn: string;
+  private static authConfig: AuthConfig['jwt'];
 
   /**
    * Initialize token utility with configuration values
    * Called once during service instantiation for performance
    */
   static initialize(configService: ConfigService): void {
-    this.accessSecret =
-      configService.get('JWT_ACCESS_SECRET') || 'fallback-access-secret';
-    this.refreshSecret =
-      configService.get('JWT_REFRESH_SECRET') || 'fallback-refresh-secret';
-    this.accessExpiresIn = configService.get('JWT_ACCESS_EXPIRES_IN') || '15m';
-    this.refreshExpiresIn = configService.get('JWT_REFRESH_EXPIRES_IN') || '7d';
+    this.authConfig = configService.get<AuthConfig['jwt']>('auth.jwt') || {
+      accessSecret: 'fallback-access-secret',
+      refreshSecret: 'fallback-refresh-secret',
+      accessExpiresIn: '15m',
+      refreshExpiresIn: '7d',
+    };
   }
 
   /**
@@ -38,13 +37,13 @@ export class AuthTokenUtil {
     const payload = { sub: userId, email };
 
     const accessToken = jwtService.sign(payload, {
-      secret: this.accessSecret,
-      expiresIn: this.accessExpiresIn,
+      secret: this.authConfig.accessSecret,
+      expiresIn: this.authConfig.accessExpiresIn,
     });
 
     const refreshToken = jwtService.sign(payload, {
-      secret: this.refreshSecret,
-      expiresIn: this.refreshExpiresIn,
+      secret: this.authConfig.refreshSecret,
+      expiresIn: this.authConfig.refreshExpiresIn,
     });
 
     return {
@@ -63,7 +62,7 @@ export class AuthTokenUtil {
     token: string,
   ): { sub: string; email: string } {
     return jwtService.verify(token, {
-      secret: this.refreshSecret,
+      secret: this.authConfig.refreshSecret,
     });
   }
 
@@ -71,13 +70,21 @@ export class AuthTokenUtil {
    * Get refresh secret for strategy configuration
    */
   static getRefreshSecret(): string {
-    return this.refreshSecret;
+    return this.authConfig.refreshSecret;
   }
 
   /**
    * Get access secret for strategy configuration
    */
   static getAccessSecret(): string {
-    return this.accessSecret;
+    return this.authConfig.accessSecret;
+  }
+
+  /**
+   * Calculate refresh token expiry date using centralized utility
+   */
+  static calculateRefreshTokenExpiry(): Date {
+    const expiresIn = this.authConfig.refreshExpiresIn;
+    return TokenExpiryUtil.calculateExpiry(expiresIn);
   }
 }

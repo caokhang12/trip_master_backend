@@ -9,20 +9,25 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { UserService } from '../users/user.service';
 import { EmailService } from '../email/email.service';
+import { RefreshTokenService } from './services/refresh-token.service';
 import {
   RegisterDto,
   LoginDto,
-  RefreshTokenDto,
   VerifyEmailDto,
   ResendVerificationDto,
   ForgotPasswordDto,
   ResetPasswordDto,
   SocialLoginDto,
 } from './dto/auth.dto';
-import { AuthResponseData } from '../shared/types/base-response.types';
-import { AuthValidationUtil } from './utils/auth-validation.util';
+import {
+  AuthResponseData,
+  InternalAuthResponseData,
+  SessionData,
+} from '../shared/types/base-response.types';
+import { DeviceInfo, DeviceInfoUtil } from './utils/device-info.util';
 import { AuthTokenUtil } from './utils/auth-token.util';
 import { AuthResponseUtil } from './utils/auth-response.util';
+import { TokenExpiryUtil } from './utils/token-expiry.util';
 
 /**
  * Authentication service with JWT token management and security validation
@@ -37,6 +42,7 @@ export class AuthService implements OnModuleInit {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly emailService: EmailService,
+    private readonly refreshTokenService: RefreshTokenService,
   ) {}
 
   /**
@@ -79,22 +85,74 @@ export class AuthService implements OnModuleInit {
       user.email,
     );
 
-    return AuthResponseUtil.executeAuthFlow(this.userService, tokens, user);
+    // Create and store refresh token
+    await this.refreshTokenService.createRefreshToken(
+      user,
+      tokens.refresh_token,
+      AuthTokenUtil.calculateRefreshTokenExpiry(),
+    );
+
+    return AuthResponseUtil.buildAuthResponse(this.userService, user, tokens);
   }
 
-  async login(loginDto: LoginDto): Promise<AuthResponseData> {
+  async login(
+    loginDto: LoginDto,
+    deviceInfo?: DeviceInfo,
+  ): Promise<InternalAuthResponseData> {
     const user = await this.userService.findByEmail(loginDto.email);
     if (!user) {
-      throw new UnauthorizedException('You have not register this email yet');
+      // Increment failed login attempts for non-existent users too
+      this.logger.warn(
+        `Login attempt for non-existent email: ${loginDto.email}`,
+      );
+      throw new UnauthorizedException('Email is not registered');
+    }
+
+    // Check if account is locked
+    if (user.isLocked) {
+      this.logger.warn(`Login attempt for locked account: ${user.email}`);
+      throw new UnauthorizedException(
+        'Account temporarily locked due to multiple failed login attempts',
+      );
     }
 
     const isValidPassword = await this.userService.verifyPassword(
       user,
       loginDto.password,
     );
+
     if (!isValidPassword) {
-      throw new UnauthorizedException('Invalid credentials');
+      // Increment failed login attempts
+      user.incrementFailedAttempts();
+      await this.userService.updateUserFields(user.id, {
+        failedLoginAttempts: user.failedLoginAttempts,
+        lockedUntil: user.lockedUntil,
+      });
+
+      this.logger.warn(`Failed login attempt for user: ${user.email}`);
+      throw new UnauthorizedException('Email or password is incorrect');
     }
+
+    // Check if email is verified
+    if (!user.emailVerified) {
+      throw new UnauthorizedException(
+        'Please verify your email before logging in',
+      );
+    }
+
+    // Reset failed login attempts on successful login
+    if (user.failedLoginAttempts > 0) {
+      user.resetFailedAttempts();
+    }
+
+    // Update last login information
+    const now = new Date();
+    await this.userService.updateUserFields(user.id, {
+      failedLoginAttempts: user.failedLoginAttempts,
+      lockedUntil: user.lockedUntil,
+      lastLoginAt: now,
+      lastLoginIp: deviceInfo?.ip,
+    });
 
     const tokens = AuthTokenUtil.generateTokens(
       this.jwtService,
@@ -102,33 +160,62 @@ export class AuthService implements OnModuleInit {
       user.email,
     );
 
-    return AuthResponseUtil.executeAuthFlow(this.userService, tokens, user);
+    // Create refresh token record with config-driven expiry
+    const expiresAt = TokenExpiryUtil.calculateExpiry('7d');
+
+    await this.refreshTokenService.createRefreshToken(
+      user,
+      tokens.refresh_token,
+      expiresAt,
+      deviceInfo,
+    );
+
+    this.logger.log(`User ${user.email} logged in successfully`);
+
+    return AuthResponseUtil.buildAuthResponse(this.userService, user, tokens);
   }
 
   async refreshToken(
-    refreshTokenDto: RefreshTokenDto,
-  ): Promise<AuthResponseData> {
-    try {
-      const payload = AuthTokenUtil.verifyRefreshToken(
-        this.jwtService,
-        refreshTokenDto.refreshToken,
-      );
+    refreshToken: string,
+    deviceInfo?: DeviceInfo,
+  ): Promise<InternalAuthResponseData> {
+    const tokenRecord =
+      await this.refreshTokenService.findValidToken(refreshToken);
 
-      const user = await this.userService.findById(payload.sub);
-      if (!user || user.refreshToken !== refreshTokenDto.refreshToken) {
-        throw new UnauthorizedException('Invalid refresh token');
-      }
-
-      const tokens = AuthTokenUtil.generateTokens(
-        this.jwtService,
-        user.id,
-        user.email,
-      );
-
-      return AuthResponseUtil.executeAuthFlow(this.userService, tokens, user);
-    } catch {
+    if (!tokenRecord) {
       throw new UnauthorizedException('Invalid refresh token');
     }
+
+    // Revoke old token
+    await this.refreshTokenService.revokeToken(refreshToken);
+
+    // Generate new tokens
+    const tokens = AuthTokenUtil.generateTokens(
+      this.jwtService,
+      tokenRecord.user.id,
+      tokenRecord.user.email,
+    );
+
+    // Create new refresh token record with config-driven expiry
+    const expiresAt = TokenExpiryUtil.calculateExpiry('7d');
+
+    await this.refreshTokenService.createRefreshToken(
+      tokenRecord.user,
+      tokens.refresh_token,
+      expiresAt,
+      deviceInfo,
+    );
+
+    // Update last used timestamp
+    await this.refreshTokenService.updateLastUsed(tokenRecord.id);
+
+    this.logger.log(`Refresh token used for user ${tokenRecord.user.email}`);
+
+    return AuthResponseUtil.buildAuthResponse(
+      this.userService,
+      tokenRecord.user,
+      tokens,
+    );
   }
 
   /**
@@ -140,10 +227,9 @@ export class AuthService implements OnModuleInit {
       verifyEmailDto.token,
     );
 
-    AuthValidationUtil.validateTokenOperation(
-      userResult !== null,
-      'Invalid or expired verification token',
-    );
+    if (!userResult) {
+      throw new BadRequestException('Invalid or expired verification token');
+    }
 
     // Send welcome email after successful verification
     if (userResult) {
@@ -237,10 +323,9 @@ export class AuthService implements OnModuleInit {
       resetPasswordDto.newPassword,
     );
 
-    AuthValidationUtil.validateTokenOperation(
-      isReset,
-      'Invalid or expired reset token',
-    );
+    if (!isReset) {
+      throw new BadRequestException('Invalid or expired reset token');
+    }
 
     return true;
   }
@@ -260,10 +345,65 @@ export class AuthService implements OnModuleInit {
   }
 
   /**
-   * Logout user by invalidating refresh token
+   * Logout user by revoking refresh token
    */
-  async logout(userId: string): Promise<boolean> {
-    await this.userService.updateRefreshToken(userId, null);
+  async logout(userId: string, refreshToken?: string): Promise<boolean> {
+    if (refreshToken) {
+      await this.refreshTokenService.revokeToken(refreshToken);
+    } else {
+      await this.refreshTokenService.revokeAllUserTokens(userId);
+    }
+    this.logger.log(`User ${userId} logged out`);
     return true;
+  }
+
+  /**
+   * Logout user from all devices
+   */
+  async logoutAll(userId: string): Promise<boolean> {
+    await this.refreshTokenService.revokeAllUserTokens(userId);
+    this.logger.log(`User ${userId} logged out from all devices`);
+    return true;
+  }
+
+  /**
+   * Get active sessions for a user
+   */
+  async getActiveSessions(
+    userId: string,
+    currentRefreshToken?: string,
+  ): Promise<SessionData[]> {
+    const sessions =
+      await this.refreshTokenService.getUserActiveSessions(userId);
+
+    return sessions.map((session) => ({
+      id: session.id,
+      deviceInfo: DeviceInfoUtil.sanitizeForResponse(session.deviceInfo || {}),
+      createdAt: session.createdAt,
+      lastUsedAt: session.lastUsedAt,
+      expiresAt: session.expiresAt,
+      isCurrent: session.token === currentRefreshToken,
+    }));
+  }
+
+  /**
+   * Revoke a specific session
+   */
+  async revokeSession(userId: string, sessionId: string): Promise<boolean> {
+    const success = await this.refreshTokenService.revokeSession(
+      userId,
+      sessionId,
+    );
+    if (success) {
+      this.logger.log(`Session ${sessionId} revoked for user ${userId}`);
+    }
+    return success;
+  }
+
+  /**
+   * Clean up expired refresh tokens (to be called periodically)
+   */
+  async cleanupExpiredTokens(): Promise<number> {
+    return this.refreshTokenService.cleanupExpiredTokens();
   }
 }

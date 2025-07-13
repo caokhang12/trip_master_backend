@@ -2,17 +2,20 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
+import { Request } from 'express';
 import { UserService } from '../../users/user.service';
+import { RefreshTokenService } from '../services/refresh-token.service';
+import { AuthConfig } from '../config/auth.config';
 
 interface JwtPayload {
   sub: string;
   email: string;
+  iat?: number;
+  exp?: number;
 }
 
-interface RefreshTokenRequest {
-  body: {
-    refreshToken: string;
-  };
+interface RequestWithCookies extends Omit<Request, 'cookies'> {
+  cookies?: Record<string, string>;
 }
 
 /**
@@ -27,7 +30,9 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: configService.get('JWT_ACCESS_SECRET') || 'fallback-secret',
+      secretOrKey:
+        configService.get<AuthConfig['jwt']>('auth.jwt')?.accessSecret ||
+        'fallback-secret',
     });
   }
 
@@ -57,29 +62,38 @@ export class JwtRefreshStrategy extends PassportStrategy(
   constructor(
     private readonly configService: ConfigService,
     private readonly userService: UserService,
+    private readonly refreshTokenService: RefreshTokenService,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
-        (request: Request) => {
+        (request: RequestWithCookies) => {
           // Extract refresh token from httpOnly cookie
-          return request?.cookies?.refreshToken;
+          return request?.cookies?.refreshToken as string;
         },
       ]),
       ignoreExpiration: false,
       secretOrKey:
-        configService.get('JWT_REFRESH_SECRET') || 'fallback-refresh-secret',
+        configService.get<AuthConfig['jwt']>('auth.jwt')?.refreshSecret ||
+        'fallback-refresh-secret',
       passReqToCallback: true,
     });
   }
 
   async validate(
-    req: RefreshTokenRequest,
+    req: RequestWithCookies,
     payload: JwtPayload,
   ): Promise<{ id: string; email: string; role: string }> {
-    const refreshToken = req.cookies?.refreshToken;
+    const refreshToken = req.cookies?.refreshToken as string;
     const user = await this.userService.findById(payload.sub);
 
-    if (!user || user.refreshToken !== refreshToken) {
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    // Validate refresh token exists and is active
+    const tokenEntity =
+      await this.refreshTokenService.findValidToken(refreshToken);
+    if (!tokenEntity || tokenEntity.userId !== user.id) {
       throw new UnauthorizedException('Invalid refresh token');
     }
 

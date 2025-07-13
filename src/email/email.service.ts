@@ -30,8 +30,8 @@ export class EmailService {
     language: 'en' | 'vi' = 'en',
   ): Promise<boolean> {
     try {
-      const frontendUrl = this.configService.get('FRONTEND_URL');
-      const verificationUrl = `${frontendUrl}/auth/verify?token=${token}`;
+      const frontendUrl = this.configService.getOrThrow<string>('FRONTEND_URL');
+      const verificationUrl = `${frontendUrl}/verify-email?token=${token}`;
 
       const subjects = {
         en: 'Verify your TripMaster account',
@@ -76,7 +76,7 @@ export class EmailService {
     language: 'en' | 'vi' = 'en',
   ): Promise<boolean> {
     try {
-      const frontendUrl = this.configService.get('FRONTEND_URL');
+      const frontendUrl = this.configService.getOrThrow<string>('FRONTEND_URL');
       const resetUrl = `${frontendUrl}/auth/reset-password?token=${token}`;
 
       const subjects = {
@@ -133,7 +133,7 @@ export class EmailService {
           firstName: firstName || 'User',
           language,
           isVietnamese: language === 'vi',
-          frontendUrl: this.configService.get('FRONTEND_URL'),
+          frontendUrl: this.configService.getOrThrow<string>('FRONTEND_URL'),
         },
       });
 

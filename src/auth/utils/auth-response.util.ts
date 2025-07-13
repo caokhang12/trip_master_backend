@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { UserService } from '../../users/user.service';
 import { AuthResponseData } from '../../shared/types/base-response.types';
+import { UserEntity } from '../../schemas/user.entity';
 
 /**
  * Authentication response builder utility
@@ -15,7 +16,7 @@ export class AuthResponseUtil {
    */
   static buildAuthResponse(
     userService: UserService,
-    user: any,
+    user: UserEntity,
     tokens: { access_token: string; refresh_token: string },
   ): AuthResponseData {
     return {
@@ -29,21 +30,5 @@ export class AuthResponseUtil {
    */
   static generateToken(): string {
     return uuidv4();
-  }
-
-  /**
-   * Execute complete user authentication flow
-   * Handles token generation, refresh token update, and response building
-   */
-  static async executeAuthFlow(
-    userService: UserService,
-    jwtTokens: { access_token: string; refresh_token: string },
-    user: any,
-  ): Promise<AuthResponseData> {
-    // Update refresh token in database
-    await userService.updateRefreshToken(user.id, jwtTokens.refresh_token);
-
-    // Build and return response
-    return this.buildAuthResponse(userService, user, jwtTokens);
   }
 }

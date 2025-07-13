@@ -26,6 +26,22 @@ export interface AuthResponseData {
 }
 
 /**
+ * Secure authentication response data (without refresh token in response body)
+ * Refresh token is sent via HTTP-only cookie
+ */
+export interface SecureAuthResponseData {
+  access_token: string;
+  user_profile: UserProfileData;
+}
+
+/**
+ * Internal authentication response data (with refresh token for internal use)
+ */
+export interface InternalAuthResponseData extends AuthResponseData {
+  refresh_token: string;
+}
+
+/**
  * User profile data structure
  */
 export interface UserProfileData {
@@ -74,4 +90,19 @@ export interface UserPreferencesData {
   interests?: string[];
   dietaryRestrictions?: string[];
   accessibilityNeeds?: string[];
+}
+
+/**
+ * Session information for user session management
+ */
+export interface SessionData {
+  id: string;
+  deviceInfo: {
+    deviceType?: 'web' | 'mobile' | 'tablet';
+    deviceName?: string;
+  };
+  createdAt: Date;
+  lastUsedAt?: Date;
+  expiresAt: Date;
+  isCurrent: boolean;
 }

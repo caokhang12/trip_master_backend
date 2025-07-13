@@ -1,4 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
+import { UserEntity } from '../../schemas/user.entity';
 
 /**
  * Authentication validation utility functions
@@ -37,21 +38,10 @@ export class AuthValidationUtil {
   }
 
   /**
-   * Validate token operation result
-   * @param success - Operation success status
-   * @param errorMessage - Error message for failure
-   */
-  static validateTokenOperation(success: boolean, errorMessage: string): void {
-    if (!success) {
-      throw new BadRequestException(errorMessage);
-    }
-  }
-
-  /**
    * Validate email verification status
    * @param user - User entity
    */
-  static validateEmailNotVerified(user: any): void {
+  static validateEmailNotVerified(user: UserEntity): void {
     if (user.emailVerified) {
       throw new BadRequestException('Email already verified');
     }

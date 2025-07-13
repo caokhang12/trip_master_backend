@@ -121,13 +121,20 @@ export class UserService {
   }
 
   /**
-   * Update user refresh token
-   */ async updateRefreshToken(
+   * Update user security fields (login attempts, lock status, etc.)
+   */
+  async updateUserSecurity(
     userId: string,
-    refreshToken: string | null,
+    securityData: {
+      failedLoginAttempts?: number;
+      lockedUntil?: Date | null;
+      lastLoginAt?: Date;
+      lastLoginIp?: string;
+    },
   ): Promise<void> {
     await this.userRepository.update(userId, {
-      refreshToken: refreshToken ?? undefined,
+      ...securityData,
+      lockedUntil: securityData.lockedUntil || undefined,
     });
   }
 
@@ -325,6 +332,23 @@ export class UserService {
     }
 
     return this.transformToProfileData(updatedUser);
+  }
+
+  /**
+   * Update user entity fields directly
+   */
+  async updateUserFields(
+    userId: string,
+    updateData: Partial<UserEntity>,
+  ): Promise<void> {
+    await this.userRepository.update(userId, updateData);
+  }
+
+  /**
+   * Save user entity
+   */
+  async saveUser(user: UserEntity): Promise<UserEntity> {
+    return this.userRepository.save(user);
   }
 
   /**
