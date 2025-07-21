@@ -21,7 +21,6 @@ import {
 } from './dto/auth.dto';
 import {
   AuthResponseData,
-  InternalAuthResponseData,
   SessionData,
 } from '../shared/types/base-response.types';
 import { DeviceInfo, DeviceInfoUtil } from './utils/device-info.util';
@@ -98,7 +97,7 @@ export class AuthService implements OnModuleInit {
   async login(
     loginDto: LoginDto,
     deviceInfo?: DeviceInfo,
-  ): Promise<InternalAuthResponseData> {
+  ): Promise<AuthResponseData> {
     const user = await this.userService.findByEmail(loginDto.email);
     if (!user) {
       // Increment failed login attempts for non-existent users too
@@ -178,7 +177,7 @@ export class AuthService implements OnModuleInit {
   async refreshToken(
     refreshToken: string,
     deviceInfo?: DeviceInfo,
-  ): Promise<InternalAuthResponseData> {
+  ): Promise<AuthResponseData> {
     const tokenRecord =
       await this.refreshTokenService.findValidToken(refreshToken);
 

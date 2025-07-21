@@ -13,6 +13,7 @@ import {
   SaveItineraryResponseDto,
 } from '../shared/dto/save-itinerary.dto';
 import { AuthRequest } from '../shared/interfaces/auth.interface';
+import { ActivityCategory } from '../shared/interfaces/ai.interface';
 
 describe('TripAIController - New Preview and Save Flow', () => {
   let controller: TripAIController;
@@ -85,8 +86,8 @@ describe('TripAIController - New Preview and Save Flow', () => {
                 location: 'Ben Thanh Market',
                 duration: 120,
                 estimatedCost: 150000,
-                category: 'food',
-                timeSlot: 'morning',
+                category: 'food' as ActivityCategory,
+                timeSlot: 'morning' as const,
                 localTips: ['Arrive early'],
                 bookingRequired: false,
               },
@@ -104,12 +105,18 @@ describe('TripAIController - New Preview and Save Flow', () => {
             food: 300000,
             activities: 200000,
             transportation: 100000,
+            shopping: 0,
+            miscellaneous: 0,
           },
         },
         culturalContext: {
           country: 'Vietnam',
+          language: 'Vietnamese',
           currency: 'VND',
           tipping: 'Not mandatory',
+          customsAndTraditions: ['Respect for elders'],
+          localEtiquette: ['Remove shoes when entering homes'],
+          seasonalConsiderations: ['Rainy season from May to October'],
           safetyTips: ['Stay hydrated'],
         },
         totalEstimatedCost: 1000000,
@@ -159,8 +166,8 @@ describe('TripAIController - New Preview and Save Flow', () => {
                   location: 'Test Location',
                   duration: 120,
                   estimatedCost: 100000,
-                  category: 'cultural',
-                  timeSlot: 'morning',
+                  category: 'cultural' as ActivityCategory,
+                  timeSlot: 'morning' as const,
                   localTips: ['Test tip'],
                   bookingRequired: false,
                 },

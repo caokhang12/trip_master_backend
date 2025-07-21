@@ -61,9 +61,6 @@ export class TripEntity {
   @Column({ length: 50, nullable: true })
   timezone?: string;
 
-  @Column({ name: 'default_currency', length: 3, nullable: true })
-  defaultCurrency?: string;
-
   @Column({ name: 'start_date', type: 'date', nullable: true })
   startDate?: Date;
 

@@ -7,8 +7,6 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { TripService } from './trip.service';
-import { CountryDefaultsService } from '../shared/services/country-defaults.service';
-import { CountryService } from '../shared/services/country.service';
 import { UploadService } from '../upload/upload.service';
 import { TripEntity, TripStatus } from '../schemas/trip.entity';
 import { ItineraryEntity } from '../schemas/itinerary.entity';
@@ -38,7 +36,6 @@ describe('TripService', () => {
     destinationProvince: 'Tokyo',
     destinationCity: 'Tokyo',
     timezone: 'Asia/Tokyo',
-    defaultCurrency: 'JPY',
     startDate: new Date('2024-03-15'),
     endDate: new Date('2024-03-22'),
     budget: 3000.0,
@@ -138,86 +135,6 @@ describe('TripService', () => {
       update: jest.fn(),
     };
 
-    const mockCountryDefaultsService = {
-      getCountryDefaults: jest
-        .fn()
-        .mockImplementation((countryCode: string) => {
-          if (countryCode === 'JP') {
-            return { currency: 'JPY', timezone: 'Asia/Tokyo', language: 'ja' };
-          }
-          return {
-            currency: 'USD',
-            timezone: 'America/New_York',
-            language: 'en',
-          };
-        }),
-      getDefaultCurrency: jest
-        .fn()
-        .mockImplementation((countryCode: string) => {
-          return countryCode === 'JP' ? 'JPY' : 'USD';
-        }),
-      getDefaultTimezone: jest
-        .fn()
-        .mockImplementation((countryCode: string) => {
-          return countryCode === 'JP' ? 'Asia/Tokyo' : 'America/New_York';
-        }),
-      getDefaultLanguage: jest
-        .fn()
-        .mockImplementation((countryCode: string) => {
-          return countryCode === 'JP' ? 'ja' : 'en';
-        }),
-      isCountrySupported: jest.fn().mockReturnValue(true),
-      getSupportedCountries: jest
-        .fn()
-        .mockReturnValue(['US', 'VN', 'GB', 'JP']),
-      applyCountryDefaults: jest
-        .fn()
-        .mockImplementation((countryCode: string, tripData: any): any => {
-          if (countryCode === 'JP') {
-            return {
-              ...tripData,
-              defaultCurrency: tripData.defaultCurrency || 'JPY',
-              timezone: tripData.timezone || 'Asia/Tokyo',
-              currency: tripData.currency || 'JPY',
-            };
-          }
-          return {
-            ...tripData,
-            defaultCurrency: tripData.defaultCurrency || 'USD',
-            timezone: tripData.timezone || 'America/New_York',
-            currency: tripData.currency || 'USD',
-          };
-        }),
-    };
-
-    const mockCountryService = {
-      detectCountryFromCoordinates: jest.fn().mockResolvedValue({
-        countryCode: 'JP',
-        countryName: 'Japan',
-        confidence: 0.95,
-        source: 'coordinates' as const,
-        coordinates: {
-          lat: 35.6762,
-          lng: 139.6503,
-        },
-        administrativeInfo: {
-          city: 'Tokyo',
-          province: 'Tokyo Metropolis',
-        },
-        defaults: {
-          currency: 'JPY',
-          timezone: 'Asia/Tokyo',
-          language: 'ja',
-        },
-      }),
-      enrichLocationData: jest.fn(),
-      isVietnameseLocation: jest.fn(),
-      getCountryDefaults: jest.fn(),
-      formatLocationString: jest.fn(),
-      clearCache: jest.fn(),
-      getCacheStats: jest.fn(),
-    };
-
     const mockUploadService = {
       uploadAvatar: jest.fn(),
       removeAvatar: jest.fn(),
@@ -242,14 +159,6 @@ describe('TripService', () => {
         {
           provide: getRepositoryToken(TripShareEntity),
           useValue: mockTripShareRepository,
-        },
-        {
-          provide: CountryDefaultsService,
-          useValue: mockCountryDefaultsService,
-        },
-        {
-          provide: CountryService,
-          useValue: mockCountryService,
         },
         {
           provide: UploadService,
@@ -298,12 +207,6 @@ describe('TripService', () => {
         userId: 'user-123',
         startDate: new Date('2024-03-15'),
         endDate: new Date('2024-03-22'),
-        // Country intelligence fields
-        defaultCurrency: 'JPY',
-        destinationCity: 'Tokyo',
-        destinationCountry: 'JP',
-        destinationProvince: 'Tokyo Metropolis',
-        timezone: 'Asia/Tokyo',
       });
       expect(tripRepository.save).toHaveBeenCalledWith(mockTripEntity);
     });
@@ -351,12 +254,13 @@ describe('TripService', () => {
       // Assert
       expect(actualResult).toEqual({
         items: [mockTripEntity],
-        pagination: {
+        meta: {
           page: 1,
           limit: 10,
           total: 1,
           totalPages: 1,
-          hasMore: false,
+          hasNext: false,
+          hasPrev: false,
         },
       });
       expect(mockQueryBuilder.where).toHaveBeenCalledWith(
@@ -645,12 +549,13 @@ describe('TripService', () => {
       // Assert
       expect(actualResult).toEqual({
         items: [mockTripEntity],
-        pagination: {
+        meta: {
           page: 1,
           limit: 10,
           total: 1,
           totalPages: 1,
-          hasMore: false,
+          hasNext: false,
+          hasPrev: false,
         },
       });
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(

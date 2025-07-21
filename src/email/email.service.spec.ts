@@ -13,7 +13,20 @@ describe('EmailService', () => {
   };
 
   const mockConfigService = {
-    get: jest.fn().mockReturnValue('http://localhost:3001'),
+    get: jest.fn((key: string) => {
+      const config = {
+        FRONTEND_URL: 'http://localhost:3001',
+        MAIL_FROM: 'noreply@tripmaster.com',
+      };
+      return config[key] || 'default-value';
+    }),
+    getOrThrow: jest.fn((key: string) => {
+      const config = {
+        FRONTEND_URL: 'http://localhost:3001',
+        MAIL_FROM: 'noreply@tripmaster.com',
+      };
+      return config[key] || 'default-value';
+    }),
   };
 
   beforeEach(async () => {
@@ -68,7 +81,7 @@ describe('EmailService', () => {
         template: './verification',
         context: {
           firstName: inputData.firstName,
-          verificationUrl: `http://localhost:3001/auth/verify?token=${inputData.token}`,
+          verificationUrl: `http://localhost:3001/verify-email?token=${inputData.token}`,
           language: inputData.language,
           isVietnamese: false,
         },
@@ -95,7 +108,7 @@ describe('EmailService', () => {
         template: './verification',
         context: {
           firstName: inputData.firstName,
-          verificationUrl: `http://localhost:3001/auth/verify?token=${inputData.token}`,
+          verificationUrl: `http://localhost:3001/verify-email?token=${inputData.token}`,
           language: 'vi',
           isVietnamese: true,
         },
@@ -136,7 +149,7 @@ describe('EmailService', () => {
         template: './verification',
         context: {
           firstName: 'User',
-          verificationUrl: `http://localhost:3001/auth/verify?token=${inputData.token}`,
+          verificationUrl: `http://localhost:3001/verify-email?token=${inputData.token}`,
           language: 'en',
           isVietnamese: false,
         },

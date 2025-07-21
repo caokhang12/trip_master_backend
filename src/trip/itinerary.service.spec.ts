@@ -35,7 +35,6 @@ describe('ItineraryService', () => {
     destinationProvince: 'Tokyo',
     destinationCity: 'Tokyo',
     timezone: 'Asia/Tokyo',
-    defaultCurrency: 'JPY',
     startDate: new Date('2024-03-15'),
     endDate: new Date('2024-03-22'),
     budget: 3000.0,
@@ -316,7 +315,7 @@ describe('ItineraryService', () => {
       itineraryRepository.findOne.mockResolvedValue(mockItineraryEntity);
       itineraryRepository.save.mockResolvedValue({
         ...mockItineraryEntity,
-        activities: inputUpdateDto.activities,
+        activities: inputUpdateDto.activities || [],
         userModified: true,
       });
 
@@ -340,13 +339,13 @@ describe('ItineraryService', () => {
       itineraryRepository.findOne.mockResolvedValue(null);
       itineraryRepository.create.mockReturnValue({
         ...mockItineraryEntity,
-        activities: inputUpdateDto.activities,
+        activities: inputUpdateDto.activities || [],
         aiGenerated: false,
         userModified: true,
       });
       itineraryRepository.save.mockResolvedValue({
         ...mockItineraryEntity,
-        activities: inputUpdateDto.activities,
+        activities: inputUpdateDto.activities || [],
         aiGenerated: false,
         userModified: true,
       });

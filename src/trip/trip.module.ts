@@ -14,7 +14,6 @@ import { ActivityCostEntity } from '../schemas/activity-cost.entity';
 import { BudgetTrackingEntity } from '../schemas/budget-tracking.entity';
 import { LocationModule } from '../location/location.module';
 import { CurrencyModule } from '../currency/currency.module';
-import { CountryModule } from '../shared/services/country.module';
 import { SharedModule } from '../shared/shared.module';
 import { UploadModule } from '../upload/upload.module';
 import { AIModule } from '../shared/ai.module';
@@ -33,7 +32,6 @@ import { AIModule } from '../shared/ai.module';
     ]),
     LocationModule,
     CurrencyModule,
-    CountryModule,
     SharedModule,
     UploadModule,
     AIModule,

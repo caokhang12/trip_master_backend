@@ -10,6 +10,7 @@ import {
   UploadedFile,
   BadRequestException,
   Req,
+  Query,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -24,10 +25,13 @@ import {
   ApiBadRequestResponse,
   ApiNotFoundResponse,
   ApiInternalServerErrorResponse,
+  ApiForbiddenResponse,
 } from '@nestjs/swagger';
 import { UserService } from './user.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { AdminRoleGuard } from '../auth/guards/admin-role.guard';
 import { UpdateUserDto } from './dto/user.dto';
+import { GetAllUsersDto } from './dto/get-users.dto';
 import { ResponseUtil } from '../shared/utils/response.util';
 import {
   BaseResponse,
@@ -39,6 +43,7 @@ import {
   ErrorResponseDto,
   AdminTestResponseDto,
 } from '../shared/dto/response.dto';
+import { GetAllUsersSuccessResponseDto } from '../shared/dto/user-pagination-response.dto';
 import {
   FileUploadDto,
   UserProfileWithAvatarDto,
@@ -207,5 +212,64 @@ export class UserController {
   ): Promise<BaseResponse<UserProfileData>> {
     const updatedProfile = await this.userService.removeUserAvatar(req.user.id);
     return ResponseUtil.success(updatedProfile);
+  }
+
+  /**
+   * Get all users (admin only) with TypeORM pagination
+   */
+  @ApiOperation({
+    summary: 'Get all users with pagination',
+    description:
+      'Admin-only endpoint to retrieve all users with TypeORM pagination',
+  })
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'Users retrieved successfully with pagination',
+    type: GetAllUsersSuccessResponseDto,
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Invalid or missing JWT token',
+    type: ErrorResponseDto,
+  })
+  @ApiForbiddenResponse({
+    description: 'Admin access required',
+    type: ErrorResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid pagination parameters',
+    type: ErrorResponseDto,
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Internal server error',
+    type: ErrorResponseDto,
+  })
+  @UseGuards(JwtAuthGuard, AdminRoleGuard)
+  @Get()
+  async getAllUsers(
+    @Query() paginationDto: GetAllUsersDto,
+  ): Promise<BaseResponse<any>> {
+    const { page = 1, limit = 10 } = paginationDto;
+
+    const paginationResult = await this.userService.getAllUsers(page, limit);
+
+    // Transform items to remove sensitive data
+    const transformedItems = paginationResult.items.map((user) => ({
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      role: user.role,
+      emailVerified: user.emailVerified,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    }));
+
+    const responseData = {
+      items: transformedItems,
+      meta: paginationResult.meta,
+    };
+
+    return ResponseUtil.success(responseData);
   }
 }

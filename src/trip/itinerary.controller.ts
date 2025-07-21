@@ -75,7 +75,7 @@ export class ItineraryController {
   async generateItinerary(
     @Req() req: AuthRequest,
     @Param('tripId') tripId: string,
-    @Body() generateDto: GenerateItineraryOptionsDto,
+    @Body() generateDto?: GenerateItineraryOptionsDto,
   ): Promise<BaseResponse<any>> {
     const itinerary = await this.itineraryService.generateItinerary(
       tripId,

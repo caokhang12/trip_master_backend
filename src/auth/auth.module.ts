@@ -7,6 +7,7 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { RefreshTokenService } from './services/refresh-token.service';
 import { JwtStrategy, JwtRefreshStrategy } from './strategies/jwt.strategy';
+import { AdminRoleGuard } from './guards/admin-role.guard';
 import { UserEntity } from '../schemas/user.entity';
 import { UserPreferencesEntity } from '../schemas/user-preferences.entity';
 import { RefreshTokenEntity } from '../schemas/refresh-token.entity';
@@ -41,7 +42,8 @@ import authConfig from './config/auth.config';
     RefreshTokenService,
     JwtStrategy,
     JwtRefreshStrategy,
+    AdminRoleGuard,
   ],
-  exports: [AuthService, RefreshTokenService], // Export services
+  exports: [AuthService, RefreshTokenService, AdminRoleGuard], // Export services and guards
 })
 export class AuthModule {}

@@ -1,7 +1,6 @@
 import { Controller, Get, Param } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { TripService } from './trip.service';
-import { CountryDefaultsService } from '../shared/services/country-defaults.service';
 import { ResponseUtil } from '../shared/utils/response.util';
 import { BaseResponse } from '../shared/types/base-response.types';
 import { BaseResponseDto, ErrorResponseDto } from '../shared/dto/response.dto';
@@ -12,10 +11,7 @@ import { BaseResponseDto, ErrorResponseDto } from '../shared/dto/response.dto';
 @ApiTags('Public Trips')
 @Controller('public/trips')
 export class PublicTripController {
-  constructor(
-    private readonly tripService: TripService,
-    private readonly countryDefaultsService: CountryDefaultsService,
-  ) {}
+  constructor(private readonly tripService: TripService) {}
 
   /**
    * View shared trip (public access)
@@ -47,33 +43,5 @@ export class PublicTripController {
   ): Promise<BaseResponse<any>> {
     const trip = await this.tripService.findSharedTripByToken(shareToken);
     return ResponseUtil.success(trip);
-  }
-
-  /**
-   * Get country defaults for trip planning
-   */
-  @ApiOperation({
-    summary: 'Get country defaults',
-    description: 'Retrieve default settings for a specific country',
-  })
-  @ApiParam({
-    name: 'countryCode',
-    type: String,
-    description: 'ISO country code',
-    example: 'VN',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Country defaults retrieved successfully',
-    type: BaseResponseDto,
-  })
-  @Get('countries/:countryCode/defaults')
-  getCountryDefaults(
-    @Param('countryCode') countryCode: string,
-  ): BaseResponse<any> {
-    const defaults = this.countryDefaultsService.getCountryDefaults(
-      countryCode.toUpperCase(),
-    );
-    return ResponseUtil.success(defaults);
   }
 }

@@ -6,7 +6,6 @@ import { UserPreferencesEntity } from '../schemas/user-preferences.entity';
 import { TripEntity } from '../schemas/trip.entity';
 import { ItineraryEntity } from '../schemas/itinerary.entity';
 import { TripShareEntity } from '../schemas/trip-share.entity';
-import { VietnamLocationEntity } from '../schemas/vietnam-location.entity';
 import { DestinationEntity } from '../schemas/destination.entity';
 import { ActivityCostEntity } from '../schemas/activity-cost.entity';
 import { BudgetTrackingEntity } from '../schemas/budget-tracking.entity';
@@ -49,7 +48,6 @@ export class DatabaseConfig implements TypeOrmOptionsFactory {
         TripEntity,
         ItineraryEntity,
         TripShareEntity,
-        VietnamLocationEntity,
         DestinationEntity,
         ActivityCostEntity,
         BudgetTrackingEntity,

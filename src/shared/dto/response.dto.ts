@@ -205,11 +205,34 @@ export class AuthResponseDataDto {
 }
 
 /**
+ * Secure authentication response DTO (without refresh token in response body)
+ * Refresh token is sent via HTTP-only cookie for security
+ */
+export class SecureAuthResponseDataDto {
+  @ApiProperty({
+    description: 'JWT access token',
+    example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+  })
+  access_token: string;
+
+  @ApiProperty({
+    description: 'User profile information',
+    type: UserProfileDataDto,
+  })
+  user_profile: UserProfileDataDto;
+}
+
+/**
  * Success response DTOs for specific endpoints
  */
 export class AuthSuccessResponseDto extends BaseResponseDto<AuthResponseDataDto> {
   @ApiProperty({ type: AuthResponseDataDto })
   declare data: AuthResponseDataDto;
+}
+
+export class SecureAuthSuccessResponseDto extends BaseResponseDto<SecureAuthResponseDataDto> {
+  @ApiProperty({ type: SecureAuthResponseDataDto })
+  declare data: SecureAuthResponseDataDto;
 }
 
 export class UserProfileSuccessResponseDto extends BaseResponseDto<UserProfileDataDto> {

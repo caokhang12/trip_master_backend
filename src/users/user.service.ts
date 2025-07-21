@@ -13,6 +13,10 @@ import {
   UserProfileData,
   UserPreferencesData,
 } from '../shared/types/base-response.types';
+import {
+  PaginationResult,
+  PaginationHelper,
+} from '../shared/types/pagination.types';
 import { UploadService } from '../upload/upload.service';
 
 /**
@@ -369,5 +373,36 @@ export class UserService {
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };
+  }
+
+  /**
+   * Get all users with native TypeORM pagination
+   * @param page - Page number (1-based)
+   * @param limit - Items per page
+   * @returns Paginated user results with metadata
+   */
+  async getAllUsers(
+    page: number = 1,
+    limit: number = 10,
+  ): Promise<PaginationResult<UserEntity>> {
+    const {
+      page: validatedPage,
+      limit: validatedLimit,
+      skip,
+    } = PaginationHelper.validateParams(page, limit);
+
+    const [items, total] = await this.userRepository.findAndCount({
+      relations: ['preferences'],
+      order: { createdAt: 'DESC' },
+      skip,
+      take: validatedLimit,
+    });
+
+    return PaginationHelper.createResult(
+      items,
+      total,
+      validatedPage,
+      validatedLimit,
+    );
   }
 }

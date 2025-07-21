@@ -104,14 +104,6 @@ export class TripQueryDto extends ExtendedPaginationDto {
   @IsOptional()
   @IsString()
   timezone?: string;
-
-  @ApiPropertyOptional({
-    description: 'Filter by default currency',
-    example: 'JPY',
-  })
-  @IsOptional()
-  @IsString()
-  defaultCurrency?: string;
 }
 
 /**
@@ -122,8 +114,9 @@ export class TripSearchDto extends PaginationDto {
     description: 'Search query string',
     example: 'Tokyo adventure',
   })
+  @IsOptional()
   @IsString()
-  query: string;
+  query?: string;
 }
 
 /**

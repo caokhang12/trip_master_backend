@@ -6,6 +6,13 @@ export class CreateRefreshTokensTable1704067200000
   name = 'CreateRefreshTokensTable1704067200000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
+    // Check if refresh_tokens table already exists
+    const hasTable = await queryRunner.hasTable('refresh_tokens');
+    if (hasTable) {
+      console.log('refresh_tokens table already exists, skipping creation');
+      return;
+    }
+
     // Create refresh_tokens table
     await queryRunner.createTable(
       new Table({

@@ -73,7 +73,7 @@ export class ItineraryService {
   async generateItinerary(
     tripId: string,
     userId: string,
-    generateDto: GenerateItineraryOptionsDto,
+    generateDto: GenerateItineraryOptionsDto = {},
   ): Promise<ItineraryWithCosts[]> {
     // Validate trip ownership and dates
     const trip = await TripValidationUtil.validateTripOwnership(
@@ -174,13 +174,15 @@ export class ItineraryService {
         tripId,
         dayNumber,
         date: updateDto.date ? new Date(updateDto.date) : undefined,
-        activities: updateDto.activities,
+        activities: updateDto.activities || [],
         aiGenerated: false,
         userModified: true,
       });
     } else {
       // Update existing itinerary
-      itinerary.activities = updateDto.activities;
+      if (updateDto.activities) {
+        itinerary.activities = updateDto.activities;
+      }
       itinerary.userModified = updateDto.userModified ?? true;
       if (updateDto.date) {
         itinerary.date = new Date(updateDto.date);

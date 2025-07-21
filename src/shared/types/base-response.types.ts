@@ -35,13 +35,6 @@ export interface SecureAuthResponseData {
 }
 
 /**
- * Internal authentication response data (with refresh token for internal use)
- */
-export interface InternalAuthResponseData extends AuthResponseData {
-  refresh_token: string;
-}
-
-/**
  * User profile data structure
  */
 export interface UserProfileData {

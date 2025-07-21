@@ -140,35 +140,6 @@ export class CreateTripDto extends TripDto {
   @IsOptional()
   @IsString()
   timezone?: string;
-
-  @ApiPropertyOptional({
-    description: 'Default currency for the destination',
-    example: 'JPY',
-  })
-  @IsOptional()
-  @IsString()
-  defaultCurrency?: string;
-
-  @ApiPropertyOptional({
-    description: 'Preferred country for auto-detection',
-    example: 'JP',
-    maxLength: 2,
-    minLength: 2,
-  })
-  @IsOptional()
-  @IsString()
-  @MinLength(2, { message: 'Country code must be exactly 2 characters' })
-  @MaxLength(2, { message: 'Country code must be exactly 2 characters' })
-  preferredCountry?: string;
-
-  @ApiPropertyOptional({
-    description: 'Auto-detect country from coordinates',
-    example: true,
-    default: true,
-  })
-  @IsOptional()
-  @IsBoolean()
-  detectCountryFromCoords?: boolean = true;
 }
 
 export class UpdateTripDto extends TripDto {
@@ -250,11 +221,4 @@ export class UpdateTripDto extends TripDto {
   @IsOptional()
   @IsString()
   timezone?: string;
-
-  @ApiPropertyOptional({
-    description: 'Default currency for the destination',
-  })
-  @IsOptional()
-  @IsString()
-  defaultCurrency?: string;
 }

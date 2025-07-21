@@ -20,21 +20,18 @@ describe('Trip DTOs', () => {
   describe('CreateTripDto', () => {
     it('should validate a complete trip creation request', async () => {
       const tripData = {
-        title: 'Amazing Vietnam Adventure 2024',
-        description: 'Exploring Ho Chi Minh City and the Mekong Delta',
-        destinationName: 'Ho Chi Minh City, Vietnam',
-        destinationCoords: { lat: 10.8231, lng: 106.6297 },
-        preferredCountry: 'VN',
-        detectCountryFromCoords: true,
-        destinationCountry: 'VN',
-        destinationProvince: 'Ho Chi Minh',
-        destinationCity: 'Ho Chi Minh City',
-        timezone: 'Asia/Ho_Chi_Minh',
-        defaultCurrency: 'VND',
+        title: 'Amazing Tokyo Adventure 2024',
+        description: 'Exploring Tokyo and the surrounding areas',
+        destinationName: 'Tokyo, Japan',
+        destinationCoords: { lat: 35.6762, lng: 139.6503 },
+        destinationCountry: 'JP',
+        destinationProvince: 'Tokyo',
+        destinationCity: 'Tokyo',
+        timezone: 'Asia/Tokyo',
         startDate: '2024-12-01',
         endDate: '2024-12-10',
-        budget: 1500,
-        currency: 'VND', // Fixed: Use VND for Vietnam
+        budget: 150000,
+        currency: 'JPY',
         status: TripStatus.PLANNING,
         isPublic: false,
       };
@@ -43,12 +40,9 @@ describe('Trip DTOs', () => {
       const errors = await validate(dto);
 
       expect(errors).toHaveLength(0);
-      expect(dto.title).toBe('Amazing Vietnam Adventure 2024');
-      expect(dto.preferredCountry).toBe('VN');
-      expect(dto.detectCountryFromCoords).toBe(true);
-      expect(dto.destinationCountry).toBe('VN');
-      expect(dto.timezone).toBe('Asia/Ho_Chi_Minh');
-      expect(dto.defaultCurrency).toBe('VND');
+      expect(dto.title).toBe('Amazing Tokyo Adventure 2024');
+      expect(dto.destinationCountry).toBe('JP');
+      expect(dto.timezone).toBe('Asia/Tokyo');
     });
 
     it('should validate minimal trip creation request', async () => {
@@ -65,14 +59,12 @@ describe('Trip DTOs', () => {
       expect(errors).toHaveLength(0);
       expect(dto.title).toBe('Simple Trip');
       expect(dto.destinationName).toBe('Tokyo, Japan');
-      expect(dto.detectCountryFromCoords).toBe(true); // default value
     });
 
     it('should reject invalid country codes', async () => {
       const tripData = {
         title: 'Invalid Country Trip',
         destinationName: 'Somewhere',
-        preferredCountry: 'INVALID', // should be 2 characters
         destinationCountry: 'X', // should be 2 characters
         startDate: '2024-12-01',
         endDate: '2024-12-05',
@@ -83,9 +75,7 @@ describe('Trip DTOs', () => {
 
       expect(errors.length).toBeGreaterThan(0);
       const countryErrors = errors.filter(
-        (error) =>
-          error.property === 'preferredCountry' ||
-          error.property === 'destinationCountry',
+        (error) => error.property === 'destinationCountry',
       );
       expect(countryErrors.length).toBeGreaterThan(0);
     });
@@ -96,11 +86,8 @@ describe('Trip DTOs', () => {
       const updateData = {
         title: 'Updated Vietnam Adventure',
         destinationCountry: 'VN',
-        reDetectCountryFromCoords: true,
-        autoUpdateCurrency: true,
         destinationCity: 'Da Nang',
         timezone: 'Asia/Ho_Chi_Minh',
-        defaultCurrency: 'VND',
         currency: 'VND', // Fixed: Use VND for Vietnam
       };
 
@@ -132,7 +119,6 @@ describe('Trip DTOs', () => {
         destinationCountry: 'VN',
         destinationCity: 'Ho Chi Minh City',
         timezone: 'Asia/Ho_Chi_Minh',
-        defaultCurrency: 'VND',
         page: 1,
         limit: 20,
       };
@@ -144,7 +130,6 @@ describe('Trip DTOs', () => {
       expect(dto.destinationCountry).toBe('VN');
       expect(dto.destinationCity).toBe('Ho Chi Minh City');
       expect(dto.timezone).toBe('Asia/Ho_Chi_Minh');
-      expect(dto.defaultCurrency).toBe('VND');
     });
 
     it('should reject invalid region values', async () => {

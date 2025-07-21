@@ -89,7 +89,7 @@ export class TripController {
     const result = await this.tripService.findUserTrips(req.user.id, queryDto);
     return ResponseUtil.success({
       trips: result.items,
-      pagination: result.pagination,
+      meta: result.meta,
     });
   }
 
@@ -120,7 +120,7 @@ export class TripController {
     );
     return ResponseUtil.success({
       trips: result.items,
-      pagination: result.pagination,
+      meta: result.meta,
     });
   }
 
@@ -220,7 +220,7 @@ export class TripController {
   async generateShareLink(
     @Req() req: AuthRequest,
     @Param('id') tripId: string,
-    @Body() shareDto: ShareTripDto,
+    @Body() shareDto?: ShareTripDto,
   ): Promise<BaseResponse<any>> {
     const shareInfo = await this.tripService.generateShareLink(
       tripId,

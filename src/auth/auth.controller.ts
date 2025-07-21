@@ -46,7 +46,7 @@ import {
   SessionData,
 } from '../shared/types/base-response.types';
 import {
-  AuthSuccessResponseDto,
+  SecureAuthSuccessResponseDto,
   ErrorResponseDto,
   VerificationSuccessResponseDto,
 } from '../shared/dto/response.dto';
@@ -67,7 +67,7 @@ export class AuthController {
   @ApiResponse({
     status: 201,
     description: 'User successfully registered. Email verification sent.',
-    type: AuthSuccessResponseDto,
+    type: SecureAuthSuccessResponseDto,
   })
   @ApiBadRequestResponse({
     description: 'Invalid input data or validation errors',
@@ -95,7 +95,7 @@ export class AuthController {
     status: 200,
     description:
       'User successfully authenticated. Refresh token set in HTTP-only cookie.',
-    type: AuthSuccessResponseDto,
+    type: SecureAuthSuccessResponseDto,
   })
   @ApiBadRequestResponse({
     description: 'Invalid input data or validation errors',
@@ -143,7 +143,7 @@ export class AuthController {
     status: 200,
     description:
       'New access token generated successfully. New refresh token set in HTTP-only cookie.',
-    type: AuthSuccessResponseDto,
+    type: SecureAuthSuccessResponseDto,
   })
   @ApiUnauthorizedResponse({
     description: 'Invalid or expired refresh token',

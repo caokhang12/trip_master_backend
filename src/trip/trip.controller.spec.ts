@@ -3,7 +3,6 @@ import { TripController } from './trip.controller';
 import { PublicTripController } from './public-trip.controller';
 import { TripService } from './trip.service';
 import { ItineraryService } from './itinerary.service';
-import { CountryDefaultsService } from '../shared/services/country-defaults.service';
 import { ResponseUtil } from '../shared/utils/response.util';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { HttpStatus } from '@nestjs/common';
@@ -62,14 +61,6 @@ describe('TripController', () => {
     // Itinerary methods are now in separate controller
   };
 
-  const mockCountryDefaultsService = {
-    getCountryDefaults: jest.fn(),
-    getDefaultCurrency: jest.fn(),
-    getDefaultTimezone: jest.fn(),
-    getDefaultLanguage: jest.fn(),
-    applyCountryDefaults: jest.fn(),
-  };
-
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [TripController, PublicTripController],
@@ -81,10 +72,6 @@ describe('TripController', () => {
         {
           provide: ItineraryService,
           useValue: mockItineraryService,
-        },
-        {
-          provide: CountryDefaultsService,
-          useValue: mockCountryDefaultsService,
         },
       ],
     })
@@ -150,11 +137,13 @@ describe('TripController', () => {
       const inputQueryDto: TripQueryDto = { page: 1, limit: 10 };
       const mockResponse = {
         items: [mockTrip],
-        pagination: {
+        meta: {
           page: 1,
           limit: 10,
           total: 1,
           totalPages: 1,
+          hasNext: false,
+          hasPrev: false,
         },
       };
 
@@ -173,7 +162,7 @@ describe('TripController', () => {
       expect(actualResult).toEqual(
         ResponseUtil.success({
           trips: mockResponse.items,
-          pagination: mockResponse.pagination,
+          meta: mockResponse.meta,
         }),
       );
     });
@@ -182,11 +171,13 @@ describe('TripController', () => {
       const inputQueryDto: TripQueryDto = {};
       const mockResponse = {
         items: [mockTrip],
-        pagination: {
+        meta: {
           page: 1,
           limit: 10,
           total: 1,
           totalPages: 1,
+          hasNext: false,
+          hasPrev: false,
         },
       };
 
@@ -205,7 +196,7 @@ describe('TripController', () => {
       expect(actualResult).toEqual(
         ResponseUtil.success({
           trips: mockResponse.items,
-          pagination: mockResponse.pagination,
+          meta: mockResponse.meta,
         }),
       );
     });
@@ -376,11 +367,13 @@ describe('TripController', () => {
       };
       const mockSearchResults = {
         items: [mockTrip],
-        pagination: {
+        meta: {
           page: 1,
           limit: 10,
           total: 1,
           totalPages: 1,
+          hasNext: false,
+          hasPrev: false,
         },
       };
 
@@ -399,7 +392,7 @@ describe('TripController', () => {
       expect(actualResult).toEqual(
         ResponseUtil.success({
           trips: mockSearchResults.items,
-          pagination: mockSearchResults.pagination,
+          meta: mockSearchResults.meta,
         }),
       );
     });
@@ -435,14 +428,6 @@ describe('PublicTripController', () => {
     findSharedTripByToken: jest.fn(),
   };
 
-  const mockCountryDefaultsService = {
-    getCountryDefaults: jest.fn(),
-    getDefaultCurrency: jest.fn(),
-    getDefaultTimezone: jest.fn(),
-    getDefaultLanguage: jest.fn(),
-    applyCountryDefaults: jest.fn(),
-  };
-
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [PublicTripController],
@@ -450,10 +435,6 @@ describe('PublicTripController', () => {
         {
           provide: TripService,
           useValue: mockTripService,
-        },
-        {
-          provide: CountryDefaultsService,
-          useValue: mockCountryDefaultsService,
         },
       ],
     }).compile();
@@ -499,63 +480,6 @@ describe('PublicTripController', () => {
       await expect(
         publicController.findSharedTripByToken(shareToken),
       ).rejects.toThrow(mockError);
-    });
-  });
-
-  describe('getCountryDefaults', () => {
-    it('should return country defaults successfully', () => {
-      const countryCode = 'JP';
-      const mockDefaults = {
-        countryCode: 'JP',
-        currency: 'JPY',
-        timezone: 'Asia/Tokyo',
-        language: 'ja',
-      };
-
-      mockCountryDefaultsService.getCountryDefaults.mockReturnValue(
-        mockDefaults,
-      );
-
-      const actualResult = publicController.getCountryDefaults(countryCode);
-
-      expect(
-        mockCountryDefaultsService.getCountryDefaults,
-      ).toHaveBeenCalledWith('JP');
-      expect(actualResult).toEqual(ResponseUtil.success(mockDefaults));
-    });
-
-    it('should handle country code in lowercase', () => {
-      const countryCode = 'us';
-      const mockDefaults = {
-        countryCode: 'US',
-        currency: 'USD',
-        timezone: 'America/New_York',
-        language: 'en',
-      };
-
-      mockCountryDefaultsService.getCountryDefaults.mockReturnValue(
-        mockDefaults,
-      );
-
-      const actualResult = publicController.getCountryDefaults(countryCode);
-
-      expect(
-        mockCountryDefaultsService.getCountryDefaults,
-      ).toHaveBeenCalledWith('US');
-      expect(actualResult).toEqual(ResponseUtil.success(mockDefaults));
-    });
-
-    it('should handle unsupported country code', () => {
-      const countryCode = 'XX';
-
-      mockCountryDefaultsService.getCountryDefaults.mockReturnValue(null);
-
-      const actualResult = publicController.getCountryDefaults(countryCode);
-
-      expect(
-        mockCountryDefaultsService.getCountryDefaults,
-      ).toHaveBeenCalledWith('XX');
-      expect(actualResult).toEqual(ResponseUtil.success(null));
     });
   });
 });

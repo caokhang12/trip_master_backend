@@ -132,14 +132,15 @@ export class UpdateItineraryDto {
   @IsDateString()
   date?: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Updated activities for this day',
     type: [ActivityDto],
   })
+  @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => ActivityDto)
-  activities: Activity[];
+  activities?: Activity[];
 
   @ApiPropertyOptional({
     description: 'Whether this was user modified',
