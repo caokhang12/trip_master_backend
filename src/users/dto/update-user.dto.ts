@@ -8,12 +8,12 @@ import {
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 import { TravelStyle } from '../../shared/types/base-response.types';
-import { BaseUserProfileDto } from '../../shared/dto/user-fields.dto';
+import { UserProfileDto } from './user-profile.dto';
 import { UserBudgetRangeDto } from '../../shared/dto/money.dto';
 
 // Using shared UserBudgetRangeDto instead of local BudgetRangeDto
 
-export class UpdateProfileDto extends BaseUserProfileDto {
+export class UpdateProfileDto extends UserProfileDto {
   // Explicitly declare inherited properties for TypeScript compilation
   declare firstName?: string;
   declare lastName?: string;

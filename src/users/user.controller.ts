@@ -30,8 +30,8 @@ import {
 import { UserService } from './user.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AdminRoleGuard } from '../auth/guards/admin-role.guard';
-import { UpdateUserDto } from './dto/user.dto';
-import { GetAllUsersDto } from './dto/get-users.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { ListUsersDto } from './dto/list-users.dto';
 import { ResponseUtil } from '../shared/utils/response.util';
 import {
   BaseResponse,
@@ -43,11 +43,11 @@ import {
   ErrorResponseDto,
   AdminTestResponseDto,
 } from '../shared/dto/response.dto';
-import { GetAllUsersSuccessResponseDto } from '../shared/dto/user-pagination-response.dto';
+import { ListUsersResponseDto } from './dto/list-users-response.dto';
 import {
   FileUploadDto,
   UserProfileWithAvatarDto,
-} from '../shared/dto/file-operations.dto';
+} from '../upload/dto/file-operations.dto';
 import { FileValidationUtil } from '../shared/utils/file-validation.util';
 
 interface RequestWithUser extends Request {
@@ -224,9 +224,8 @@ export class UserController {
   })
   @ApiBearerAuth()
   @ApiResponse({
-    status: 200,
     description: 'Users retrieved successfully with pagination',
-    type: GetAllUsersSuccessResponseDto,
+    type: ListUsersResponseDto,
   })
   @ApiUnauthorizedResponse({
     description: 'Invalid or missing JWT token',
@@ -247,7 +246,7 @@ export class UserController {
   @UseGuards(JwtAuthGuard, AdminRoleGuard)
   @Get()
   async getAllUsers(
-    @Query() paginationDto: GetAllUsersDto,
+    @Query() paginationDto: ListUsersDto,
   ): Promise<BaseResponse<any>> {
     const { page = 1, limit = 10 } = paginationDto;
 

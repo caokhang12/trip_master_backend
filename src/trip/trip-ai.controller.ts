@@ -27,16 +27,16 @@ import {
   GenerateItineraryDto,
   LocationSuggestionsDto,
   CostEstimationDto,
-} from '../shared/dto/ai-request.dto';
+} from './dto/ai-request.dto';
 import {
   SaveGeneratedItineraryDto,
   SaveItineraryResponseDto,
-} from '../shared/dto/save-itinerary.dto';
+} from './dto/save-itinerary.dto';
 import {
   GeneratedItineraryDto,
   LocationSuggestionDto,
   CostEstimationResponseDto,
-} from '../shared/dto/ai-response.dto';
+} from './dto/ai-response.dto';
 
 /**
  * Controller for AI-powered travel planning features

@@ -1,4 +1,4 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
   IsNumber,
@@ -77,4 +77,45 @@ export class ExtendedPaginationDto
   @IsOptional()
   @IsEnum(['ASC', 'DESC'])
   sortOrder?: 'ASC' | 'DESC' = 'DESC';
+}
+
+/**
+ * Pagination metadata DTO - Swagger-compatible version of PaginationMeta
+ */
+export class PaginationMetaDto {
+  @ApiProperty({
+    description: 'Current page number',
+    example: 2,
+  })
+  page: number;
+
+  @ApiProperty({
+    description: 'Items per page',
+    example: 10,
+  })
+  limit: number;
+
+  @ApiProperty({
+    description: 'Total number of items',
+    example: 100,
+  })
+  total: number;
+
+  @ApiProperty({
+    description: 'Total number of pages',
+    example: 10,
+  })
+  totalPages: number;
+
+  @ApiProperty({
+    description: 'Whether there is a next page',
+    example: true,
+  })
+  hasNext: boolean;
+
+  @ApiProperty({
+    description: 'Whether there is a previous page',
+    example: true,
+  })
+  hasPrev: boolean;
 }

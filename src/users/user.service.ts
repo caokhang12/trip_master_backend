@@ -8,7 +8,6 @@ import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import { UserEntity } from '../schemas/user.entity';
 import { UserPreferencesEntity } from '../schemas/user-preferences.entity';
-import { UpdateUserDto } from './dto/user.dto';
 import {
   UserProfileData,
   UserPreferencesData,
@@ -18,6 +17,7 @@ import {
   PaginationHelper,
 } from '../shared/types/pagination.types';
 import { UploadService } from '../upload/upload.service';
+import { UpdateUserDto } from 'src/users/dto/update-user.dto';
 
 /**
  * User management service with profile data transformation and password security

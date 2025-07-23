@@ -16,30 +16,4 @@ export class AuthControllerUtil {
   ): BaseResponse<T> {
     return ResponseUtil.success(data, status);
   }
-
-  /**
-   * Create standard boolean operation response with proper typing
-   */
-  static createBooleanResponse<K extends string>(
-    operation: K,
-    result: boolean,
-    status: HttpStatus = HttpStatus.OK,
-  ): BaseResponse<Record<K, boolean>> {
-    return ResponseUtil.success(
-      { [operation]: result } as Record<K, boolean>,
-      status,
-    );
-  }
-
-  /**
-   * Create admin test response
-   */
-  static createAdminTestResponse(
-    module: string,
-  ): BaseResponse<{ message: string; timestamp: Date }> {
-    return ResponseUtil.success({
-      message: `${module} module is working correctly`,
-      timestamp: new Date(),
-    });
-  }
 }

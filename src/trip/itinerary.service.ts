@@ -24,7 +24,11 @@ import {
 import {
   LocationSuggestionsDto,
   CostEstimationDto,
-} from '../shared/dto/ai-request.dto';
+} from './dto/ai-request.dto';
+import {
+  CostEstimationResponseDto,
+  LocationSuggestionDto,
+} from './dto/ai-response.dto';
 import { CurrencyService } from '../currency/services/currency.service';
 import { AIService } from '../shared/services/ai.service';
 import { TripValidationUtil } from '../shared/utils/trip-validation.util';
@@ -35,7 +39,7 @@ import {
 import {
   SaveGeneratedItineraryDto,
   SaveItineraryResponseDto,
-} from '../shared/dto/save-itinerary.dto';
+} from './dto/save-itinerary.dto';
 
 /**
  * Service for managing trip itineraries and AI integration with cost tracking
@@ -599,7 +603,7 @@ export class ItineraryService {
     tripId: string,
     userId: string,
     suggestionsDto: LocationSuggestionsDto,
-  ): Promise<any[]> {
+  ): Promise<LocationSuggestionDto[]> {
     // Validate trip ownership
     await TripValidationUtil.validateTripOwnership(
       this.tripRepository,
@@ -615,10 +619,10 @@ export class ItineraryService {
         suggestionsDto.interests,
       );
 
-      return suggestions;
+      return suggestions as LocationSuggestionDto[];
     } catch (error) {
       this.logger.error(
-        `Failed to generate location suggestions: ${error.message}`,
+        `Failed to generate location suggestions: ${error instanceof Error ? error.message : String(error)}`,
       );
       throw new BadRequestException('Failed to generate location suggestions');
     }
@@ -631,7 +635,7 @@ export class ItineraryService {
     tripId: string,
     userId: string,
     costDto: CostEstimationDto,
-  ): Promise<any> {
+  ): Promise<CostEstimationResponseDto> {
     // Validate trip ownership
     await TripValidationUtil.validateTripOwnership(
       this.tripRepository,
@@ -651,7 +655,9 @@ export class ItineraryService {
 
       return estimation;
     } catch (error) {
-      this.logger.error(`Failed to generate cost estimation: ${error.message}`);
+      this.logger.error(
+        `Failed to generate cost estimation: ${error instanceof Error ? error.message : String(error)}`,
+      );
       throw new BadRequestException('Failed to generate cost estimation');
     }
   }

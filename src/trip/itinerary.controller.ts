@@ -27,10 +27,17 @@ import {
 import { UpdateActivityCostDto } from './dto/cost.dto';
 import { BaseResponseDto, ErrorResponseDto } from '../shared/dto/response.dto';
 import { AuthRequest } from '../shared/interfaces/auth.interface';
+import { ItineraryWithCosts } from './interfaces/trip.interface';
+import { ItineraryEntity } from '../schemas/itinerary.entity';
+import { ActivityCostEntity } from '../schemas/activity-cost.entity';
 import {
   LocationSuggestionsDto,
   CostEstimationDto,
-} from '../shared/dto/ai-request.dto';
+} from './dto/ai-request.dto';
+import {
+  CostEstimationResponseDto,
+  LocationSuggestionDto,
+} from './dto/ai-response.dto';
 
 /**
  * Controller for itinerary and cost tracking operations
@@ -76,7 +83,7 @@ export class ItineraryController {
     @Req() req: AuthRequest,
     @Param('tripId') tripId: string,
     @Body() generateDto?: GenerateItineraryOptionsDto,
-  ): Promise<BaseResponse<any>> {
+  ): Promise<BaseResponse<ItineraryWithCosts[]>> {
     const itinerary = await this.itineraryService.generateItinerary(
       tripId,
       req.user.id,
@@ -125,7 +132,7 @@ export class ItineraryController {
     @Param('tripId') tripId: string,
     @Param('day') dayNumber: string,
     @Body() updateDto: UpdateItineraryDto,
-  ): Promise<BaseResponse<any>> {
+  ): Promise<BaseResponse<ItineraryEntity>> {
     const itinerary = await this.itineraryService.updateDayItinerary(
       tripId,
       req.user.id,
@@ -163,7 +170,7 @@ export class ItineraryController {
     @Param('activityId') activityId: string,
     @Body() updateDto: UpdateActivityCostDto,
     @Req() req: AuthRequest,
-  ): Promise<BaseResponse<any>> {
+  ): Promise<BaseResponse<ActivityCostEntity>> {
     const result = await this.itineraryService.updateActivityCost(
       tripId,
       req.user.id,
@@ -201,7 +208,7 @@ export class ItineraryController {
     @Req() req: AuthRequest,
     @Param('tripId') tripId: string,
     @Body() suggestionsDto: LocationSuggestionsDto,
-  ): Promise<BaseResponse<any>> {
+  ): Promise<BaseResponse<LocationSuggestionDto[]>> {
     const suggestions = await this.itineraryService.generateLocationSuggestions(
       tripId,
       req.user.id,
@@ -238,7 +245,7 @@ export class ItineraryController {
     @Req() req: AuthRequest,
     @Param('tripId') tripId: string,
     @Body() costDto: CostEstimationDto,
-  ): Promise<BaseResponse<any>> {
+  ): Promise<BaseResponse<CostEstimationResponseDto>> {
     const estimation = await this.itineraryService.generateCostEstimation(
       tripId,
       req.user.id,

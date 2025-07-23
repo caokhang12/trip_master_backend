@@ -11,12 +11,3 @@ export interface AuthRequest extends Request {
     role?: string;
   };
 }
-
-/**
- * User information from JWT token
- */
-export interface AuthUser {
-  id: string;
-  email: string;
-  role?: string;
-}

@@ -7,11 +7,11 @@ import { HttpStatus } from '@nestjs/common';
 import {
   GenerateItineraryDto,
   UserTravelPreferencesDto,
-} from '../shared/dto/ai-request.dto';
+} from './dto/ai-request.dto';
 import {
   SaveGeneratedItineraryDto,
   SaveItineraryResponseDto,
-} from '../shared/dto/save-itinerary.dto';
+} from './dto/save-itinerary.dto';
 import { AuthRequest } from '../shared/interfaces/auth.interface';
 import { ActivityCategory } from '../shared/interfaces/ai.interface';
 

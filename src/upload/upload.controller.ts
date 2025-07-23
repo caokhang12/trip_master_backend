@@ -2,10 +2,7 @@ import { Controller, Delete, Param, UseGuards, Request } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { UploadService } from './upload.service';
-
-interface AuthRequest extends Request {
-  user: { id: string };
-}
+import { AuthRequest } from 'src/shared/interfaces/auth.interface';
 
 /**
  * Simplified upload controller for direct file operations

@@ -1,18 +1,6 @@
-import { Request } from 'express';
 import { TripEntity } from '../../schemas/trip.entity';
 import { ItineraryEntity } from '../../schemas/itinerary.entity';
 import { TripShareEntity } from '../../schemas/trip-share.entity';
-
-/**
- * Authenticated request interface with user information
- */
-export interface AuthRequest extends Request {
-  user: {
-    id: string;
-    email: string;
-    role?: string;
-  };
-}
 
 /**
  * Trip with complete itinerary details

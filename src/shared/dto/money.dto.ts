@@ -83,8 +83,12 @@ export class TripBudgetDto {
     description: 'Currency code for the budget (ISO 4217)',
     example: 'USD',
     default: 'USD',
+    maxLength: 3,
+    minLength: 3,
   })
   @IsOptional()
+  @IsString({ message: 'Currency must be a string' })
+  @MaxLength(3, { message: 'Currency code must be exactly 3 characters' })
   currency?: string = 'USD';
 }
 
@@ -105,12 +109,24 @@ export class CurrencyAmountDto {
   @ApiProperty({
     description: 'Source currency code (ISO 4217)',
     example: 'USD',
+    maxLength: 3,
+    minLength: 3,
+  })
+  @IsString({ message: 'Source currency must be a string' })
+  @MaxLength(3, {
+    message: 'Source currency code must be exactly 3 characters',
   })
   fromCurrency: string;
 
   @ApiProperty({
     description: 'Target currency code (ISO 4217)',
     example: 'VND',
+    maxLength: 3,
+    minLength: 3,
+  })
+  @IsString({ message: 'Target currency must be a string' })
+  @MaxLength(3, {
+    message: 'Target currency code must be exactly 3 characters',
   })
   toCurrency: string;
 }

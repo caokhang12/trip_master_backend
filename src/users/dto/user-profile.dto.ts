@@ -9,9 +9,9 @@ import {
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 /**
- * Base user name validation DTO
+ * Base user name DTO
  */
-export class BaseUserNameDto {
+export class UserNameDto {
   @ApiProperty({
     description: 'User first name',
     example: 'John',
@@ -32,7 +32,7 @@ export class BaseUserNameDto {
 }
 
 /**
- * Optional user name validation DTO
+ * Optional user name DTO
  */
 export class OptionalUserNameDto {
   @ApiPropertyOptional({
@@ -57,9 +57,9 @@ export class OptionalUserNameDto {
 }
 
 /**
- * Email validation DTO
+ * User email DTO
  */
-export class EmailDto {
+export class UserEmailDto {
   @ApiProperty({
     description: 'User email address',
     example: 'john.doe@example.com',
@@ -99,9 +99,9 @@ export class UserLocationDto {
 }
 
 /**
- * Avatar URL validation DTO
+ * User avatar DTO
  */
-export class AvatarDto {
+export class UserAvatarDto {
   @ApiPropertyOptional({
     description: 'User avatar image URL',
     example: 'https://example.com/avatars/john-doe.jpg',
@@ -113,12 +113,13 @@ export class AvatarDto {
 }
 
 /**
- * Combined basic user profile fields DTO
+ * User profile DTO
  */
-export class BaseUserProfileDto extends OptionalUserNameDto {
+export class UserProfileDto extends OptionalUserNameDto {
   @ApiPropertyOptional({
     description: 'User avatar image URL',
     example: 'https://example.com/avatars/john-doe.jpg',
+    format: 'url',
   })
   @IsOptional()
   @IsString({ message: 'Avatar URL must be a string' })

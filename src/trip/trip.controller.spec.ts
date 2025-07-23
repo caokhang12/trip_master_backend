@@ -18,7 +18,7 @@ import {
   TripSearchDto,
 } from './dto/trip-search.dto';
 import { TripStatus } from '../schemas/trip.entity';
-import { AuthRequest } from './interfaces/trip.interface';
+import { AuthRequest } from 'src/shared/interfaces/auth.interface';
 
 /**
  * Unit tests for TripController and PublicTripController

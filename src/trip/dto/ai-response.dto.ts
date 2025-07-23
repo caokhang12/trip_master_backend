@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { BudgetBreakdownDto } from './cost.dto';
 
 export class CoordinatesDto {
   @ApiProperty({
@@ -94,50 +95,6 @@ export class ActivityRecommendationDto {
     example: 'Open year-round, best visited during dry season',
   })
   seasonalAvailability?: string;
-}
-
-export class BudgetBreakdownDto {
-  @ApiProperty({
-    description: 'Accommodation costs',
-    example: 1500000,
-  })
-  accommodation: number;
-
-  @ApiProperty({
-    description: 'Food and dining costs',
-    example: 800000,
-  })
-  food: number;
-
-  @ApiProperty({
-    description: 'Activities and attractions costs',
-    example: 600000,
-  })
-  activities: number;
-
-  @ApiProperty({
-    description: 'Transportation costs',
-    example: 300000,
-  })
-  transportation: number;
-
-  @ApiProperty({
-    description: 'Shopping budget',
-    example: 500000,
-  })
-  shopping: number;
-
-  @ApiProperty({
-    description: 'Miscellaneous expenses',
-    example: 200000,
-  })
-  miscellaneous: number;
-
-  @ApiProperty({
-    description: 'Total estimated cost',
-    example: 3900000,
-  })
-  total: number;
 }
 
 export class ItinerarySummaryDto {

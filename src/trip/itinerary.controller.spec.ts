@@ -8,7 +8,7 @@ import {
   GenerateItineraryOptionsDto,
 } from './dto/itinerary.dto';
 import { UpdateActivityCostDto } from './dto/cost.dto';
-import { AuthRequest } from './interfaces/trip.interface';
+import { AuthRequest } from 'src/shared/interfaces/auth.interface';
 
 describe('ItineraryController', () => {
   let controller: ItineraryController;
