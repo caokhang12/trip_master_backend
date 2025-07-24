@@ -26,7 +26,7 @@ import {
 } from './dto/itinerary.dto';
 import { UpdateActivityCostDto } from './dto/cost.dto';
 import { BaseResponseDto, ErrorResponseDto } from '../shared/dto/response.dto';
-import { AuthRequest } from '../shared/interfaces/auth.interface';
+import { AuthRequest } from '../auth/interfaces/auth.interface';
 import { ItineraryWithCosts } from './interfaces/trip.interface';
 import { ItineraryEntity } from '../schemas/itinerary.entity';
 import { ActivityCostEntity } from '../schemas/activity-cost.entity';

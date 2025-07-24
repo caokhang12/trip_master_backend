@@ -11,7 +11,7 @@ import { ItineraryService } from './itinerary.service';
 import { ResponseUtil } from '../shared/utils/response.util';
 import { BaseResponse } from '../shared/types/base-response.types';
 import { BaseResponseDto, ErrorResponseDto } from '../shared/dto/response.dto';
-import { AuthRequest } from '../shared/interfaces/auth.interface';
+import { AuthRequest } from '../auth/interfaces/auth.interface';
 
 /**
  * Controller for cost tracking and budget analysis

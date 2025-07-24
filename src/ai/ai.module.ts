@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AIService } from './services/ai.service';
 import { PromptBuilderService } from './services/prompt-builder.service';
-import { APIThrottleService } from './services/api-throttle.service';
+import { APIThrottleService } from '../shared/services/api-throttle.service';
 
 /**
  * Module for AI-powered travel planning features

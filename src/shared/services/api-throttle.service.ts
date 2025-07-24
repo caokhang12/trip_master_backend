@@ -1,6 +1,5 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { AIUsageMetrics } from '../interfaces/ai.interface';
+import { AIUsageMetrics } from '../../ai/interfaces/ai.interface';
 
 interface ServiceLimits {
   daily?: number;

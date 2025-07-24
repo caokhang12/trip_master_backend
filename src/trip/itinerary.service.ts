@@ -30,8 +30,8 @@ import {
   LocationSuggestionDto,
 } from './dto/ai-response.dto';
 import { CurrencyService } from '../currency/services/currency.service';
-import { AIService } from '../shared/services/ai.service';
-import { TripValidationUtil } from '../shared/utils/trip-validation.util';
+import { AIService } from '../ai/services/ai.service';
+import { TripValidationUtil } from './utils/trip-validation.util';
 import {
   ActivityWithCosts,
   ItineraryWithCosts,

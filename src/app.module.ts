@@ -11,6 +11,7 @@ import { TripModule } from './trip/trip.module';
 import { LocationModule } from './location/location.module';
 import { CurrencyModule } from './currency/currency.module';
 import { UploadModule } from './upload/upload.module';
+import { AIModule } from './ai/ai.module';
 import { GlobalExceptionFilter } from './shared/filters/global-exception.filter';
 import { GlobalValidationPipe } from './shared/pipes/global-validation.pipe';
 
@@ -28,6 +29,7 @@ import { GlobalValidationPipe } from './shared/pipes/global-validation.pipe';
     LocationModule,
     CurrencyModule,
     UploadModule,
+    AIModule,
   ],
   controllers: [AppController],
   providers: [

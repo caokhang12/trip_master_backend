@@ -9,10 +9,10 @@ import { Repository } from 'typeorm';
 import {
   CloudinaryService,
   CloudinaryResult,
-} from '../shared/services/cloudinary.service';
+} from './services/cloudinary.service';
 import { UserEntity } from '../schemas/user.entity';
 import { TripEntity } from '../schemas/trip.entity';
-import { FileValidationUtil } from '../shared/utils/file-validation.util';
+import { FileValidationUtil } from '../upload/utils/file-validation.util';
 
 /**
  * Simplified upload service

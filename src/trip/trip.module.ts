@@ -16,7 +16,7 @@ import { LocationModule } from '../location/location.module';
 import { CurrencyModule } from '../currency/currency.module';
 import { SharedModule } from '../shared/shared.module';
 import { UploadModule } from '../upload/upload.module';
-import { AIModule } from '../shared/ai.module';
+import { AIModule } from '../ai/ai.module';
 
 /**
  * Modular trip module with separated controllers for better maintainability

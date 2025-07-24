@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { CostTrackingController } from './cost-tracking.controller';
 import { ItineraryService } from './itinerary.service';
 import { ResponseUtil } from '../shared/utils/response.util';
-import { AuthRequest } from 'src/shared/interfaces/auth.interface';
+import { AuthRequest } from '../auth/interfaces/auth.interface';
 
 describe('CostTrackingController', () => {
   let controller: CostTrackingController;

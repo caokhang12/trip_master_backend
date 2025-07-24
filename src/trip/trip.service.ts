@@ -29,7 +29,7 @@ import {
   TripDetailDto,
   TripImageGallery,
   TripImageItem,
-} from '../shared/types/upload-integration.types';
+} from '../upload/types/upload-integration.types';
 
 /**
  * Service for managing trip operations

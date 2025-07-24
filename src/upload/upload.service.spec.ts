@@ -2,10 +2,10 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { UploadService } from './upload.service';
-import { CloudinaryService } from '../shared/services/cloudinary.service';
+import { CloudinaryService } from './services/cloudinary.service';
 import { UserEntity } from '../schemas/user.entity';
 import { TripEntity } from '../schemas/trip.entity';
-import { FileValidationUtil } from '../shared/utils/file-validation.util';
+import { FileValidationUtil } from '../upload/utils/file-validation.util';
 
 describe('UploadService', () => {
   let service: UploadService;

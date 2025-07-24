@@ -52,7 +52,7 @@ import {
 } from '../shared/dto/response.dto';
 import { AuthControllerUtil } from './utils/auth-controller.util';
 import { DeviceInfoUtil } from './utils/device-info.util';
-import { AuthRequest } from '../shared/interfaces/auth.interface';
+import { AuthRequest } from './interfaces/auth.interface';
 
 /**
  * Authentication controller with JWT-based user management

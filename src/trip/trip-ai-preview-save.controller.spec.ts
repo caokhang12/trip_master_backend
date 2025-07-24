@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { TripAIController } from './trip-ai.controller';
-import { AIService } from '../shared/services/ai.service';
+import { AIService } from '../ai/services/ai.service';
 import { ItineraryService } from './itinerary.service';
 import { ResponseUtil } from '../shared/utils/response.util';
 import { HttpStatus } from '@nestjs/common';
@@ -12,8 +12,8 @@ import {
   SaveGeneratedItineraryDto,
   SaveItineraryResponseDto,
 } from './dto/save-itinerary.dto';
-import { AuthRequest } from '../shared/interfaces/auth.interface';
-import { ActivityCategory } from '../shared/interfaces/ai.interface';
+import { AuthRequest } from '../auth/interfaces/auth.interface';
+import { ActivityCategory } from '../ai/interfaces/ai.interface';
 
 describe('TripAIController - New Preview and Save Flow', () => {
   let controller: TripAIController;

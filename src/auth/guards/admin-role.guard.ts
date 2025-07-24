@@ -5,7 +5,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { AuthRequest } from '../../shared/interfaces/auth.interface';
+import { AuthRequest } from '../interfaces/auth.interface';
 import { UserRole } from '../../shared/types/base-response.types';
 
 /**

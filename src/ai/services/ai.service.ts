@@ -8,7 +8,7 @@ import {
   VietnamSpecificContext,
 } from '../interfaces/ai.interface';
 import { PromptBuilderService } from './prompt-builder.service';
-import { APIThrottleService } from './api-throttle.service';
+import { APIThrottleService } from '../../shared/services/api-throttle.service';
 
 /**
  * Interface for AI cost estimation request

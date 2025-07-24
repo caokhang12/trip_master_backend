@@ -9,7 +9,7 @@ import { ActivityCostEntity } from '../schemas/activity-cost.entity';
 import { BudgetTrackingEntity } from '../schemas/budget-tracking.entity';
 import { UserEntity } from '../schemas/user.entity';
 import { CurrencyService } from '../currency/services/currency.service';
-import { AIService } from '../shared/services/ai.service';
+import { AIService } from '../ai/services/ai.service';
 import {
   UpdateItineraryDto,
   GenerateItineraryOptionsDto,

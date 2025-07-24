@@ -36,8 +36,8 @@ import {
   TripSearchDto,
 } from './dto/trip-search.dto';
 import { BaseResponseDto, ErrorResponseDto } from '../shared/dto/response.dto';
-import { AuthRequest } from '../shared/interfaces/auth.interface';
-import { FileValidationUtil } from '../shared/utils/file-validation.util';
+import { AuthRequest } from '../auth/interfaces/auth.interface';
+import { FileValidationUtil } from '../upload/utils/file-validation.util';
 
 /**
  * Simplified controller for core trip management operations

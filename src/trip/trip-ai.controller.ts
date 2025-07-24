@@ -16,13 +16,13 @@ import {
   ApiBody,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { AIService } from '../shared/services/ai.service';
+import { AIService } from '../ai/services/ai.service';
 import { ItineraryService } from './itinerary.service';
 import { ResponseUtil } from '../shared/utils/response.util';
 import { BaseResponse } from '../shared/types/base-response.types';
 import { ErrorResponseDto } from '../shared/dto/response.dto';
-import { AuthRequest } from '../shared/interfaces/auth.interface';
-import { AIGenerationRequest } from '../shared/interfaces/ai.interface';
+import { AuthRequest } from '../auth/interfaces/auth.interface';
+import { AIGenerationRequest } from '../ai/interfaces/ai.interface';
 import {
   GenerateItineraryDto,
   LocationSuggestionsDto,
