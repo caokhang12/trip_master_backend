@@ -3,7 +3,7 @@ import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handleba
 import { Global, Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { join } from 'path';
-import { EmailService } from 'src/email/email.service';
+import { EmailService } from './email.service';
 
 /**
  * Global email module providing professional email services

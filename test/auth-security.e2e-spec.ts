@@ -54,7 +54,7 @@ describe('Auth Security (e2e)', () => {
       expect(response.body.data.refresh_token).toBeUndefined();
 
       // Verify HTTP-only cookie is set
-      const cookies = response.headers['set-cookie'];
+      const cookies = response.headers['set-cookie'] as string[] | undefined;
       const refreshTokenCookie = cookies?.find((cookie: string) =>
         cookie.startsWith('refreshToken='),
       );
@@ -88,7 +88,9 @@ describe('Auth Security (e2e)', () => {
         .send(testUser)
         .expect(200);
 
-      const cookies = loginResponse.headers['set-cookie'];
+      const cookies = loginResponse.headers['set-cookie'] as unknown as
+        | string[]
+        | undefined;
       const refreshTokenCookie = cookies?.find((cookie: string) =>
         cookie.startsWith('refreshToken='),
       );
@@ -96,14 +98,16 @@ describe('Auth Security (e2e)', () => {
       // Use refresh token
       const refreshResponse = await request(app.getHttpServer())
         .post('/auth/refresh')
-        .set('Cookie', refreshTokenCookie)
+        .set('Cookie', refreshTokenCookie || '')
         .expect(200);
 
       expect(refreshResponse.body.data.access_token).toBeDefined();
       expect(refreshResponse.body.data.refresh_token).toBeUndefined();
 
       // Should set new refresh token cookie
-      const newCookies = refreshResponse.headers['set-cookie'];
+      const newCookies = refreshResponse.headers['set-cookie'] as unknown as
+        | string[]
+        | undefined;
       const newRefreshCookie = newCookies?.find((cookie: string) =>
         cookie.startsWith('refreshToken='),
       );
@@ -217,9 +221,9 @@ describe('Auth Security (e2e)', () => {
         .expect(200);
 
       accessToken = loginResponse.body.data.access_token;
-      refreshCookie = loginResponse.headers['set-cookie']?.find(
-        (cookie: string) => cookie.startsWith('refreshToken='),
-      );
+      refreshCookie = (
+        loginResponse.headers['set-cookie'] as unknown as string[] | undefined
+      )?.find((cookie: string) => cookie.startsWith('refreshToken='));
     });
 
     it('should return active sessions', async () => {
@@ -245,9 +249,9 @@ describe('Auth Security (e2e)', () => {
       expect(response.body.data.logout).toBe(true);
 
       // Cookie should be cleared
-      const clearCookie = response.headers['set-cookie']?.find(
-        (cookie: string) => cookie.includes('refreshToken='),
-      );
+      const clearCookie = (
+        response.headers['set-cookie'] as unknown as string[] | undefined
+      )?.find((cookie: string) => cookie.includes('refreshToken='));
       expect(clearCookie).toContain('Max-Age=0');
     });
 
@@ -348,7 +352,7 @@ describe('Auth Security (e2e)', () => {
 
   describe('Rate Limiting', () => {
     it('should rate limit login attempts', async () => {
-      const requests = [];
+      const requests: Promise<any>[] = [];
 
       // Make rapid requests (more than 5 per minute)
       for (let i = 0; i < 7; i++) {
@@ -362,12 +366,14 @@ describe('Auth Security (e2e)', () => {
       const responses = await Promise.all(requests);
 
       // Some requests should be rate limited
-      const rateLimited = responses.some((response) => response.status === 429);
+      const rateLimited = responses.some(
+        (response: any) => response.status === 429,
+      );
       expect(rateLimited).toBe(true);
     });
 
     it('should rate limit refresh token requests', async () => {
-      const requests = [];
+      const requests: Promise<any>[] = [];
 
       // Make rapid refresh requests (more than 10 per minute)
       for (let i = 0; i < 12; i++) {
@@ -377,7 +383,9 @@ describe('Auth Security (e2e)', () => {
       const responses = await Promise.all(requests);
 
       // Some requests should be rate limited
-      const rateLimited = responses.some((response) => response.status === 429);
+      const rateLimited = responses.some(
+        (response: any) => response.status === 429,
+      );
       expect(rateLimited).toBe(true);
     });
   });

@@ -5,13 +5,16 @@ import { PublicTripController } from './public-trip.controller';
 import { ItineraryController } from './itinerary.controller';
 import { CostTrackingController } from './cost-tracking.controller';
 import { TripAIController } from './trip-ai.controller';
+import { AdminTripController } from './admin/admin-trip.controller';
 import { TripService } from './trip.service';
 import { ItineraryService } from './itinerary.service';
+import { AdminTripService } from './admin/admin-trip.service';
 import { TripEntity } from '../schemas/trip.entity';
 import { ItineraryEntity } from '../schemas/itinerary.entity';
 import { TripShareEntity } from '../schemas/trip-share.entity';
 import { ActivityCostEntity } from '../schemas/activity-cost.entity';
 import { BudgetTrackingEntity } from '../schemas/budget-tracking.entity';
+import { UserEntity } from '../schemas/user.entity';
 import { LocationModule } from '../location/location.module';
 import { CurrencyModule } from '../currency/currency.module';
 import { SharedModule } from '../shared/shared.module';
@@ -29,6 +32,7 @@ import { AIModule } from '../ai/ai.module';
       TripShareEntity,
       ActivityCostEntity,
       BudgetTrackingEntity,
+      UserEntity,
     ]),
     LocationModule,
     CurrencyModule,
@@ -42,8 +46,9 @@ import { AIModule } from '../ai/ai.module';
     ItineraryController,
     CostTrackingController,
     TripAIController,
+    AdminTripController,
   ],
-  providers: [TripService, ItineraryService],
-  exports: [TripService, ItineraryService],
+  providers: [TripService, ItineraryService, AdminTripService],
+  exports: [TripService, ItineraryService, AdminTripService],
 })
 export class TripModule {}
