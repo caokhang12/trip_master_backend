@@ -212,7 +212,7 @@ export class CurrencyService {
   }
 
   /**
-   * Get popular currencies for Vietnam travelers
+   * Get popular currencies for travelers
    */
   getPopularCurrencies(): { code: string; name: string; symbol: string }[] {
     return [

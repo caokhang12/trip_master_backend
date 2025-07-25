@@ -5,7 +5,6 @@ import {
   AIGenerationRequest,
   GeneratedItinerary,
   PromptContext,
-  VietnamSpecificContext,
 } from '../interfaces/ai.interface';
 import { PromptBuilderService } from './prompt-builder.service';
 import { APIThrottleService } from '../../shared/services/api-throttle.service';
@@ -32,8 +31,38 @@ export interface CostEstimationResponse {
 }
 
 /**
+ * Interface for activity suggestions response
+ */
+interface SuggestionsResponse {
+  suggestions: ActivitySuggestion[];
+}
+
+/**
+ * Interface for activity suggestion
+ */
+interface ActivitySuggestion {
+  name: string;
+  description: string;
+  estimatedCost: number;
+  duration: number;
+  category: string;
+  reasonForSuggestion: string;
+}
+
+/**
+ * Interface for activity input to cost estimation
+ */
+interface ActivityInput {
+  title?: string;
+  description?: string;
+  location?: string;
+  duration?: number;
+  type?: string;
+}
+
+/**
  * AI service for cost estimation and country-aware itinerary generation
- * Integrates OpenAI for intelligent travel planning with Vietnam specialization
+ * Integrates OpenAI for intelligent travel planning
  */
 @Injectable()
 export class AIService {
@@ -54,7 +83,13 @@ export class AIService {
       'https://models.github.ai/inference',
     );
     if (apiKey) {
-      this.openai = new OpenAI({ baseURL: endpoint, apiKey });
+      this.openai = new OpenAI({
+        baseURL: endpoint,
+        apiKey,
+        // Optimize retry strategy with exponential backoff
+        maxRetries: 3, // Default is 2, increase for better reliability
+        timeout: 60000, // 60 seconds timeout for better reliability
+      });
       this.maxTokens = parseInt(
         this.configService.get<string>('OPENAI_MAX_TOKENS', '4000'),
         10,
@@ -106,21 +141,35 @@ export class AIService {
       );
 
       // Call OpenAI API with optimized settings for JSON responses
-      const completion = await this.openai.chat.completions.create({
-        model: this.configService.get<string>('OPENAI_MODEL', 'gpt-3.5-turbo'),
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
-        max_tokens: Math.min(this.maxTokens, 3000), // Ensure enough tokens for complete response
-        temperature: Math.min(this.temperature, 0.5), // Lower temperature for more consistent JSON
-        response_format: { type: 'json_object' },
-        top_p: 0.9, // Reduce randomness for better JSON structure
-      });
+      const selectedModel = this.selectOptimalModel(request);
+      this.logger.debug(
+        `Selected model: ${selectedModel} for request complexity`,
+      );
+
+      const { data: completion, response: rawResponse } =
+        await this.openai.chat.completions
+          .create({
+            model: selectedModel,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt },
+            ],
+            max_tokens: Math.min(this.maxTokens, 3000), // Ensure enough tokens for complete response
+            temperature: Math.min(this.temperature, 0.5), // Lower temperature for more consistent JSON
+            response_format: { type: 'json_object' },
+            top_p: 0.9, // Reduce randomness for better JSON structure
+          })
+          .withResponse(); // Get both data and response for debugging
 
       this.logger.debug(
         `OpenAI response tokens used: ${completion.usage?.total_tokens || 0}`,
       );
+
+      // Log request ID for debugging support
+      const requestId = rawResponse.headers.get('x-request-id');
+      if (requestId) {
+        this.logger.debug(`OpenAI Request ID: ${requestId}`);
+      }
 
       const responseContent = completion.choices[0]?.message?.content;
       if (!responseContent) {
@@ -149,12 +198,34 @@ export class AIService {
       );
       return itinerary;
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error(
-        `Failed to generate itinerary: ${errorMessage}`,
-        error instanceof Error ? error.stack : undefined,
-      );
+      // Enhanced error handling with specific OpenAI error types
+      if (error instanceof OpenAI.APIError) {
+        this.logger.error(
+          `OpenAI API Error: ${error.name} (${error.status}) - ${error.message}`,
+          {
+            requestID: error.status ? 'available' : 'unknown',
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+            status: error.status || 'unknown',
+            hasHeaders: Boolean(error.headers),
+          },
+        );
+
+        // Handle specific error types differently
+        if (error instanceof OpenAI.RateLimitError) {
+          this.logger.warn('Rate limit exceeded, using fallback');
+        } else if (error instanceof OpenAI.AuthenticationError) {
+          this.logger.error('Authentication failed - check API key');
+        } else if (error instanceof OpenAI.InternalServerError) {
+          this.logger.error('OpenAI server error - will retry automatically');
+        }
+      } else {
+        const errorMessage =
+          error instanceof Error ? error.message : 'Unknown error';
+        this.logger.error(
+          `Failed to generate itinerary: ${errorMessage}`,
+          error instanceof Error ? error.stack : undefined,
+        );
+      }
 
       // Log failed usage
       this.throttleService.logUsage(userId, {
@@ -171,6 +242,155 @@ export class AIService {
   }
 
   /**
+   * Generate intelligent travel itinerary with streaming support for real-time updates
+   */
+  async *generateItineraryStream(
+    request: AIGenerationRequest,
+    userId: string,
+  ): AsyncIterable<{
+    delta: string;
+    completed: boolean;
+    data?: GeneratedItinerary;
+  }> {
+    if (!this.openai) {
+      this.logger.warn('OpenAI not configured, using fallback itinerary');
+      yield { delta: 'Using fallback response...', completed: false };
+      yield {
+        delta: '',
+        completed: true,
+        data: this.getFallbackItinerary(request),
+      };
+      return;
+    }
+
+    try {
+      this.logger.log(
+        `Generating streaming itinerary for ${request.destination}, ${request.country}`,
+      );
+
+      // Check rate limits
+      this.throttleService.checkRateLimit(userId, 'itinerary');
+
+      // Build context and prompts
+      const promptContext = this.buildPromptContext(request);
+      const systemPrompt = this.promptBuilder.buildSystemPrompt(promptContext);
+      const userPrompt = this.promptBuilder.buildUserPrompt(request);
+
+      // Call OpenAI API with streaming enabled
+      const stream = await this.openai.chat.completions.create({
+        model: this.configService.get<string>('OPENAI_MODEL', 'gpt-3.5-turbo'),
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        max_tokens: Math.min(this.maxTokens, 3000),
+        temperature: Math.min(this.temperature, 0.5),
+        response_format: { type: 'json_object' },
+        stream: true, // Enable streaming
+      });
+
+      let fullContent = '';
+      let totalTokens = 0;
+
+      for await (const chunk of stream) {
+        const delta = chunk.choices[0]?.delta?.content || '';
+        if (delta) {
+          fullContent += delta;
+          yield { delta, completed: false };
+        }
+
+        // Track usage from stream chunks if available
+        if (chunk.usage) {
+          totalTokens = chunk.usage.total_tokens;
+        }
+      }
+
+      // Parse final result
+      const itinerary = this.parseItineraryResponse(fullContent);
+
+      // Log usage for cost tracking
+      this.throttleService.logUsage(userId, {
+        userId,
+        tokensUsed: totalTokens,
+        requestType: 'itinerary',
+        cost: this.throttleService.calculateOpenAICost(totalTokens),
+        timestamp: new Date(),
+        success: true,
+      });
+
+      yield { delta: '', completed: true, data: itinerary };
+    } catch (error) {
+      // Enhanced error handling
+      if (error instanceof OpenAI.APIError) {
+        this.logger.error(
+          `OpenAI Streaming API Error: ${error.name} (${error.status}) - ${error.message}`,
+        );
+      }
+
+      // Log failed usage
+      this.throttleService.logUsage(userId, {
+        userId,
+        tokensUsed: 0,
+        requestType: 'itinerary',
+        cost: 0,
+        timestamp: new Date(),
+        success: false,
+      });
+
+      yield { delta: 'Error occurred, using fallback...', completed: false };
+      yield {
+        delta: '',
+        completed: true,
+        data: this.getFallbackItinerary(request),
+      };
+    }
+  }
+
+  /**
+   * Select optimal model based on request complexity and requirements
+   */
+  private selectOptimalModel(request: AIGenerationRequest): string {
+    const defaultModel = this.configService.get<string>(
+      'OPENAI_MODEL',
+      'gpt-3.5-turbo',
+    );
+
+    // Simple heuristics for model selection
+    const startDate = new Date(request.startDate);
+    const endDate = new Date(request.endDate);
+    const totalDays = Math.ceil(
+      (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24),
+    );
+
+    const hasComplexRequirements =
+      request.preferences.interests.length > 3 ||
+      request.preferences.interests.some(
+        (interest) =>
+          interest.toLowerCase().includes('luxury') ||
+          interest.toLowerCase().includes('adventure'),
+      ) ||
+      ['luxury', 'adventure'].includes(request.preferences.travelStyle) ||
+      request.budget > 5000; // High budget trips might need more sophisticated planning
+
+    // For complex or long trips, use more capable models
+    if (totalDays > 7 || hasComplexRequirements) {
+      // Check if GPT-4 is available, otherwise fallback
+      const gpt4Model = this.configService.get<string>(
+        'OPENAI_GPT4_MODEL',
+        'gpt-4o',
+      );
+      return gpt4Model;
+    }
+
+    // For simple trips, optimize for cost with faster models
+    if (totalDays <= 3 && !hasComplexRequirements) {
+      return 'gpt-3.5-turbo';
+    }
+
+    return defaultModel;
+  }
+
+  /**
    * Generate location-specific activity suggestions
    */
   async generateLocationSuggestions(
@@ -178,7 +398,7 @@ export class AIService {
     travelStyle: string,
     budget: number,
     interests?: string[],
-  ): Promise<any[]> {
+  ): Promise<ActivitySuggestion[]> {
     if (!this.openai) {
       return this.getFallbackSuggestions(location, travelStyle);
     }
@@ -206,28 +426,31 @@ export class AIService {
         throw new Error('Empty response from OpenAI');
       }
 
-      const suggestions = JSON.parse(responseContent);
+      const suggestions: SuggestionsResponse = JSON.parse(
+        responseContent,
+      ) as SuggestionsResponse;
       return suggestions.suggestions || [];
     } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(
-        `Failed to generate suggestions: ${error.message}`,
-        error.stack,
+        `Failed to generate suggestions: ${errorMessage}`,
+        error instanceof Error ? error.stack : undefined,
       );
       return this.getFallbackSuggestions(location, travelStyle);
     }
   }
 
   estimateActivityCost(
-    activity: any,
+    activity: ActivityInput,
     country: string,
-    currency: string,
   ): {
     estimatedCost: number;
     category: string;
     breakdown?: Record<string, number>;
   } {
     const request: CostEstimationRequest = {
-      activity: activity.title,
+      activity: activity.title || 'Unknown activity',
       description: activity.description,
       location: activity.location || country,
       country: this.getCountryCode(country),
@@ -260,7 +483,7 @@ export class AIService {
     );
 
     // Base cost estimates by activity type (in USD)
-    const baseCosts = {
+    const baseCosts: Record<string, number> = {
       transport: 15,
       food: 25,
       accommodation: 80,
@@ -270,7 +493,7 @@ export class AIService {
     };
 
     // Country-specific multipliers
-    const countryMultipliers = {
+    const countryMultipliers: Record<string, number> = {
       VN: 0.3, // Vietnam is relatively inexpensive
       TH: 0.4, // Thailand
       US: 1.0, // Baseline
@@ -284,8 +507,8 @@ export class AIService {
     // Activity-specific adjustments
     const activityAdjustments = this.getActivityAdjustments(request);
 
-    const baseCost = baseCosts[request.type] || baseCosts.miscellaneous;
-    const countryMultiplier = countryMultipliers[request.country] || 0.7;
+    const baseCost = baseCosts[request.type] ?? baseCosts.miscellaneous;
+    const countryMultiplier = countryMultipliers[request.country] ?? 0.7;
     const durationMultiplier = this.getDurationMultiplier(
       request.duration,
       request.type,
@@ -484,18 +707,6 @@ export class AIService {
       season: this.getCurrentSeason(request.startDate),
     };
 
-    // Add Vietnam-specific context
-    if (request.country.toLowerCase().includes('vietnam')) {
-      const vietnamContext = this.getVietnamSpecificContext(
-        request.destination,
-        request.startDate,
-      );
-      context.region = vietnamContext.region;
-      context.culturalContext =
-        this.buildVietnamCulturalContext(vietnamContext);
-      context.localExpertise = this.buildVietnamExpertise(vietnamContext);
-    }
-
     // Add budget guidelines
     context.budgetGuidelines = this.buildBudgetGuidelines(
       request.budget,
@@ -622,20 +833,18 @@ Return JSON format:
       // Clean up the response first
       const cleanedResponse = this.cleanJsonResponse(response);
 
-      const parsed = JSON.parse(cleanedResponse);
+      const parsed: unknown = JSON.parse(cleanedResponse);
 
       // Validate required fields
-      if (!parsed.days || !Array.isArray(parsed.days)) {
-        throw new Error('Invalid itinerary format: missing days array');
+      if (!this.isValidItinerary(parsed)) {
+        throw new Error('Invalid itinerary format: missing required fields');
       }
 
-      if (!parsed.summary) {
-        throw new Error('Invalid itinerary format: missing summary');
-      }
-
-      return parsed as GeneratedItinerary;
+      return parsed;
     } catch (error) {
-      this.logger.error(`Failed to parse AI response: ${error.message}`);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Failed to parse AI response: ${errorMessage}`);
       this.logger.debug(`Problematic response: ${response}`);
 
       // Try to salvage partial JSON
@@ -647,6 +856,22 @@ Return JSON format:
 
       throw new Error('Invalid AI response format');
     }
+  }
+
+  /**
+   * Type guard to validate if parsed object is a valid itinerary
+   */
+  private isValidItinerary(obj: unknown): obj is GeneratedItinerary {
+    if (!obj || typeof obj !== 'object') return false;
+
+    const candidate = obj as Record<string, unknown>;
+
+    return (
+      Array.isArray(candidate.days) &&
+      candidate.summary !== undefined &&
+      typeof candidate.totalEstimatedCost === 'number' &&
+      typeof candidate.currency === 'string'
+    );
   }
 
   /**
@@ -682,101 +907,86 @@ Return JSON format:
       // Try to complete the partial JSON
       const completed = this.completePartialJson(cleaned);
       if (completed) {
-        const parsed = JSON.parse(completed);
+        const parsed: unknown = JSON.parse(completed);
 
         // Validate and enhance the parsed object
-        if (
-          parsed &&
-          typeof parsed === 'object' &&
-          parsed.days &&
-          Array.isArray(parsed.days)
-        ) {
-          // Ensure each day has required properties
-          parsed.days = parsed.days.map((day: any, index: number) => ({
-            dayNumber:
-              typeof day.dayNumber === 'number' ? day.dayNumber : index + 1,
-            date:
-              typeof day.date === 'string'
-                ? day.date
-                : new Date().toISOString().split('T')[0],
-            activities: Array.isArray(day.activities) ? day.activities : [],
-            dailyBudget:
-              typeof day.dailyBudget === 'number' ? day.dailyBudget : 200000,
-            transportationNotes:
-              typeof day.transportationNotes === 'string'
-                ? day.transportationNotes
-                : 'Local transport available',
-          }));
+        if (this.isValidPartialItinerary(parsed)) {
+          const itinerary = parsed as Partial<GeneratedItinerary>;
 
-          // Create complete summary if missing or incomplete
-          if (
-            !parsed.summary ||
-            typeof parsed.summary !== 'object' ||
-            !parsed.summary.budgetBreakdown
-          ) {
-            const existingSummary = parsed.summary || {};
-            parsed.summary = {
-              totalDays: parsed.days.length,
-              highlights: Array.isArray(existingSummary.highlights)
-                ? existingSummary.highlights
-                : ['Cultural exploration', 'Local cuisine', 'Historical sites'],
-              budgetBreakdown: {
-                total: parsed.days.length * 200000,
-                accommodation: parsed.days.length * 80000,
-                food: parsed.days.length * 60000,
-                activities: parsed.days.length * 40000,
-                transportation: parsed.days.length * 20000,
-              },
-              bestTimeToVisit:
-                typeof existingSummary.bestTimeToVisit === 'string'
-                  ? existingSummary.bestTimeToVisit
-                  : 'Year-round destination',
-              packingRecommendations: Array.isArray(
-                existingSummary.packingRecommendations,
-              )
-                ? existingSummary.packingRecommendations
-                : [
-                    'Comfortable walking shoes',
-                    'Weather-appropriate clothing',
-                    'Camera',
-                  ],
-            };
+          // Ensure each day has required properties
+          if (itinerary.days) {
+            itinerary.days = itinerary.days.map((day, index) => ({
+              dayNumber: day?.dayNumber ?? index + 1,
+              date: day?.date ?? new Date().toISOString().split('T')[0],
+              activities: day?.activities ?? [],
+              dailyBudget: day?.dailyBudget ?? 200000,
+              transportationNotes:
+                day?.transportationNotes ?? 'Local transport available',
+            }));
           }
 
-          // Add cultural context if missing
-          if (
-            !parsed.culturalContext ||
-            typeof parsed.culturalContext !== 'object'
-          ) {
-            parsed.culturalContext = {
-              country: 'Vietnam',
-              currency: 'Vietnamese Dong (VND)',
-              tipping: 'Tipping not mandatory but appreciated',
-              safetyTips: [
-                'Stay aware of surroundings',
-                'Use reputable transport',
+          // Create complete summary if missing or incomplete
+          if (!itinerary.summary?.budgetBreakdown) {
+            const totalDays = itinerary.days?.length ?? 1;
+            itinerary.summary = {
+              totalDays,
+              highlights: itinerary.summary?.highlights ?? [
+                'Cultural exploration',
+                'Local cuisine',
+                'Historical sites',
+              ],
+              budgetBreakdown: {
+                total: totalDays * 200000,
+                accommodation: totalDays * 80000,
+                food: totalDays * 60000,
+                activities: totalDays * 40000,
+                transportation: totalDays * 20000,
+                shopping: totalDays * 10000,
+                miscellaneous: totalDays * 10000,
+              },
+              bestTimeToVisit:
+                itinerary.summary?.bestTimeToVisit ?? 'Year-round destination',
+              packingRecommendations: itinerary.summary
+                ?.packingRecommendations ?? [
+                'Comfortable walking shoes',
+                'Weather-appropriate clothing',
+                'Camera',
               ],
             };
           }
 
           // Add total cost if missing
-          if (typeof parsed.totalEstimatedCost !== 'number') {
-            parsed.totalEstimatedCost = parsed.summary.budgetBreakdown.total;
+          if (!itinerary.totalEstimatedCost) {
+            itinerary.totalEstimatedCost =
+              itinerary.summary?.budgetBreakdown?.total ?? 0;
           }
 
           // Add currency if missing
-          if (typeof parsed.currency !== 'string') {
-            parsed.currency = 'VND';
+          if (!itinerary.currency) {
+            itinerary.currency = 'USD';
           }
 
-          return parsed as GeneratedItinerary;
+          return itinerary as GeneratedItinerary;
         }
       }
     } catch (error) {
-      this.logger.debug(`Failed to salvage JSON: ${error.message}`);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      this.logger.debug(`Failed to salvage JSON: ${errorMessage}`);
     }
 
     return null;
+  }
+
+  /**
+   * Type guard for partial itinerary validation
+   */
+  private isValidPartialItinerary(obj: unknown): boolean {
+    if (!obj || typeof obj !== 'object') return false;
+
+    const candidate = obj as Record<string, unknown>;
+
+    return candidate.days === undefined || Array.isArray(candidate.days);
   }
 
   /**
@@ -818,7 +1028,9 @@ Return JSON format:
       JSON.parse(repaired);
       return repaired;
     } catch (error) {
-      this.logger.debug(`Could not repair JSON: ${error.message}`);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      this.logger.debug(`Could not repair JSON: ${errorMessage}`);
       return null;
     }
   }
@@ -918,7 +1130,10 @@ Return JSON format:
   /**
    * Get fallback suggestions when AI fails
    */
-  private getFallbackSuggestions(location: string, travelStyle: string): any[] {
+  private getFallbackSuggestions(
+    location: string,
+    travelStyle: string,
+  ): ActivitySuggestion[] {
     return [
       {
         name: 'Local Market Visit',
@@ -948,13 +1163,12 @@ Return JSON format:
     duration: number,
     travelers: number = 1,
     travelStyle: string = 'mid-range',
-    userId?: string,
   ): Promise<{
     minCost: number;
     maxCost: number;
     averageCost: number;
     currency: string;
-    breakdown: any;
+    breakdown: Record<string, unknown>;
     notes?: string[];
   }> {
     if (!this.openai) {
@@ -991,12 +1205,21 @@ Return JSON format:
         throw new Error('Empty response from OpenAI');
       }
 
-      const costEstimation = JSON.parse(responseContent);
-      return costEstimation;
+      const costEstimation: unknown = JSON.parse(responseContent);
+      return costEstimation as {
+        minCost: number;
+        maxCost: number;
+        averageCost: number;
+        currency: string;
+        breakdown: Record<string, unknown>;
+        notes?: string[];
+      };
     } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(
-        `Failed to generate cost estimation: ${error.message}`,
-        error.stack,
+        `Failed to generate cost estimation: ${errorMessage}`,
+        error instanceof Error ? error.stack : undefined,
       );
       return this.getFallbackCostEstimation(
         destination,
@@ -1093,72 +1316,6 @@ Consider local pricing, seasonal variations, and travel style preferences.`;
   }
 
   /**
-   * Get Vietnam-specific context
-   */
-  private getVietnamSpecificContext(
-    destination: string,
-    startDate: string,
-  ): VietnamSpecificContext {
-    const month = new Date(startDate).getMonth() + 1;
-    const isRainySeason = month >= 5 && month <= 10;
-
-    // Determine region based on destination
-    let region: 'north' | 'central' | 'south' = 'south';
-    const destLower = destination.toLowerCase();
-    if (
-      destLower.includes('hanoi') ||
-      destLower.includes('sapa') ||
-      destLower.includes('halong')
-    ) {
-      region = 'north';
-    } else if (
-      destLower.includes('hue') ||
-      destLower.includes('hoi an') ||
-      destLower.includes('da nang')
-    ) {
-      region = 'central';
-    }
-
-    return {
-      region,
-      isRainySeason,
-      localHolidays: this.getVietnameseHolidays(month),
-      culturalSensitivities: [
-        'Respect for elders',
-        'Temple etiquette',
-        'Modest dress in religious sites',
-        'Proper gift-giving customs',
-      ],
-      cuisineRecommendations: this.getRegionalCuisine(region),
-      transportationTips: [
-        'Grab and Gojek are widely available',
-        'Motorbike taxis for short distances',
-        'Be cautious with traffic',
-        'Bargain for cyclo rides',
-      ],
-      hiddenGems: this.getRegionalHiddenGems(region),
-    };
-  }
-
-  /**
-   * Build Vietnam cultural context string
-   */
-  private buildVietnamCulturalContext(context: VietnamSpecificContext): string {
-    return `Vietnam ${context.region} region context: ${context.isRainySeason ? 'Rainy season' : 'Dry season'}, 
-    Cultural sensitivities: ${context.culturalSensitivities.join(', ')}, 
-    Local holidays: ${context.localHolidays.join(', ')}`;
-  }
-
-  /**
-   * Build Vietnam expertise context
-   */
-  private buildVietnamExpertise(context: VietnamSpecificContext): string {
-    return `Local expertise: Cuisine - ${context.cuisineRecommendations.join(', ')}, 
-    Transportation - ${context.transportationTips.join(', ')}, 
-    Hidden gems - ${context.hiddenGems.join(', ')}`;
-  }
-
-  /**
    * Build budget guidelines string
    */
   private buildBudgetGuidelines(
@@ -1201,62 +1358,5 @@ Consider local pricing, seasonal variations, and travel style preferences.`;
     if (month >= 3 && month <= 5) return 'spring';
     if (month >= 6 && month <= 8) return 'summer';
     return 'autumn';
-  }
-
-  /**
-   * Get Vietnamese holidays for a given month
-   */
-  private getVietnameseHolidays(month: number): string[] {
-    const holidays: Record<number, string[]> = {
-      1: ['New Year', 'Tet preparations'],
-      2: ['Tet (Lunar New Year)', 'Post-Tet celebrations'],
-      4: ['Hung Kings Festival'],
-      9: ['National Day (September 2)'],
-    };
-
-    return holidays[month] || [];
-  }
-
-  /**
-   * Get regional cuisine recommendations
-   */
-  private getRegionalCuisine(region: 'north' | 'central' | 'south'): string[] {
-    const cuisine = {
-      north: ['Pho', 'Bun cha', 'Cha ca', 'Banh cuon', 'Egg coffee'],
-      central: ['Bun bo hue', 'Cao lau', 'Mi quang', 'Banh khoai', 'Che'],
-      south: ['Hu tieu', 'Banh mi', 'Com tam', 'Banh xeo', 'Ca ri'],
-    };
-
-    return cuisine[region];
-  }
-
-  /**
-   * Get regional hidden gems
-   */
-  private getRegionalHiddenGems(
-    region: 'north' | 'central' | 'south',
-  ): string[] {
-    const gems = {
-      north: [
-        'Train Street',
-        'Hidden alley cafes',
-        'Local weekend markets',
-        'Artisan workshops',
-      ],
-      central: [
-        'Secret beaches near Hoi An',
-        'Local fishing villages',
-        'Traditional craft villages',
-        'Mountain viewpoints',
-      ],
-      south: [
-        'Hidden Cao Dai temples',
-        'Local floating markets',
-        'Underground tunnels',
-        'Rooftop coffee shops',
-      ],
-    };
-
-    return gems[region];
   }
 }

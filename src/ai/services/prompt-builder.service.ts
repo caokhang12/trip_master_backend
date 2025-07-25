@@ -30,9 +30,10 @@ export class PromptBuilderService {
 
     const jsonFormat = `
 
-CRITICAL: You must respond with valid JSON only. No additional text before or after the JSON.
+CRITICAL: You MUST respond with valid JSON only. No markdown, explanations, or additional text.
 
-Generate a concise travel itinerary in this exact JSON structure:
+Generate a travel itinerary using this EXACT JSON schema with STRICT validation:
+
 {
   "days": [
     {
@@ -40,58 +41,71 @@ Generate a concise travel itinerary in this exact JSON structure:
       "date": "YYYY-MM-DD",
       "activities": [
         {
-          "name": "Activity name",
-          "description": "Brief description (max 100 chars)",
-          "location": "Specific location",
+          "name": "Activity name (max 50 chars)",
+          "description": "Brief description (max 80 chars)",
+          "location": "Specific address or landmark",
           "duration": 120,
           "estimatedCost": 50000,
-          "category": "sightseeing",
-          "timeSlot": "morning",
-          "localTips": ["tip 1", "tip 2"],
-          "bookingRequired": false
+          "category": "sightseeing|food|transport|accommodation|shopping|entertainment",
+          "timeSlot": "morning|afternoon|evening|full-day",
+          "localTips": ["practical tip 1", "insider tip 2"],
+          "bookingRequired": true|false,
+          "accessibility": "wheelchair-friendly|moderate-walking|strenuous",
+          "weatherDependent": true|false
         }
       ],
       "dailyBudget": 200000,
-      "transportationNotes": "Brief transport info"
+      "transportationNotes": "Transport between activities (max 60 chars)",
+      "mealSuggestions": ["breakfast location", "lunch location", "dinner location"]
     }
   ],
   "summary": {
     "totalDays": 5,
-    "highlights": ["highlight 1", "highlight 2", "highlight 3"],
+    "highlights": ["unique experience 1", "must-see attraction 2", "local specialty 3"],
     "budgetBreakdown": {
       "accommodation": 1000000,
       "food": 500000,
       "activities": 300000,
       "transportation": 200000,
-      "total": 2000000
+      "shopping": 100000,
+      "miscellaneous": 100000,
+      "total": 2200000
     },
-    "bestTimeToVisit": "Brief seasonal recommendation",
-    "packingRecommendations": ["item 1", "item 2", "item 3"]
+    "bestTimeToVisit": "Optimal season and timing advice",
+    "packingRecommendations": ["essential item 1", "weather-specific item 2", "cultural item 3"],
+    "budgetTips": ["money-saving tip 1", "value tip 2"],
+    "difficultyLevel": "easy|moderate|challenging"
   },
   "culturalContext": {
     "country": "${context.country}",
-    "currency": "Currency info",
-    "tipping": "Brief tipping customs",
-    "safetyTips": ["safety tip 1", "safety tip 2"]
+    "currency": "Local currency code and symbol",
+    "language": "Primary language and useful phrases",
+    "tipping": "Tipping culture and percentages",
+    "customs": ["cultural norm 1", "etiquette rule 2"],
+    "safetyTips": ["safety advice 1", "emergency info 2"],
+    "localLaws": ["important regulation 1", "tourist rule 2"]
   },
-  "totalEstimatedCost": 2000000,
-  "currency": "VND"
+  "totalEstimatedCost": 2200000,
+  "currency": "LOCAL_CURRENCY_CODE"
 }
 
-JSON FORMATTING REQUIREMENTS:
-- Response must be valid JSON only - no markdown, no explanations
-- Use double quotes for all strings
-- Close all objects and arrays properly
-- Keep descriptions brief to avoid truncation
-- Complete all sections without truncating
+STRICT FORMATTING RULES:
+- JSON must be valid and parseable
+- All strings must use double quotes
+- Numbers must be integers (no decimals for costs)
+- All arrays must be properly closed
+- All required fields must be present
+- Description limits are HARD LIMITS - truncate if needed
+- Currency amounts in local currency as integers
+- Dates in ISO format (YYYY-MM-DD)
 
-CONTENT REQUIREMENTS:
-- Include 3-5 activities per day maximum
-- Keep descriptions under 100 characters
-- Focus on authentic local experiences
-- Include practical cost estimates in local currency
-- Balance must-see attractions with local experiences
-- Provide brief but useful tips`;
+CONTENT QUALITY REQUIREMENTS:
+- Maximum 4 activities per day to avoid overloading
+- Mix tourist attractions (30%) with local experiences (70%)
+- Include realistic travel time between locations
+- Costs must reflect actual local pricing
+- Tips must be actionable and specific
+- All locations must be real and verifiable`;
 
     return (
       basePrompt +
@@ -113,43 +127,33 @@ CONTENT REQUIREMENTS:
         (1000 * 60 * 60 * 24),
     );
 
-    const baseRequest = `Create a ${days}-day itinerary for ${request.travelers} travelers visiting ${request.destination}, ${request.country} from ${request.startDate} to ${request.endDate}.`;
+    // Calculate daily budget for better cost constraints
+    const dailyBudget = Math.floor(request.budget / days);
+    const season = this.determineSeason(request.startDate);
+
+    const baseRequest = `Create a ${days}-day itinerary for ${request.travelers} travelers visiting ${request.destination}, ${request.country} from ${request.startDate} to ${request.endDate}.
+
+TRIP PARAMETERS:
+- Total Budget: ${request.budget} ${request.currency} (${dailyBudget} per day)
+- Season: ${season}
+- Travelers: ${request.travelers} ${request.travelers === 1 ? 'person' : 'people'}`;
 
     const preferences = `
-Travel Details:
+TRAVELER PROFILE:
 - Travel Style: ${request.preferences.travelStyle}
-- Total Budget: ${request.budget} ${request.currency}
 - Group Type: ${request.preferences.groupType || 'not specified'}
 - Activity Level: ${request.preferences.activityLevel || 'moderate'}
-- Interests: ${request.preferences.interests.join(', ')}`;
+- Primary Interests: ${request.preferences.interests.join(', ')}`;
 
-    const restrictions = request.preferences.dietaryRestrictions
-      ? `\n- Dietary Restrictions: ${request.preferences.dietaryRestrictions.join(', ')}`
-      : '';
-
-    const accessibility = request.preferences.accessibilityNeeds
-      ? `\n- Accessibility Needs: ${request.preferences.accessibilityNeeds.join(', ')}`
-      : '';
-
-    const transport = request.preferences.transportPreference
-      ? `\n- Transport Preference: ${request.preferences.transportPreference}`
-      : '';
-
-    const accommodation = request.accommodationLocation
-      ? `\n- Accommodation Location: ${request.accommodationLocation}`
-      : '';
-
+    const constraints = this.buildConstraints(request);
     const specialRequests = this.buildSpecialRequests(request);
 
     return (
       baseRequest +
       preferences +
-      restrictions +
-      accessibility +
-      transport +
-      accommodation +
+      constraints +
       specialRequests +
-      '\n\nGenerate a comprehensive, culturally-rich itinerary with authentic local experiences.'
+      '\n\nPRIORITIES:\n- Authentic local experiences over tourist traps\n- Realistic travel times between locations\n- Accurate local pricing\n- Cultural sensitivity and respect\n- Practical, actionable advice'
     );
   }
 
@@ -162,33 +166,45 @@ Travel Details:
     budget: number;
     interests?: string[];
   }): string {
-    return `Suggest 5-8 authentic activities and experiences for ${params.location} that match:
+    const budgetLevel = this.categorizeBudget(params.budget);
 
-Requirements:
-- Travel style: ${params.travelStyle}
-- Budget range: ${params.budget} (local currency)
+    return `Generate 6-8 authentic, locally-recommended activities for ${params.location}.
+
+REQUIREMENTS:
+- Travel Style: ${params.travelStyle}
+- Budget Category: ${budgetLevel}
+- Budget Amount: ${params.budget} (local currency)
 - Interests: ${params.interests?.join(', ') || 'general exploration'}
 
-Focus on:
-- Authentic local experiences over tourist traps
-- Cultural immersion opportunities
-- Hidden gems and local secrets
-- Activities that locals would recommend
-- Mix of free and paid experiences
-- Seasonal appropriateness
+FOCUS PRIORITIES:
+1. Authentic local experiences (70%) over tourist attractions (30%)
+2. Hidden gems known by locals but accessible to travelers
+3. Cultural immersion and interaction opportunities
+4. Mix of free/low-cost (40%) and paid experiences (60%)
+5. Seasonal appropriateness and weather considerations
+6. Realistic duration and logistics
 
-Return in this exact JSON format:
+AVOID:
+- Generic tourist traps
+- Overpriced experiences for tourists
+- Activities requiring extensive local knowledge
+- Experiences inappropriate for the travel style
+
+Return ONLY valid JSON in this exact format:
 {
   "suggestions": [
     {
-      "name": "Activity or experience name",
-      "description": "Detailed description with cultural context",
+      "name": "Activity name (max 40 chars)",
+      "description": "Engaging description with cultural context (max 120 chars)",
       "estimatedCost": 50000,
       "duration": 120,
-      "category": "cultural",
-      "reasonForSuggestion": "Why this perfectly matches the traveler's style and interests",
-      "localTips": ["insider tip 1", "practical advice 2"],
-      "bestTimeToVisit": "Time of day or season recommendation"
+      "category": "cultural|food|nature|adventure|relaxation|shopping|nightlife",
+      "reasonForSuggestion": "Specific match to traveler preferences (max 80 chars)",
+      "localTips": ["practical tip", "insider advice"],
+      "bestTimeToVisit": "Optimal timing recommendation",
+      "difficultyLevel": "easy|moderate|challenging",
+      "crowdLevel": "quiet|moderate|busy",
+      "bookingRequired": true|false
     }
   ]
 }`;
@@ -242,34 +258,6 @@ Return in this exact JSON format:
     "Local vs tourist pricing differences"
   ]
 }`;
-  }
-
-  /**
-   * Build Vietnam-specific cultural context
-   */
-  buildVietnamCulturalContext(
-    region: 'north' | 'central' | 'south',
-    season: string,
-  ): string {
-    const regionalContext = this.getVietnameseRegionalContext(region);
-    const seasonalContext = this.getVietnameseSeasonalContext(season);
-
-    return `Vietnam ${region} region expertise:
-${regionalContext}
-
-Seasonal context (${season}):
-${seasonalContext}
-
-Cultural Guidelines:
-- Vietnamese people value respect for elders and family
-- Remove shoes when entering homes and some restaurants
-- Dress modestly in temples and pagodas
-- Bargaining is expected in markets but be polite
-- Tipping is not mandatory but appreciated (5-10% in restaurants)
-- Learn basic Vietnamese greetings - locals appreciate the effort
-- Be patient with language barriers and use translation apps
-- Avoid pointing with your finger, use your whole hand
-- Business cards should be received with both hands`;
   }
 
   /**
@@ -348,58 +336,10 @@ Money-Saving Tips:
   }
 
   /**
-   * Get Vietnamese regional context
-   */
-  private getVietnameseRegionalContext(
-    region: 'north' | 'central' | 'south',
-  ): string {
-    const contexts = {
-      north: `Northern Vietnam (Hanoi region):
-- Cooler climate, distinct seasons
-- Rich in history and traditional culture
-- Famous for pho, bun cha, and egg coffee
-- French colonial architecture
-- Nearby: Halong Bay, Sapa, Ninh Binh`,
-
-      central: `Central Vietnam (Hue, Hoi An, Da Nang):
-- Ancient imperial capital region
-- UNESCO World Heritage sites
-- Unique royal cuisine and local specialties
-- Traditional crafts and lantern culture
-- Beautiful beaches and mountain scenery`,
-
-      south: `Southern Vietnam (Ho Chi Minh City region):
-- Tropical climate year-round
-- Economic hub with modern attractions
-- Diverse cuisine with international influences
-- Vibrant nightlife and markets
-- Nearby: Mekong Delta, Cu Chi Tunnels`,
-    };
-
-    return contexts[region];
-  }
-
-  /**
-   * Get Vietnamese seasonal context
-   */
-  private getVietnameseSeasonalContext(season: string): string {
-    const contexts = {
-      winter:
-        'Cool and dry in the north, pleasant in central and south regions',
-      spring:
-        'Ideal weather across most regions, perfect for outdoor activities',
-      summer: 'Hot and humid, rainy season in many areas',
-      autumn: 'Comfortable temperatures, less rainfall',
-    };
-
-    return contexts[season] || 'Variable weather conditions';
-  }
-
-  /**
    * Get country cost level description
    */
   private getCountryCostLevel(country: string): string {
-    const levels = {
+    const levels: Record<string, string> = {
       vietnam: 'Low cost - Excellent value for money',
       thailand: 'Low to moderate cost',
       singapore: 'High cost - Expensive but efficient',
@@ -429,5 +369,62 @@ Money-Saving Tips:
 - Budget: $20-40/day
 - Mid-range: $40-80/day
 - Luxury: $80+/day`;
+  }
+
+  /**
+   * Determine season from date
+   */
+  private determineSeason(dateString: string): string {
+    const date = new Date(dateString);
+    const month = date.getMonth() + 1; // getMonth() returns 0-11
+
+    if (month >= 3 && month <= 5) return 'spring';
+    if (month >= 6 && month <= 8) return 'summer';
+    if (month >= 9 && month <= 11) return 'autumn';
+    return 'winter';
+  }
+
+  /**
+   * Build constraints section
+   */
+  private buildConstraints(request: AIGenerationRequest): string {
+    const constraints: string[] = [];
+
+    if (request.preferences.dietaryRestrictions?.length) {
+      constraints.push(
+        `Dietary Restrictions: ${request.preferences.dietaryRestrictions.join(', ')}`,
+      );
+    }
+
+    if (request.preferences.accessibilityNeeds?.length) {
+      constraints.push(
+        `Accessibility Needs: ${request.preferences.accessibilityNeeds.join(', ')}`,
+      );
+    }
+
+    if (request.preferences.transportPreference) {
+      constraints.push(
+        `Transport Preference: ${request.preferences.transportPreference}`,
+      );
+    }
+
+    if (request.accommodationLocation) {
+      constraints.push(`Accommodation Area: ${request.accommodationLocation}`);
+    }
+
+    return constraints.length > 0
+      ? `\n\nCONSTRAINTS:\n- ${constraints.join('\n- ')}`
+      : '';
+  }
+
+  /**
+   * Categorize budget level for better prompt context
+   */
+  private categorizeBudget(budget: number): string {
+    // This is a simplified categorization - in real world, you'd want location-specific thresholds
+    if (budget <= 50) return 'Budget/Backpacker';
+    if (budget <= 150) return 'Mid-range';
+    if (budget <= 300) return 'Comfort';
+    return 'Luxury';
   }
 }

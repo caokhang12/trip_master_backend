@@ -335,7 +335,6 @@ export class ItineraryService {
       const costEstimate = this.aiService.estimateActivityCost(
         activity,
         trip.destinationCountry || trip.destinationName,
-        trip.currency,
       );
 
       // Create activity cost entity with correct field names
@@ -650,7 +649,6 @@ export class ItineraryService {
         costDto.duration,
         costDto.travelers || 1,
         costDto.travelStyle || 'mid-range',
-        userId,
       );
 
       return estimation;

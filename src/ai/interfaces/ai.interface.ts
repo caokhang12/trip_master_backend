@@ -146,16 +146,6 @@ export interface AIUsageMetrics {
   success: boolean;
 }
 
-export interface VietnamSpecificContext {
-  region: 'north' | 'central' | 'south';
-  isRainySeason: boolean;
-  localHolidays: string[];
-  culturalSensitivities: string[];
-  cuisineRecommendations: string[];
-  transportationTips: string[];
-  hiddenGems: string[];
-}
-
 export interface CountryMetadata {
   code: string;
   name: string;

@@ -311,7 +311,6 @@ export class TripAIController {
       costDto.duration,
       costDto.travelers || 1,
       costDto.travelStyle || 'mid-range',
-      req.user.id,
     );
     return ResponseUtil.success(estimation);
   }
