@@ -16,28 +16,31 @@ import {
   ApiParam,
   ApiBody,
 } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { ItineraryService } from './itinerary.service';
-import { ResponseUtil } from '../shared/utils/response.util';
-import { BaseResponse } from '../shared/types/base-response.types';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { ItineraryService } from '../services/itinerary.service';
+import { ResponseUtil } from '../../shared/utils/response.util';
+import { BaseResponse } from '../../shared/types/base-response.types';
 import {
   UpdateItineraryDto,
   GenerateItineraryOptionsDto,
-} from './dto/itinerary.dto';
-import { UpdateActivityCostDto } from './dto/cost.dto';
-import { BaseResponseDto, ErrorResponseDto } from '../shared/dto/response.dto';
-import { AuthRequest } from '../auth/interfaces/auth.interface';
-import { ItineraryWithCosts } from './interfaces/trip.interface';
-import { ItineraryEntity } from '../schemas/itinerary.entity';
-import { ActivityCostEntity } from '../schemas/activity-cost.entity';
+} from '../dto/itinerary.dto';
+import { UpdateActivityCostDto } from '../dto/cost.dto';
+import {
+  BaseResponseDto,
+  ErrorResponseDto,
+} from '../../shared/dto/response.dto';
+import { AuthRequest } from '../../auth/interfaces/auth.interface';
+import { ItineraryWithCosts } from '../interfaces/trip.interface';
+import { ItineraryEntity } from '../../schemas/itinerary.entity';
+import { ActivityCostEntity } from '../../schemas/activity-cost.entity';
 import {
   LocationSuggestionsDto,
   CostEstimationDto,
-} from './dto/ai-request.dto';
+} from '../dto/ai-request.dto';
 import {
   CostEstimationResponseDto,
   LocationSuggestionDto,
-} from './dto/ai-response.dto';
+} from '../dto/ai-response.dto';
 
 /**
  * Controller for itinerary and cost tracking operations

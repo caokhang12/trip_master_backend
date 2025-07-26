@@ -1,9 +1,12 @@
 import { Controller, Get, Param } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
-import { TripService } from './trip.service';
-import { ResponseUtil } from '../shared/utils/response.util';
-import { BaseResponse } from '../shared/types/base-response.types';
-import { BaseResponseDto, ErrorResponseDto } from '../shared/dto/response.dto';
+import { TripService } from '../services/trip.service';
+import { ResponseUtil } from '../../shared/utils/response.util';
+import { BaseResponse } from '../../shared/types/base-response.types';
+import {
+  BaseResponseDto,
+  ErrorResponseDto,
+} from '../../shared/dto/response.dto';
 
 /**
  * Controller for public trip sharing operations

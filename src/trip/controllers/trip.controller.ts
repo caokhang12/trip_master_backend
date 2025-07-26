@@ -25,19 +25,22 @@ import {
   ApiBody,
   ApiConsumes,
 } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { TripService } from './trip.service';
-import { ResponseUtil } from '../shared/utils/response.util';
-import { BaseResponse } from '../shared/types/base-response.types';
-import { CreateTripDto, UpdateTripDto } from './dto/trip.dto';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { TripService } from '../services/trip.service';
+import { ResponseUtil } from '../../shared/utils/response.util';
+import { BaseResponse } from '../../shared/types/base-response.types';
+import { CreateTripDto, UpdateTripDto } from '../dto/trip.dto';
 import {
   TripQueryDto,
   ShareTripDto,
   TripSearchDto,
-} from './dto/trip-search.dto';
-import { BaseResponseDto, ErrorResponseDto } from '../shared/dto/response.dto';
-import { AuthRequest } from '../auth/interfaces/auth.interface';
-import { FileValidationUtil } from '../upload/utils/file-validation.util';
+} from '../dto/trip-search.dto';
+import {
+  BaseResponseDto,
+  ErrorResponseDto,
+} from '../../shared/dto/response.dto';
+import { AuthRequest } from '../../auth/interfaces/auth.interface';
+import { FileValidationUtil } from '../../upload/utils/file-validation.util';
 
 /**
  * Simplified controller for core trip management operations

@@ -1,13 +1,20 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { TripController } from './trip.controller';
-import { PublicTripController } from './public-trip.controller';
-import { ItineraryController } from './itinerary.controller';
-import { CostTrackingController } from './cost-tracking.controller';
-import { TripAIController } from './trip-ai.controller';
+
+// Import controllers from organized structure
+import {
+  TripController,
+  PublicTripController,
+  ItineraryController,
+  CostTrackingController,
+  TripAIController,
+} from './controllers';
+
+// Import services from organized structure
+import { TripService, ItineraryService } from './services';
+
+// Import admin controllers and services
 import { AdminTripController } from './admin/admin-trip.controller';
-import { TripService } from './trip.service';
-import { ItineraryService } from './itinerary.service';
 import { AdminTripService } from './admin/admin-trip.service';
 import { TripEntity } from '../schemas/trip.entity';
 import { ItineraryEntity } from '../schemas/itinerary.entity';

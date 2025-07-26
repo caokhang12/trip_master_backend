@@ -2,15 +2,10 @@
 export { TripModule } from './trip.module';
 
 // Controllers
-export { TripController } from './trip.controller';
-export { PublicTripController } from './public-trip.controller';
-export { ItineraryController } from './itinerary.controller';
-export { CostTrackingController } from './cost-tracking.controller';
-export { TripAIController } from './trip-ai.controller';
+export * from './controllers';
 
 // Services
-export { TripService } from './trip.service';
-export { ItineraryService } from './itinerary.service';
+export * from './services';
 
 // Admin exports
 export * from './admin';

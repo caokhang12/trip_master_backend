@@ -7,21 +7,21 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, SelectQueryBuilder } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
-import { TripEntity, TripStatus } from '../schemas/trip.entity';
-import { ItineraryEntity } from '../schemas/itinerary.entity';
-import { TripShareEntity } from '../schemas/trip-share.entity';
+import { TripEntity, TripStatus } from '../../schemas/trip.entity';
+import { ItineraryEntity } from '../../schemas/itinerary.entity';
+import { TripShareEntity } from '../../schemas/trip-share.entity';
 import {
   PaginationResult,
   PaginationHelper,
-} from '../shared/types/pagination.types';
-import { CreateTripDto, UpdateTripDto } from './dto/trip.dto';
+} from '../../shared/types/pagination.types';
+import { CreateTripDto, UpdateTripDto } from '../dto/trip.dto';
 import {
   TripQueryDto,
   ShareTripDto,
   TripSearchDto,
-} from './dto/trip-search.dto';
-import { TripDetails } from './interfaces/trip.interface';
-import { UploadService } from '../upload/upload.service';
+} from '../dto/trip-search.dto';
+import { TripDetails } from '../interfaces/trip.interface';
+import { UploadService } from '../../upload/upload.service';
 import {
   TripImageUploadParams,
   TripImageRemovalParams,
@@ -29,7 +29,7 @@ import {
   TripDetailDto,
   TripImageGallery,
   TripImageItem,
-} from '../upload/types/upload-integration.types';
+} from '../../upload/types/upload-integration.types';
 
 /**
  * Service for managing trip operations

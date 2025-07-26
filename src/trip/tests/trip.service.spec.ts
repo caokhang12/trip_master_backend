@@ -431,7 +431,7 @@ describe('TripService', () => {
       expect(tripShareRepository.create).toHaveBeenCalledWith({
         tripId: mockTripEntity.id,
         shareToken: expect.any(String),
-        expiresAt: new Date(inputShareDto.expiresAt!),
+        expiresAt: new Date(inputShareDto.expiresAt),
         viewCount: 0,
       });
     });

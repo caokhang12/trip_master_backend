@@ -15,28 +15,28 @@ import {
   ApiParam,
   ApiBody,
 } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { AIService } from '../ai/services/ai.service';
-import { ItineraryService } from './itinerary.service';
-import { ResponseUtil } from '../shared/utils/response.util';
-import { BaseResponse } from '../shared/types/base-response.types';
-import { ErrorResponseDto } from '../shared/dto/response.dto';
-import { AuthRequest } from '../auth/interfaces/auth.interface';
-import { AIGenerationRequest } from '../ai/interfaces/ai.interface';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { AIService } from '../../ai/services/ai.service';
+import { ItineraryService } from '../services/itinerary.service';
+import { ResponseUtil } from '../../shared/utils/response.util';
+import { BaseResponse } from '../../shared/types/base-response.types';
+import { ErrorResponseDto } from '../../shared/dto/response.dto';
+import { AuthRequest } from '../../auth/interfaces/auth.interface';
+import { AIGenerationRequest } from '../../ai/interfaces/ai.interface';
 import {
   GenerateItineraryDto,
   LocationSuggestionsDto,
   CostEstimationDto,
-} from './dto/ai-request.dto';
+} from '../dto/ai-request.dto';
 import {
   SaveGeneratedItineraryDto,
   SaveItineraryResponseDto,
-} from './dto/save-itinerary.dto';
+} from '../dto/save-itinerary.dto';
 import {
   GeneratedItineraryDto,
   LocationSuggestionDto,
   CostEstimationResponseDto,
-} from './dto/ai-response.dto';
+} from '../dto/ai-response.dto';
 
 /**
  * Controller for AI-powered travel planning features

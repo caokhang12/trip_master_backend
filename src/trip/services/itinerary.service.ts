@@ -6,40 +6,40 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { ItineraryEntity } from '../schemas/itinerary.entity';
-import { TripEntity } from '../schemas/trip.entity';
-import { ActivityCostEntity } from '../schemas/activity-cost.entity';
-import { BudgetTrackingEntity } from '../schemas/budget-tracking.entity';
+import { ItineraryEntity } from '../../schemas/itinerary.entity';
+import { TripEntity } from '../../schemas/trip.entity';
+import { ActivityCostEntity } from '../../schemas/activity-cost.entity';
+import { BudgetTrackingEntity } from '../../schemas/budget-tracking.entity';
 import {
   UpdateItineraryDto,
   GenerateItineraryOptionsDto,
-} from './dto/itinerary.dto';
+} from '../dto/itinerary.dto';
 import {
   ActivityCostDto,
   UpdateActivityCostDto,
   CostAnalysisDto,
   BudgetSummaryDto,
   BudgetCategoryDto,
-} from './dto/cost.dto';
+} from '../dto/cost.dto';
 import {
   LocationSuggestionsDto,
   CostEstimationDto,
-} from './dto/ai-request.dto';
+} from '../dto/ai-request.dto';
 import {
   CostEstimationResponseDto,
   LocationSuggestionDto,
-} from './dto/ai-response.dto';
-import { CurrencyService } from '../currency/services/currency.service';
-import { AIService } from '../ai/services/ai.service';
-import { TripValidationUtil } from './utils/trip-validation.util';
+} from '../dto/ai-response.dto';
+import { CurrencyService } from '../../currency/services/currency.service';
+import { AIService } from '../../ai/services/ai.service';
+import { TripValidationUtil } from '../utils/trip-validation.util';
 import {
   ActivityWithCosts,
   ItineraryWithCosts,
-} from './interfaces/trip.interface';
+} from '../interfaces/trip.interface';
 import {
   SaveGeneratedItineraryDto,
   SaveItineraryResponseDto,
-} from './dto/save-itinerary.dto';
+} from '../dto/save-itinerary.dto';
 
 /**
  * Service for managing trip itineraries and AI integration with cost tracking

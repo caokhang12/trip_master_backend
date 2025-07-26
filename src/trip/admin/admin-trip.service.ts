@@ -288,7 +288,10 @@ export class AdminTripService {
       .createQueryBuilder('cost')
       .leftJoin('cost.itinerary', 'itinerary')
       .where('itinerary.tripId = :tripId', { tripId })
-      .select('SUM(cost.amount)', 'totalCost')
+      .select(
+        'SUM(COALESCE(cost.actualAmount, cost.estimatedAmount))',
+        'totalCost',
+      )
       .getRawOne<{ totalCost: string | null }>();
 
     const estimatedCost = parseFloat((costResult?.totalCost as string) || '0');

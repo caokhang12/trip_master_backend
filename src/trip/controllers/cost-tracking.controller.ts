@@ -6,12 +6,15 @@ import {
   ApiBearerAuth,
   ApiParam,
 } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { ItineraryService } from './itinerary.service';
-import { ResponseUtil } from '../shared/utils/response.util';
-import { BaseResponse } from '../shared/types/base-response.types';
-import { BaseResponseDto, ErrorResponseDto } from '../shared/dto/response.dto';
-import { AuthRequest } from '../auth/interfaces/auth.interface';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { ItineraryService } from '../services/itinerary.service';
+import { ResponseUtil } from '../../shared/utils/response.util';
+import { BaseResponse } from '../../shared/types/base-response.types';
+import {
+  BaseResponseDto,
+  ErrorResponseDto,
+} from '../../shared/dto/response.dto';
+import { AuthRequest } from '../../auth/interfaces/auth.interface';
 
 /**
  * Controller for cost tracking and budget analysis
