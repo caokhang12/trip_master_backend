@@ -40,6 +40,7 @@ import {
   SaveGeneratedItineraryDto,
   SaveItineraryResponseDto,
 } from '../dto/save-itinerary.dto';
+import { CountryDefaultsService } from '../../shared/services/country-defaults.service';
 
 /**
  * Service for managing trip itineraries and AI integration with cost tracking
@@ -59,6 +60,7 @@ export class ItineraryService {
     private readonly budgetTrackingRepository: Repository<BudgetTrackingEntity>,
     private readonly currencyService: CurrencyService,
     private readonly aiService: AIService,
+    private readonly countryDefaults: CountryDefaultsService,
   ) {}
 
   /**
@@ -758,7 +760,10 @@ export class ItineraryService {
           aiGenerated: true, // This is AI-generated
           userModified: false,
           estimatedCost: day.dailyBudget || 0,
-          costCurrency: saveDto.itinerary.currency || 'VND',
+          costCurrency: this.resolveEffectiveCurrency(
+            saveDto.itinerary.currency,
+            trip,
+          ),
         });
 
         const saved = await this.itineraryRepository.save(itineraryEntity);
@@ -777,7 +782,10 @@ export class ItineraryService {
               activityIndex,
               costType: activity.category || 'activities',
               estimatedAmount: activity.estimatedCost,
-              currency: saveDto.itinerary.currency || 'VND',
+              currency: this.resolveEffectiveCurrency(
+                saveDto.itinerary.currency,
+                trip,
+              ),
               costSource: 'AI_GENERATED',
               notes: `AI estimated cost for ${activity.name}`,
             });
@@ -790,7 +798,10 @@ export class ItineraryService {
       // Update trip with total estimated cost
       if (saveDto.itinerary.totalEstimatedCost) {
         trip.budget = saveDto.itinerary.totalEstimatedCost;
-        trip.currency = saveDto.itinerary.currency || 'VND';
+        trip.currency = this.resolveEffectiveCurrency(
+          saveDto.itinerary.currency,
+          trip,
+        );
         await this.tripRepository.save(trip);
       }
 
@@ -817,5 +828,23 @@ export class ItineraryService {
 
       throw new BadRequestException('Failed to save itinerary to database');
     }
+  }
+
+  /**
+   * Decide which currency to use based on (in order): provided currency, trip.currency,
+   * country default from destinationCountry, final fallback 'USD'.
+   */
+  private resolveEffectiveCurrency(
+    providedCurrency: string | undefined,
+    trip: TripEntity,
+  ): string {
+    if (providedCurrency) return providedCurrency;
+    if (trip.currency) return trip.currency;
+    const cc = trip.destinationCountry?.toUpperCase();
+    if (cc) {
+      const defaults = this.countryDefaults.getCountryDefaults(cc);
+      if (defaults?.currency) return defaults.currency;
+    }
+    return 'VND';
   }
 }

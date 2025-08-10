@@ -30,6 +30,7 @@ import {
   TripImageGallery,
   TripImageItem,
 } from '../../upload/types/upload-integration.types';
+import { CountryDefaultsService } from '../../shared/services/country-defaults.service';
 
 /**
  * Service for managing trip operations
@@ -44,6 +45,7 @@ export class TripService {
     @InjectRepository(TripShareEntity)
     private readonly tripShareRepository: Repository<TripShareEntity>,
     private readonly uploadService: UploadService,
+    private readonly countryDefaults: CountryDefaultsService,
   ) {}
 
   /**
@@ -54,6 +56,17 @@ export class TripService {
     createTripDto: CreateTripDto,
   ): Promise<TripEntity> {
     this.validateDateRange(createTripDto.startDate, createTripDto.endDate);
+
+    // Apply country defaults if destinationCountry provided
+    if (createTripDto.destinationCountry) {
+      const cc = createTripDto.destinationCountry.toUpperCase();
+      const defaults = this.countryDefaults.getCountryDefaults(cc);
+      if (defaults) {
+        createTripDto.currency = createTripDto.currency || defaults.currency;
+        createTripDto.timezone = createTripDto.timezone || defaults.timezone;
+        createTripDto.destinationCountry = cc;
+      }
+    }
 
     const trip = this.tripRepository.create({
       ...createTripDto,
@@ -129,6 +142,17 @@ export class TripService {
     // Validate status transitions
     if (updateTripDto.status && updateTripDto.status !== trip!.status) {
       this.validateStatusTransition(trip!.status, updateTripDto.status);
+    }
+
+    // If destinationCountry is provided, normalize and apply defaults for missing fields
+    if (updateTripDto.destinationCountry) {
+      const cc = updateTripDto.destinationCountry.toUpperCase();
+      const defaults = this.countryDefaults.getCountryDefaults(cc);
+      if (defaults) {
+        updateTripDto.currency = updateTripDto.currency || defaults.currency;
+        updateTripDto.timezone = updateTripDto.timezone || defaults.timezone;
+        updateTripDto.destinationCountry = cc;
+      }
     }
 
     const updateData = {

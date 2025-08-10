@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
 import { ErrorUtilService } from './utils/error.util';
+import { CountryDefaultsService } from './services/country-defaults.service';
 
 /**
  * Global shared module containing database, JWT, configuration, and utility services
@@ -38,7 +39,7 @@ import { ErrorUtilService } from './utils/error.util';
       }),
     }),
   ],
-  providers: [ErrorUtilService],
-  exports: [ConfigModule, JwtModule, ErrorUtilService],
+  providers: [ErrorUtilService, CountryDefaultsService],
+  exports: [ConfigModule, JwtModule, ErrorUtilService, CountryDefaultsService],
 })
 export class SharedModule {}
