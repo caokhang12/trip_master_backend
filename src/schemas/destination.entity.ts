@@ -1,3 +1,4 @@
+import { ItineraryEntity } from 'src/schemas/itinerary.entity';
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -5,6 +6,7 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   Index,
+  OneToMany,
 } from 'typeorm';
 
 /**
@@ -42,8 +44,8 @@ export class DestinationEntity {
   @Column({ type: 'text', nullable: true })
   description?: string;
 
-  @Column({ name: 'image_urls', type: 'text', array: true, default: '{}' })
-  imageUrls: string[];
+  @Column({ name: 'image_urls', type: 'text', array: true, nullable: true })
+  imageUrls?: string[] | null;
 
   @Column({ name: 'average_budget', type: 'jsonb', nullable: true })
   averageBudget?: {
@@ -82,4 +84,10 @@ export class DestinationEntity {
 
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
+
+  @OneToMany(() => ItineraryEntity, (itineraries) => itineraries.destination, {
+    cascade: true,
+    eager: false,
+  })
+  itineraries: ItineraryEntity[];
 }

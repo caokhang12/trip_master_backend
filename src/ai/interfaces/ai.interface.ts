@@ -2,6 +2,8 @@
  * AI-related interfaces for TripMaster backend
  */
 
+import { ActivityCategory } from 'src/trip/enum/enum';
+
 export interface AIGenerationRequest {
   destination: string;
   country: string;
@@ -114,19 +116,6 @@ export interface EmergencyContact {
   number: string;
   description: string;
 }
-
-export type ActivityCategory =
-  | 'sightseeing'
-  | 'cultural'
-  | 'adventure'
-  | 'food'
-  | 'shopping'
-  | 'relaxation'
-  | 'nightlife'
-  | 'nature'
-  | 'historical'
-  | 'religious'
-  | 'transportation';
 
 export interface PromptContext {
   country: string;

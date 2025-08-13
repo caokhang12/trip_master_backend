@@ -11,16 +11,8 @@ import {
 } from 'typeorm';
 import { TripEntity } from './trip.entity';
 import { ActivityCostEntity } from './activity-cost.entity';
-
-export interface Activity {
-  time: string;
-  title: string;
-  description?: string;
-  location?: string;
-  duration?: number; // in minutes
-  cost?: number;
-  type?: string; // e.g., 'transportation', 'sightseeing', 'dining'
-}
+import { ActivityEntity } from './activity.entity';
+import { DestinationEntity } from 'src/schemas/destination.entity';
 
 /**
  * Itinerary entity representing the itineraries table in the database
@@ -34,14 +26,14 @@ export class ItineraryEntity {
   @Column({ name: 'trip_id' })
   tripId: string;
 
+  @Column({ name: 'destination_id' })
+  destinationId: string;
+
   @Column({ name: 'day_number' })
   dayNumber: number;
 
   @Column({ type: 'date', nullable: true })
   date?: Date;
-
-  @Column({ type: 'json' })
-  activities: Activity[];
 
   @Column({ name: 'ai_generated', default: false })
   aiGenerated: boolean;
@@ -87,8 +79,24 @@ export class ItineraryEntity {
   @JoinColumn({ name: 'trip_id' })
   trip: TripEntity;
 
+  @ManyToOne(
+    () => DestinationEntity,
+    (destination) => destination.itineraries,
+    {
+      onDelete: 'CASCADE',
+    },
+  )
+  @JoinColumn({ name: 'destination_id' })
+  destination: DestinationEntity;
+
   @OneToMany(() => ActivityCostEntity, (cost) => cost.itinerary, {
     cascade: true,
   })
   activityCosts: ActivityCostEntity[];
+
+  // New normalized activities relation replacing the old JSON column
+  @OneToMany(() => ActivityEntity, (activity) => activity.itinerary, {
+    cascade: ['insert', 'update'],
+  })
+  activities: ActivityEntity[];
 }

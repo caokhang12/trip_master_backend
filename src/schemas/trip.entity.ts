@@ -13,18 +13,7 @@ import { UserEntity } from './user.entity';
 import { ItineraryEntity } from './itinerary.entity';
 import { TripShareEntity } from './trip-share.entity';
 import { BudgetTrackingEntity } from './budget-tracking.entity';
-
-export enum TripStatus {
-  PLANNING = 'planning',
-  BOOKED = 'booked',
-  COMPLETED = 'completed',
-  CANCELLED = 'cancelled',
-}
-
-export interface DestinationCoords {
-  lat: number;
-  lng: number;
-}
+import { TripStatus } from 'src/trip/enum/enum';
 
 /**
  * Trip entity representing the trips table in the database
@@ -42,21 +31,6 @@ export class TripEntity {
 
   @Column({ type: 'text', nullable: true })
   description?: string;
-
-  @Column({ name: 'destination_name', length: 255 })
-  destinationName: string;
-
-  @Column({ name: 'destination_coords', type: 'json', nullable: true })
-  destinationCoords?: DestinationCoords;
-
-  @Column({ name: 'destination_country', length: 2, nullable: true })
-  destinationCountry?: string;
-
-  @Column({ name: 'destination_province', length: 255, nullable: true })
-  destinationProvince?: string;
-
-  @Column({ name: 'destination_city', length: 255, nullable: true })
-  destinationCity?: string;
 
   @Column({ length: 50, nullable: true })
   timezone?: string;
@@ -101,6 +75,28 @@ export class TripEntity {
 
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
+
+  // Relations
+  @ManyToOne(() => UserEntity, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'user_id' })
+  user: UserEntity;
+
+  @OneToMany(() => ItineraryEntity, (itinerary) => itinerary.trip, {
+    cascade: true,
+    eager: false,
+  })
+  itinerary: ItineraryEntity[];
+
+  @OneToOne(() => TripShareEntity, (share) => share.trip, {
+    cascade: true,
+    eager: false,
+  })
+  shareInfo?: TripShareEntity;
+
+  @OneToMany(() => BudgetTrackingEntity, (budget) => budget.trip, {
+    cascade: true,
+  })
+  budgetTracking: BudgetTrackingEntity[];
 
   /**
    * Computed properties for image management
@@ -173,26 +169,4 @@ export class TripEntity {
     const { width = 800, height = 600 } = transformation;
     return url.replace('/upload/', `/upload/w_${width},h_${height},c_fill/`);
   }
-
-  // Relations
-  @ManyToOne(() => UserEntity, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'user_id' })
-  user: UserEntity;
-
-  @OneToMany(() => ItineraryEntity, (itinerary) => itinerary.trip, {
-    cascade: true,
-    eager: false,
-  })
-  itinerary: ItineraryEntity[];
-
-  @OneToOne(() => TripShareEntity, (share) => share.trip, {
-    cascade: true,
-    eager: false,
-  })
-  shareInfo?: TripShareEntity;
-
-  @OneToMany(() => BudgetTrackingEntity, (budget) => budget.trip, {
-    cascade: true,
-  })
-  budgetTracking: BudgetTrackingEntity[];
 }

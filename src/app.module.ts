@@ -7,7 +7,6 @@ import { SharedModule } from './shared/shared.module';
 import { EmailModule } from './email/email.module';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './users/user.module';
-import { TripModule } from './trip/trip.module';
 import { LocationModule } from './location/location.module';
 import { CurrencyModule } from './currency/currency.module';
 import { UploadModule } from './upload/upload.module';
@@ -25,7 +24,6 @@ import { GlobalValidationPipe } from './shared/pipes/global-validation.pipe';
     EmailModule,
     AuthModule,
     UserModule,
-    TripModule,
     LocationModule,
     CurrencyModule,
     UploadModule,
