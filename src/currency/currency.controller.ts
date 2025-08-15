@@ -1,12 +1,4 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Query,
-  UseGuards,
-  HttpCode,
-} from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, HttpCode } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -15,7 +7,6 @@ import {
   ApiBearerAuth,
   ApiBody,
 } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import {
   CurrencyService,
   ExchangeRates,
@@ -26,7 +17,6 @@ import { ResponseUtil } from '../shared/utils/response.util';
 
 @ApiTags('Currency')
 @Controller('currency')
-@UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class CurrencyController {
   constructor(private readonly currencyService: CurrencyService) {}

@@ -28,8 +28,6 @@ import {
   ApiForbiddenResponse,
 } from '@nestjs/swagger';
 import { UserService } from './user.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { AdminRoleGuard } from '../auth/guards/admin-role.guard';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ListUsersDto } from './dto/list-users.dto';
 import { ResponseUtil } from '../shared/utils/response.util';
@@ -49,6 +47,7 @@ import {
   UserProfileWithAvatarDto,
 } from '../upload/dto/file-operations.dto';
 import { FileValidationUtil } from '../upload/utils/file-validation.util';
+import { AdminRoleGuard } from '../auth/roles.guard';
 
 interface RequestWithUser extends Request {
   user: { id: string };
@@ -81,7 +80,6 @@ export class UserController {
     description: 'Internal server error',
     type: ErrorResponseDto,
   })
-  @UseGuards(JwtAuthGuard)
   @Get('profile')
   async getProfile(
     @Req() req: RequestWithUser,
@@ -120,7 +118,6 @@ export class UserController {
     description: 'Internal server error',
     type: ErrorResponseDto,
   })
-  @UseGuards(JwtAuthGuard)
   @Put('profile')
   async updateProfile(
     @Req() req: RequestWithUser,
@@ -171,7 +168,6 @@ export class UserController {
     description: 'Invalid file or file too large',
     type: ErrorResponseDto,
   })
-  @UseGuards(JwtAuthGuard)
   @UseInterceptors(
     FileInterceptor('file', {
       limits: FileValidationUtil.getMulterLimits(),
@@ -205,7 +201,6 @@ export class UserController {
     description: 'Avatar removed successfully',
     type: UserProfileWithAvatarDto,
   })
-  @UseGuards(JwtAuthGuard)
   @Delete('avatar')
   async removeAvatar(
     @Req() req: RequestWithUser,
@@ -243,7 +238,7 @@ export class UserController {
     description: 'Internal server error',
     type: ErrorResponseDto,
   })
-  @UseGuards(JwtAuthGuard, AdminRoleGuard)
+  @UseGuards(AdminRoleGuard)
   @Get()
   async getAllUsers(
     @Query() paginationDto: ListUsersDto,

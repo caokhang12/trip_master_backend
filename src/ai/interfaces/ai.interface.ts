@@ -2,7 +2,7 @@
  * AI-related interfaces for TripMaster backend
  */
 
-import { ActivityCategory } from 'src/trip/enum/enum';
+import { ActivityCategory } from 'src/trip/enum/trip-enum';
 
 export interface AIGenerationRequest {
   destination: string;

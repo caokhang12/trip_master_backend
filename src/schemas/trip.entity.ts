@@ -13,7 +13,7 @@ import { UserEntity } from './user.entity';
 import { ItineraryEntity } from './itinerary.entity';
 import { TripShareEntity } from './trip-share.entity';
 import { BudgetTrackingEntity } from './budget-tracking.entity';
-import { TripStatus } from 'src/trip/enum/enum';
+import { TripStatus } from 'src/trip/enum/trip-enum';
 
 /**
  * Trip entity representing the trips table in the database

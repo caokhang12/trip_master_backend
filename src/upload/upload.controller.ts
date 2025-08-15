@@ -1,8 +1,8 @@
-import { Controller, Delete, Param, UseGuards, Request } from '@nestjs/common';
+import { Controller, Delete, Param, Request } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { UploadService } from './upload.service';
-import { AuthRequest } from '../auth/interfaces/auth.interface';
+
+import { RequestWithUser } from 'src/auth/auth.controller';
 
 /**
  * Simplified upload controller for direct file operations
@@ -11,7 +11,6 @@ import { AuthRequest } from '../auth/interfaces/auth.interface';
  */
 @ApiTags('Upload')
 @Controller('api/v1/upload')
-@UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class UploadController {
   constructor(private readonly uploadService: UploadService) {}
@@ -22,10 +21,10 @@ export class UploadController {
   @Delete(':publicId')
   @ApiOperation({ summary: 'Delete file' })
   async deleteFile(
-    @Request() req: AuthRequest,
+    @Request() req: RequestWithUser,
     @Param('publicId') publicId: string,
   ) {
     const decodedPublicId = decodeURIComponent(publicId);
-    return this.uploadService.deleteFile(req.user.id, decodedPublicId);
+    return this.uploadService.deleteFile(req.user?.id, decodedPublicId);
   }
 }

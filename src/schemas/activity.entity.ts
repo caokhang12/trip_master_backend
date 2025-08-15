@@ -10,7 +10,7 @@ import {
 } from 'typeorm';
 import { ItineraryEntity } from './itinerary.entity';
 import { DestinationEntity } from './destination.entity';
-import { ActivityCategory } from 'src/trip/enum/enum';
+import { ActivityCategory } from 'src/trip/enum/trip-enum';
 
 /**
  * Activity entity representing a single activity within an itinerary day.

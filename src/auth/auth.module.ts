@@ -1,49 +1,36 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { PassportModule } from '@nestjs/passport';
-import { ThrottlerModule } from '@nestjs/throttler';
-import { ConfigModule } from '@nestjs/config';
+import { JwtModule } from '@nestjs/jwt';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
-import { RefreshTokenService } from './services/refresh-token.service';
-import { JwtStrategy, JwtRefreshStrategy } from './strategies/jwt.strategy';
-import { AdminRoleGuard } from './guards/admin-role.guard';
-import { UserEntity } from '../schemas/user.entity';
-import { UserPreferencesEntity } from '../schemas/user-preferences.entity';
 import { RefreshTokenEntity } from '../schemas/refresh-token.entity';
-import { UserModule } from '../users/user.module';
-import authConfig from './config/auth.config';
+import { UploadModule } from '../upload/upload.module';
+import { JwtStrategy } from './jwt.strategy';
+import { SharedModule } from '../shared/shared.module';
+import { UserModule } from 'src/users/user.module';
+import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
+import { APP_GUARD } from '@nestjs/core';
 
-/**
- * Authentication module containing auth services, controllers, and strategies
- * Enhanced with refresh token management and rate limiting
- */
 @Module({
   imports: [
-    ConfigModule.forFeature(authConfig),
-    TypeOrmModule.forFeature([
-      UserEntity,
-      UserPreferencesEntity,
-      RefreshTokenEntity,
-    ]),
-    PassportModule,
-    UserModule, // Import UserModule instead of declaring UserService directly
-    ThrottlerModule.forRoot([
-      {
-        name: 'auth',
-        ttl: 60000, // 1 minute
-        limit: 10, // 10 requests per minute
-      },
-    ]),
+    SharedModule, // Provides ConfigModule + JwtModule (access token)
+    PassportModule.register({ defaultStrategy: 'jwt' }),
+    TypeOrmModule.forFeature([RefreshTokenEntity]),
+    UploadModule,
+    UserModule,
+    // JwtModule already registered globally in SharedModule; keep here if needed for local overrides
+    JwtModule.register({}),
   ],
   controllers: [AuthController],
   providers: [
     AuthService,
-    RefreshTokenService,
     JwtStrategy,
-    JwtRefreshStrategy,
-    AdminRoleGuard,
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard, // Global JWT guard (public endpoints can be added later with decorator if needed)
+    },
   ],
-  exports: [AuthService, RefreshTokenService, AdminRoleGuard], // Export services and guards
+  exports: [AuthService],
 })
 export class AuthModule {}

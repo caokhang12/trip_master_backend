@@ -8,6 +8,7 @@ import {
 } from '../interfaces/ai.interface';
 import { PromptBuilderService } from './prompt-builder.service';
 import { APIThrottleService } from '../../shared/services/api-throttle.service';
+import { ActivityCategory } from 'src/trip/enum/trip-enum';
 
 /**
  * Interface for AI cost estimation request
@@ -1090,7 +1091,7 @@ Return JSON format:
             location: request.destination,
             duration: 240,
             estimatedCost: request.budget / days / 3,
-            category: 'sightseeing',
+            category: ActivityCategory.SIGHTSEEING,
             timeSlot: 'morning',
           },
           {
@@ -1099,7 +1100,7 @@ Return JSON format:
             location: request.destination,
             duration: 90,
             estimatedCost: request.budget / days / 4,
-            category: 'food',
+            category: ActivityCategory.FOOD,
             timeSlot: 'afternoon',
           },
         ],

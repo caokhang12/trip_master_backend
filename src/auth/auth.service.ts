@@ -1,408 +1,190 @@
 import {
   Injectable,
   UnauthorizedException,
-  BadRequestException,
-  OnModuleInit,
-  Logger,
+  ForbiddenException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { v4 as uuid } from 'uuid';
 import { UserService } from '../users/user.service';
-import { EmailService } from '../email/email.service';
-import { RefreshTokenService } from './services/refresh-token.service';
+import { UserEntity } from '../schemas/user.entity';
+import { RefreshTokenEntity } from '../schemas/refresh-token.entity';
+import { RegisterDto } from './dto/register.dto';
+import { LoginDto } from './dto/login.dto';
+import { Response } from 'express';
+import { ResponseUtil } from '../shared/utils/response.util';
 import {
-  RegisterDto,
-  LoginDto,
-  VerifyEmailDto,
-  ResendVerificationDto,
-  ForgotPasswordDto,
-  ResetPasswordDto,
-  SocialLoginDto,
-} from './dto/auth.dto';
-import {
-  AuthResponseData,
-  SessionData,
+  BaseResponse,
+  SecureAuthResponseData,
+  UserProfileData,
 } from '../shared/types/base-response.types';
-import { DeviceInfo, DeviceInfoUtil } from './utils/device-info.util';
-import { AuthTokenUtil } from './utils/auth-token.util';
-import { AuthResponseUtil } from './utils/auth-response.util';
-import { TokenExpiryUtil } from './utils/token-expiry.util';
+import { UserRole } from '../shared/types/base-response.types';
 
-/**
- * Authentication service with JWT token management and security validation
- * Optimized for performance and reduced code duplication
- */
+interface TokenPair {
+  accessToken: string;
+  refreshToken: string;
+  refreshTokenExpires: Date;
+  refreshTokenId: string;
+}
+
 @Injectable()
-export class AuthService implements OnModuleInit {
-  private readonly logger = new Logger(AuthService.name);
+export class AuthService {
+  private readonly refreshCookieName = 'refreshToken';
 
   constructor(
     private readonly userService: UserService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
-    private readonly emailService: EmailService,
-    private readonly refreshTokenService: RefreshTokenService,
+    @InjectRepository(RefreshTokenEntity)
+    private readonly refreshRepo: Repository<RefreshTokenEntity>,
   ) {}
 
-  /**
-   * Initialize service with cached configuration values
-   */
-  onModuleInit(): void {
-    AuthTokenUtil.initialize(this.configService);
-  }
-
-  async register(registerDto: RegisterDto): Promise<AuthResponseData> {
+  async register(dto: RegisterDto): Promise<UserProfileData> {
     const user = await this.userService.createUser({
-      email: registerDto.email,
-      password: registerDto.password,
-      firstName: registerDto.firstName,
-      lastName: registerDto.lastName,
+      email: dto.email,
+      password: dto.password,
+      firstName: dto.firstName,
+      lastName: dto.lastName,
     });
-
-    // Generate email verification token for account activation
-    const verificationToken = AuthResponseUtil.generateToken();
-    await this.userService.setEmailVerificationToken(
-      user.id,
-      verificationToken,
-    );
-
-    // Send verification email
-    const emailSent = await this.emailService.sendVerificationEmail(
-      user.email,
-      verificationToken,
-      user.firstName,
-      'en',
-    );
-
-    if (!emailSent) {
-      this.logger.warn(`Failed to send verification email to ${user.email}`);
-    }
-
-    const tokens = AuthTokenUtil.generateTokens(
-      this.jwtService,
-      user.id,
-      user.email,
-    );
-
-    // Create and store refresh token
-    await this.refreshTokenService.createRefreshToken(
-      user,
-      tokens.refresh_token,
-      AuthTokenUtil.calculateRefreshTokenExpiry(),
-    );
-
-    return AuthResponseUtil.buildAuthResponse(this.userService, user, tokens);
+    return this.userService.transformToProfileData(user);
   }
 
   async login(
-    loginDto: LoginDto,
-    deviceInfo?: DeviceInfo,
-  ): Promise<AuthResponseData> {
-    const user = await this.userService.findByEmail(loginDto.email);
+    dto: LoginDto,
+    res: Response,
+    deviceInfo?: RefreshTokenEntity['deviceInfo'],
+  ): Promise<BaseResponse<SecureAuthResponseData>> {
+    const user = await this.userService.findByEmail(dto.email);
     if (!user) {
-      // Increment failed login attempts for non-existent users too
-      this.logger.warn(
-        `Login attempt for non-existent email: ${loginDto.email}`,
-      );
-      throw new UnauthorizedException('Email is not registered');
+      throw new UnauthorizedException('Invalid credentials');
     }
-
-    // Check if account is locked
     if (user.isLocked) {
-      this.logger.warn(`Login attempt for locked account: ${user.email}`);
-      throw new UnauthorizedException(
-        'Account temporarily locked due to multiple failed login attempts',
-      );
+      throw new ForbiddenException('Account locked');
     }
-
-    const isValidPassword = await this.userService.verifyPassword(
-      user,
-      loginDto.password,
-    );
-
-    if (!isValidPassword) {
-      // Increment failed login attempts
+    const isValid = await this.userService.verifyPassword(user, dto.password);
+    if (!isValid) {
       user.incrementFailedAttempts();
-      await this.userService.updateUserFields(user.id, {
-        failedLoginAttempts: user.failedLoginAttempts,
-        lockedUntil: user.lockedUntil,
-      });
-
-      this.logger.warn(`Failed login attempt for user: ${user.email}`);
-      throw new UnauthorizedException('Email or password is incorrect');
+      await this.userService.saveUser(user);
+      throw new UnauthorizedException('Invalid credentials');
     }
+    user.resetFailedAttempts();
+    user.lastLoginAt = new Date();
+    await this.userService.saveUser(user);
 
-    // Check if email is verified
-    if (!user.emailVerified) {
-      throw new UnauthorizedException(
-        'Please verify your email before logging in',
-      );
-    }
+    const tokenPair = await this.issueTokenPair(user, deviceInfo);
+    this.setRefreshCookie(
+      res,
+      tokenPair.refreshToken,
+      tokenPair.refreshTokenExpires,
+    );
 
-    // Reset failed login attempts on successful login
-    if (user.failedLoginAttempts > 0) {
-      user.resetFailedAttempts();
-    }
-
-    // Update last login information
-    const now = new Date();
-    await this.userService.updateUserFields(user.id, {
-      failedLoginAttempts: user.failedLoginAttempts,
-      lockedUntil: user.lockedUntil,
-      lastLoginAt: now,
-      lastLoginIp: deviceInfo?.ip,
+    const profile = this.userService.transformToProfileData(user);
+    return ResponseUtil.success<SecureAuthResponseData>({
+      access_token: tokenPair.accessToken,
+      user_profile: profile,
     });
-
-    const tokens = AuthTokenUtil.generateTokens(
-      this.jwtService,
-      user.id,
-      user.email,
-    );
-
-    // Create refresh token record with config-driven expiry
-    const expiresAt = TokenExpiryUtil.calculateExpiry('7d');
-
-    await this.refreshTokenService.createRefreshToken(
-      user,
-      tokens.refresh_token,
-      expiresAt,
-      deviceInfo,
-    );
-
-    this.logger.log(`User ${user.email} logged in successfully`);
-
-    return AuthResponseUtil.buildAuthResponse(this.userService, user, tokens);
   }
 
-  async refreshToken(
-    refreshToken: string,
-    deviceInfo?: DeviceInfo,
-  ): Promise<AuthResponseData> {
-    const tokenRecord =
-      await this.refreshTokenService.findValidToken(refreshToken);
-
-    if (!tokenRecord) {
+  async refresh(
+    req: {
+      cookies?: Record<string, string>;
+      user?: { id: string; role: UserRole; email: string };
+    },
+    res: Response,
+  ): Promise<BaseResponse<SecureAuthResponseData>> {
+    const refreshTokenValue = req.cookies?.[this.refreshCookieName];
+    if (!refreshTokenValue) {
+      throw new UnauthorizedException('Missing refresh token');
+    }
+    const existing = await this.refreshRepo.findOne({
+      where: { token: refreshTokenValue, isActive: true },
+      relations: ['user'],
+    });
+    if (!existing || !existing.isValid) {
       throw new UnauthorizedException('Invalid refresh token');
     }
-
-    // Revoke old token
-    await this.refreshTokenService.revokeToken(refreshToken);
-
-    // Generate new tokens
-    const tokens = AuthTokenUtil.generateTokens(
-      this.jwtService,
-      tokenRecord.user.id,
-      tokenRecord.user.email,
+    const user = existing.user;
+    const rotate = true; // always rotate for security
+    if (rotate) {
+      existing.isActive = false;
+      await this.refreshRepo.save(existing);
+    }
+    const tokenPair = await this.issueTokenPair(user, existing.deviceInfo);
+    this.setRefreshCookie(
+      res,
+      tokenPair.refreshToken,
+      tokenPair.refreshTokenExpires,
     );
-
-    // Create new refresh token record with config-driven expiry
-    const expiresAt = TokenExpiryUtil.calculateExpiry('7d');
-
-    await this.refreshTokenService.createRefreshToken(
-      tokenRecord.user,
-      tokens.refresh_token,
-      expiresAt,
-      deviceInfo,
-    );
-
-    // Update last used timestamp
-    await this.refreshTokenService.updateLastUsed(tokenRecord.id);
-
-    this.logger.log(`Refresh token used for user ${tokenRecord.user.email}`);
-
-    return AuthResponseUtil.buildAuthResponse(
-      this.userService,
-      tokenRecord.user,
-      tokens,
-    );
+    return ResponseUtil.success<SecureAuthResponseData>({
+      access_token: tokenPair.accessToken,
+      user_profile: this.userService.transformToProfileData(user),
+    });
   }
 
-  /**
-   * Verify email with verification token
-   */
-  async verifyEmail(verifyEmailDto: VerifyEmailDto): Promise<boolean> {
-    // Get user details before verification for welcome email
-    const userResult = await this.userService.verifyEmailAndGetUser(
-      verifyEmailDto.token,
-    );
-
-    if (!userResult) {
-      throw new BadRequestException('Invalid or expired verification token');
-    }
-
-    // Send welcome email after successful verification
-    if (userResult) {
-      const welcomeEmailSent = await this.emailService.sendWelcomeEmail(
-        userResult.email,
-        userResult.firstName,
-        (userResult.preferredLanguage as 'en' | 'vi') || 'en',
+  async logout(
+    req: { cookies?: Record<string, string> },
+    res: Response,
+  ): Promise<BaseResponse<{ success: boolean }>> {
+    const refreshTokenValue = req.cookies?.[this.refreshCookieName];
+    if (refreshTokenValue) {
+      await this.refreshRepo.update(
+        { token: refreshTokenValue },
+        { isActive: false, lastUsedAt: new Date() },
       );
-
-      if (!welcomeEmailSent) {
-        this.logger.warn(`Failed to send welcome email to ${userResult.email}`);
-      }
     }
-
-    return true;
+    res.clearCookie(this.refreshCookieName, { path: '/' });
+    return ResponseUtil.success({ success: true });
   }
 
-  /**
-   * Resend email verification
-   */
-  async resendVerification(resendDto: ResendVerificationDto): Promise<boolean> {
-    const user = await this.userService.findByEmail(resendDto.email);
-    if (!user) {
-      throw new BadRequestException('User not found');
-    }
-
-    if (user.emailVerified) {
-      throw new BadRequestException('Email already verified');
-    }
-
-    const verificationToken = AuthResponseUtil.generateToken();
-    await this.userService.setEmailVerificationToken(
-      user.id,
-      verificationToken,
+  private async issueTokenPair(
+    user: UserEntity,
+    deviceInfo?: RefreshTokenEntity['deviceInfo'],
+  ): Promise<TokenPair> {
+    const refreshTokenId = uuid();
+    const refreshTokenValue =
+      uuid().replace(/-/g, '') + uuid().replace(/-/g, '');
+    const refreshExpires = new Date();
+    refreshExpires.setDate(
+      refreshExpires.getDate() +
+        Number(this.configService.get('JWT_REFRESH_DAYS') || 7),
     );
-
-    // Send verification email
-    const emailSent = await this.emailService.sendVerificationEmail(
-      user.email,
-      verificationToken,
-      user.firstName,
-      (user.preferredLanguage as 'en' | 'vi') || 'en',
+    await this.refreshRepo.insert({
+      id: refreshTokenId,
+      token: refreshTokenValue,
+      userId: user.id,
+      expiresAt: refreshExpires,
+      isActive: true,
+      deviceInfo,
+    });
+    const accessToken = await this.jwtService.signAsync(
+      {
+        sub: user.id,
+        email: user.email,
+        role: user.role,
+        rtj: refreshTokenId,
+      },
+      {
+        secret: this.configService.get('JWT_ACCESS_SECRET'),
+        expiresIn: this.configService.get('JWT_ACCESS_EXPIRES_IN'),
+      },
     );
-
-    if (!emailSent) {
-      this.logger.warn(`Failed to send verification email to ${user.email}`);
-    }
-
-    return true;
+    return {
+      accessToken,
+      refreshToken: refreshTokenValue,
+      refreshTokenExpires: refreshExpires,
+      refreshTokenId,
+    };
   }
 
-  /**
-   * Send forgot password email
-   */
-  async forgotPassword(forgotPasswordDto: ForgotPasswordDto): Promise<boolean> {
-    const resetToken = AuthResponseUtil.generateToken();
-    const isUserExists = await this.userService.setPasswordResetToken(
-      forgotPasswordDto.email,
-      resetToken,
-    );
-
-    if (isUserExists) {
-      // Get user details for personalized email
-      const user = await this.userService.findByEmail(forgotPasswordDto.email);
-      if (user) {
-        const emailSent = await this.emailService.sendPasswordResetEmail(
-          forgotPasswordDto.email,
-          resetToken,
-          user.firstName,
-          (user.preferredLanguage as 'en' | 'vi') || 'en',
-        );
-
-        if (!emailSent) {
-          this.logger.warn(
-            `Failed to send password reset email to ${forgotPasswordDto.email}`,
-          );
-        }
-      }
-    }
-
-    // Always return true to prevent email enumeration
-    return true;
-  }
-
-  /**
-   * Reset password with reset token
-   */
-  async resetPassword(resetPasswordDto: ResetPasswordDto): Promise<boolean> {
-    const isReset = await this.userService.resetPassword(
-      resetPasswordDto.token,
-      resetPasswordDto.newPassword,
-    );
-
-    if (!isReset) {
-      throw new BadRequestException('Invalid or expired reset token');
-    }
-
-    return true;
-  }
-
-  /**
-   * Social login (not yet implemented)
-   * TODO: Implement social login validation with respective providers
-   */
-  socialLogin(socialLoginDto: SocialLoginDto): Promise<AuthResponseData> {
-    this.logger.warn(
-      `Social login attempted for provider: ${socialLoginDto.provider} - Feature not implemented`,
-    );
-
-    throw new BadRequestException(
-      'Social login feature is not yet implemented. Please use email/password registration.',
-    );
-  }
-
-  /**
-   * Logout user by revoking refresh token
-   */
-  async logout(userId: string, refreshToken?: string): Promise<boolean> {
-    if (refreshToken) {
-      await this.refreshTokenService.revokeToken(refreshToken);
-    } else {
-      await this.refreshTokenService.revokeAllUserTokens(userId);
-    }
-    this.logger.log(`User ${userId} logged out`);
-    return true;
-  }
-
-  /**
-   * Logout user from all devices
-   */
-  async logoutAll(userId: string): Promise<boolean> {
-    await this.refreshTokenService.revokeAllUserTokens(userId);
-    this.logger.log(`User ${userId} logged out from all devices`);
-    return true;
-  }
-
-  /**
-   * Get active sessions for a user
-   */
-  async getActiveSessions(
-    userId: string,
-    currentRefreshToken?: string,
-  ): Promise<SessionData[]> {
-    const sessions =
-      await this.refreshTokenService.getUserActiveSessions(userId);
-
-    return sessions.map((session) => ({
-      id: session.id,
-      deviceInfo: DeviceInfoUtil.sanitizeForResponse(session.deviceInfo || {}),
-      createdAt: session.createdAt,
-      lastUsedAt: session.lastUsedAt,
-      expiresAt: session.expiresAt,
-      isCurrent: session.token === currentRefreshToken,
-    }));
-  }
-
-  /**
-   * Revoke a specific session
-   */
-  async revokeSession(userId: string, sessionId: string): Promise<boolean> {
-    const success = await this.refreshTokenService.revokeSession(
-      userId,
-      sessionId,
-    );
-    if (success) {
-      this.logger.log(`Session ${sessionId} revoked for user ${userId}`);
-    }
-    return success;
-  }
-
-  /**
-   * Clean up expired refresh tokens (to be called periodically)
-   */
-  async cleanupExpiredTokens(): Promise<number> {
-    return this.refreshTokenService.cleanupExpiredTokens();
+  private setRefreshCookie(res: Response, token: string, expires: Date) {
+    res.cookie(this.refreshCookieName, token, {
+      httpOnly: true,
+      secure: this.configService.get('NODE_ENV') === 'production',
+      sameSite: 'lax',
+      expires,
+      path: '/',
+    });
   }
 }
