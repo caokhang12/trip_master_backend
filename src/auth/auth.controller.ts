@@ -1,15 +1,23 @@
-import { Controller, Post, Body, Res, Req, Get } from '@nestjs/common';
+import { Controller, Post, Body, Res, Req, Get, Query } from '@nestjs/common';
 import { Response, Request } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { Public } from './public.decorator';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiResponse,
+} from '@nestjs/swagger';
 import { ResponseUtil } from '../shared/utils/response.util';
+import { VerifyEmailDto } from './dto/verify-email.dto';
+import { ResendVerificationDto } from './dto/resend-verification.dto';
 import {
   BaseResponse,
   SecureAuthResponseData,
 } from '../shared/types/base-response.types';
+import { VerificationSuccessResponseDto } from '../shared/dto/response.dto';
 
 export interface RequestWithUser extends Request {
   user: { id: string };
@@ -26,6 +34,25 @@ export class AuthController {
   async register(@Body() dto: RegisterDto) {
     const profile = await this.authService.register(dto);
     return ResponseUtil.success(profile);
+  }
+
+  @ApiOperation({ summary: 'Verify account email by token' })
+  @ApiResponse({
+    status: 200,
+    description: 'Email verified',
+    type: VerificationSuccessResponseDto,
+  })
+  @Public()
+  @Get('verify-email')
+  async verifyEmail(@Query() dto: VerifyEmailDto) {
+    return await this.authService.verifyEmail(dto);
+  }
+
+  @ApiOperation({ summary: 'Resend verification email' })
+  @Public()
+  @Post('resend-verification')
+  async resendVerification(@Body() dto: ResendVerificationDto) {
+    return await this.authService.resendVerification(dto);
   }
 
   @ApiOperation({

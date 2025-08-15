@@ -13,6 +13,8 @@ import { UserEntity } from '../schemas/user.entity';
 import { RefreshTokenEntity } from '../schemas/refresh-token.entity';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { VerifyEmailDto } from './dto/verify-email.dto';
+import { ResendVerificationDto } from './dto/resend-verification.dto';
 import { Response } from 'express';
 import { ResponseUtil } from '../shared/utils/response.util';
 import {
@@ -21,6 +23,8 @@ import {
   UserProfileData,
 } from '../shared/types/base-response.types';
 import { UserRole } from '../shared/types/base-response.types';
+import { ErrorResponseData } from '../shared/types/base-response.types';
+import { EmailService } from '../email/email.service';
 
 interface TokenPair {
   accessToken: string;
@@ -37,6 +41,7 @@ export class AuthService {
     private readonly userService: UserService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly emailService: EmailService,
     @InjectRepository(RefreshTokenEntity)
     private readonly refreshRepo: Repository<RefreshTokenEntity>,
   ) {}
@@ -48,7 +53,50 @@ export class AuthService {
       firstName: dto.firstName,
       lastName: dto.lastName,
     });
+
+    const token = uuid().replace(/-/g, '') + uuid().replace(/-/g, '');
+    await this.userService.setEmailVerificationToken(user.id, token);
+    void this.emailService.sendVerificationEmail(
+      user.email,
+      token,
+      user.firstName,
+      'vi',
+    );
+
     return this.userService.transformToProfileData(user);
+  }
+
+  async verifyEmail(
+    dto: VerifyEmailDto,
+  ): Promise<BaseResponse<{ verified: boolean } | ErrorResponseData>> {
+    const user = await this.userService.verifyEmailAndGetUser(dto.token);
+    if (!user) {
+      return ResponseUtil.error('Invalid or expired verification token');
+    }
+    void this.emailService.sendWelcomeEmail(user.email, user.firstName, 'vi');
+    return ResponseUtil.success<{ verified: boolean }>({ verified: true });
+  }
+
+  async resendVerification(
+    dto: ResendVerificationDto,
+  ): Promise<BaseResponse<{ requested: boolean } | ErrorResponseData>> {
+    const user = await this.userService.findByEmail(dto.email);
+    if (!user) {
+      return ResponseUtil.success<{ requested: boolean }>({ requested: true });
+    }
+    if (user.emailVerified) {
+      // Không tiết lộ trạng thái đã verify để tránh email enumeration
+      return ResponseUtil.success<{ requested: boolean }>({ requested: true });
+    }
+    const token = uuid().replace(/-/g, '') + uuid().replace(/-/g, '');
+    await this.userService.setEmailVerificationToken(user.id, token);
+    await this.emailService.sendVerificationEmail(
+      user.email,
+      token,
+      user.firstName,
+      'vi',
+    );
+    return ResponseUtil.success<{ requested: boolean }>({ requested: true });
   }
 
   async login(
@@ -62,6 +110,9 @@ export class AuthService {
     }
     if (user.isLocked) {
       throw new ForbiddenException('Account locked');
+    }
+    if (!user.emailVerified) {
+      throw new ForbiddenException('Email not verified');
     }
     const isValid = await this.userService.verifyPassword(user, dto.password);
     if (!isValid) {
