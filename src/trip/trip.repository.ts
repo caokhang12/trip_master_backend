@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TripEntity } from '../schemas/trip.entity';
+import { TripStatus } from './enum/trip-enum';
 
 export interface ITripRepository {
   findById(id: string): Promise<TripEntity | null>;
@@ -11,12 +12,26 @@ export interface ITripRepository {
   deleteTrip(id: string): Promise<void>;
   listByUser(
     userId: string,
-    options: { skip: number; take: number; search?: string },
+    options: {
+      skip: number;
+      take: number;
+      search?: string;
+      status?: TripStatus;
+      startDateFrom?: Date;
+      startDateTo?: Date;
+      endDateFrom?: Date;
+      endDateTo?: Date;
+    },
   ): Promise<{ items: TripEntity[]; total: number }>;
   listAll(options: {
     skip: number;
     take: number;
     search?: string;
+    status?: TripStatus;
+    startDateFrom?: Date;
+    startDateTo?: Date;
+    endDateFrom?: Date;
+    endDateTo?: Date;
   }): Promise<{ items: TripEntity[]; total: number }>;
 }
 
@@ -53,7 +68,16 @@ export class TripRepository implements ITripRepository {
 
   async listByUser(
     userId: string,
-    options: { skip: number; take: number; search?: string },
+    options: {
+      skip: number;
+      take: number;
+      search?: string;
+      status?: TripStatus;
+      startDateFrom?: Date;
+      startDateTo?: Date;
+      endDateFrom?: Date;
+      endDateTo?: Date;
+    },
   ): Promise<{ items: TripEntity[]; total: number }> {
     const qb = this.repo
       .createQueryBuilder('trip')
@@ -62,6 +86,29 @@ export class TripRepository implements ITripRepository {
     if (options.search) {
       qb.andWhere('(trip.title ILIKE :q OR trip.description ILIKE :q)', {
         q: `%${options.search}%`,
+      });
+    }
+    if (options.status) {
+      qb.andWhere('trip.status = :status', { status: options.status });
+    }
+    if (options.startDateFrom) {
+      qb.andWhere('trip.startDate >= :startDateFrom', {
+        startDateFrom: options.startDateFrom,
+      });
+    }
+    if (options.startDateTo) {
+      qb.andWhere('trip.startDate <= :startDateTo', {
+        startDateTo: options.startDateTo,
+      });
+    }
+    if (options.endDateFrom) {
+      qb.andWhere('trip.endDate >= :endDateFrom', {
+        endDateFrom: options.endDateFrom,
+      });
+    }
+    if (options.endDateTo) {
+      qb.andWhere('trip.endDate <= :endDateTo', {
+        endDateTo: options.endDateTo,
       });
     }
 
@@ -78,12 +125,40 @@ export class TripRepository implements ITripRepository {
     skip: number;
     take: number;
     search?: string;
+    status?: TripStatus;
+    startDateFrom?: Date;
+    startDateTo?: Date;
+    endDateFrom?: Date;
+    endDateTo?: Date;
   }): Promise<{ items: TripEntity[]; total: number }> {
     const qb = this.repo.createQueryBuilder('trip');
 
     if (options.search) {
       qb.where('(trip.title ILIKE :q OR trip.description ILIKE :q)', {
         q: `%${options.search}%`,
+      });
+    }
+    if (options.status) {
+      qb.andWhere('trip.status = :status', { status: options.status });
+    }
+    if (options.startDateFrom) {
+      qb.andWhere('trip.startDate >= :startDateFrom', {
+        startDateFrom: options.startDateFrom,
+      });
+    }
+    if (options.startDateTo) {
+      qb.andWhere('trip.startDate <= :startDateTo', {
+        startDateTo: options.startDateTo,
+      });
+    }
+    if (options.endDateFrom) {
+      qb.andWhere('trip.endDate >= :endDateFrom', {
+        endDateFrom: options.endDateFrom,
+      });
+    }
+    if (options.endDateTo) {
+      qb.andWhere('trip.endDate <= :endDateTo', {
+        endDateTo: options.endDateTo,
       });
     }
 

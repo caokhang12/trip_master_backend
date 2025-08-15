@@ -89,12 +89,22 @@ export class TripService {
     page = 1,
     limit = 10,
     search?: string,
+    status?: TripStatus,
+    startDateFrom?: string,
+    startDateTo?: string,
+    endDateFrom?: string,
+    endDateTo?: string,
   ): Promise<PaginationResult<TripEntity>> {
     const { skip, limit: take } = PaginationHelper.validateParams(page, limit);
     const { items, total } = await this.tripRepo.listByUser(userId, {
       skip,
       take,
       search,
+      status,
+      startDateFrom: startDateFrom ? new Date(startDateFrom) : undefined,
+      startDateTo: startDateTo ? new Date(startDateTo) : undefined,
+      endDateFrom: endDateFrom ? new Date(endDateFrom) : undefined,
+      endDateTo: endDateTo ? new Date(endDateTo) : undefined,
     });
     return PaginationHelper.createResult(items, total, page, take);
   }
@@ -103,12 +113,22 @@ export class TripService {
     page = 1,
     limit = 10,
     search?: string,
+    status?: TripStatus,
+    startDateFrom?: string,
+    startDateTo?: string,
+    endDateFrom?: string,
+    endDateTo?: string,
   ): Promise<PaginationResult<TripEntity>> {
     const { skip, limit: take } = PaginationHelper.validateParams(page, limit);
     const { items, total } = await this.tripRepo.listAll({
       skip,
       take,
       search,
+      status,
+      startDateFrom: startDateFrom ? new Date(startDateFrom) : undefined,
+      startDateTo: startDateTo ? new Date(startDateTo) : undefined,
+      endDateFrom: endDateFrom ? new Date(endDateFrom) : undefined,
+      endDateTo: endDateTo ? new Date(endDateTo) : undefined,
     });
     return PaginationHelper.createResult(items, total, page, take);
   }
