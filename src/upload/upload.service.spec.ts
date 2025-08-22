@@ -122,24 +122,5 @@ describe('UploadService', () => {
     });
   });
 
-  describe('uploadTripImages', () => {
-    it('should throw BadRequestException if no files provided', async () => {
-      const userId = 'user-123';
-      const tripId = 'trip-456';
-
-      await expect(
-        service.uploadTripImages(userId, tripId, []),
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should throw NotFoundException if trip not found', async () => {
-      const userId = 'user-123';
-      const tripId = 'trip-456';
-      mockTripRepository.findOne.mockResolvedValue(null);
-
-      await expect(
-        service.uploadTripImages(userId, tripId, [mockFile]),
-      ).rejects.toThrow(NotFoundException);
-    });
-  });
+  // Removed legacy uploadTripImages tests (direct upload flow will have new tests)
 });

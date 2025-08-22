@@ -1,0 +1,37 @@
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
+
+export class PlacesSearchDto {
+  @ApiPropertyOptional({
+    description: 'Text query for place search (name, type, etc.)',
+  })
+  @IsString()
+  query: string;
+
+  @ApiPropertyOptional({ description: 'Latitude for location biasing' })
+  @IsOptional()
+  @IsNumber()
+  lat?: number;
+
+  @ApiPropertyOptional({ description: 'Longitude for location biasing' })
+  @IsOptional()
+  @IsNumber()
+  lng?: number;
+
+  @ApiPropertyOptional({
+    description: 'Radius in meters for nearby weighting (bias, not strict)',
+    default: 5000,
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(100)
+  @Max(50000)
+  radius?: number = 5000;
+
+  @ApiPropertyOptional({ description: 'Max results to return', default: 10 })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Max(20)
+  limit?: number = 10;
+}

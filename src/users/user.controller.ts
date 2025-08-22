@@ -243,9 +243,14 @@ export class UserController {
   async getAllUsers(
     @Query() paginationDto: ListUsersDto,
   ): Promise<BaseResponse<any>> {
-    const { page = 1, limit = 10 } = paginationDto;
+    const { page = 1, limit = 10, sortBy, sortOrder } = paginationDto;
 
-    const paginationResult = await this.userService.getAllUsers(page, limit);
+    const paginationResult = await this.userService.getAllUsers(
+      page,
+      limit,
+      sortBy,
+      sortOrder,
+    );
 
     // Transform items to remove sensitive data
     const transformedItems = paginationResult.items.map((user) => ({

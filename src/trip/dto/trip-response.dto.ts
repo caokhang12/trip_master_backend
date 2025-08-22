@@ -1,7 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { TripStatus } from '../enum/trip-enum';
 import { TripEntity } from '../../schemas/trip.entity';
-import { PaginationResult } from '../../shared/types/pagination.types';
+import { TripImageEntity } from '../../schemas/trip-image.entity';
+import { Paged } from '../../shared/types/pagination';
 
 export class TripDto {
   @ApiProperty() id: string;
@@ -15,8 +16,8 @@ export class TripDto {
   @ApiProperty() currency: string;
   @ApiProperty() isPublic: boolean;
   @ApiProperty() enableCostTracking: boolean;
-  @ApiProperty({ type: [String] }) imageUrls: string[];
-  @ApiPropertyOptional() thumbnailUrl?: string;
+  @ApiProperty({ type: [String] }) imageUrls: string[]; // derived
+  @ApiPropertyOptional() thumbnailUrl?: string; // derived
   @ApiProperty() createdAt: Date;
   @ApiProperty() updatedAt: Date;
 }
@@ -47,6 +48,10 @@ export class AdminTripListResponseDto {
 
 export class TripMapper {
   static toUserDto(e: TripEntity): TripDto {
+    const imgs: TripImageEntity[] = e.images || [];
+    const sorted = imgs.slice().sort((a, b) => a.orderIndex - b.orderIndex);
+    const imageUrls = sorted.map((i) => i.url);
+    const thumbnail = sorted.find((i) => i.isThumbnail)?.url;
     return {
       id: e.id,
       title: e.title,
@@ -59,8 +64,8 @@ export class TripMapper {
       currency: e.currency,
       isPublic: e.isPublic,
       enableCostTracking: e.enableCostTracking,
-      imageUrls: e.imageUrls ?? [],
-      thumbnailUrl: e.thumbnailUrl,
+      imageUrls,
+      thumbnailUrl: thumbnail,
       createdAt: e.createdAt,
       updatedAt: e.updatedAt,
     };
@@ -70,7 +75,7 @@ export class TripMapper {
     return { ...this.toUserDto(e), userId: e.userId };
   }
 
-  static toUserList(result: PaginationResult<TripEntity>): TripListResponseDto {
+  static toUserList(result: Paged<TripEntity>): TripListResponseDto {
     return {
       items: result.items.map((i) => this.toUserDto(i)),
       page: result.meta.page,
@@ -82,9 +87,7 @@ export class TripMapper {
     };
   }
 
-  static toAdminList(
-    result: PaginationResult<TripEntity>,
-  ): AdminTripListResponseDto {
+  static toAdminList(result: Paged<TripEntity>): AdminTripListResponseDto {
     return {
       items: result.items.map((i) => this.toAdminDto(i)),
       page: result.meta.page,

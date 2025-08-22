@@ -5,6 +5,9 @@ import {
   LocationSearchResponse,
   SimpleLocation,
 } from './services/location.service';
+import { GooglePlacesService } from './services/google-places.service';
+import { ResponseUtil } from '../shared/utils/response.util';
+import { PlacesSearchDto } from './dto/places-search.dto';
 import {
   LocationSearchDto,
   ReverseGeocodeDto,
@@ -13,7 +16,10 @@ import {
 @ApiTags('Locations')
 @Controller('location')
 export class LocationController {
-  constructor(private readonly locationService: LocationService) {}
+  constructor(
+    private readonly locationService: LocationService,
+    private readonly googlePlaces: GooglePlacesService,
+  ) {}
 
   @Get('search')
   @ApiOperation({ summary: 'Search for locations' })
@@ -31,5 +37,11 @@ export class LocationController {
     @Query() reverseDto: ReverseGeocodeDto,
   ): Promise<SimpleLocation | null> {
     return await this.locationService.reverseGeocode(reverseDto);
+  }
+
+  @Get('places')
+  async placesSearch(@Query() dto: PlacesSearchDto): Promise<any> {
+    const data = await this.googlePlaces.textSearch(dto);
+    return ResponseUtil.success(data);
   }
 }

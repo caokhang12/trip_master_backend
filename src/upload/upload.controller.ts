@@ -10,7 +10,7 @@ import { RequestWithUser } from 'src/auth/auth.controller';
  * Note: Avatar uploads are handled by UserController for better business logic
  */
 @ApiTags('Upload')
-@Controller('api/v1/upload')
+@Controller('upload')
 @ApiBearerAuth()
 export class UploadController {
   constructor(private readonly uploadService: UploadService) {}

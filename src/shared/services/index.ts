@@ -6,5 +6,4 @@
 export { APIThrottleService } from './api-throttle.service';
 export { CacheService } from './cache.service';
 
-// Utility Services
-export { ErrorUtilService } from '../utils/error.util';
+// Utility helpers (import directly from '../utils/error.util' where needed)

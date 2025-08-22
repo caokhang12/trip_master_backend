@@ -1,9 +1,6 @@
-import { Injectable } from '@nestjs/common';
-
 /**
  * Shared utility service for type-safe error handling across the application
  */
-@Injectable()
 export class ErrorUtilService {
   /**
    * Type-safe error message extraction

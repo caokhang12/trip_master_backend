@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { BaseResponse } from '../../shared/types/base-response.types';
-import { PaginationResult } from '../../shared/types/pagination.types';
+import { Paged } from '../../shared/types/pagination';
 
 /**
  * User item for listing
@@ -59,9 +59,7 @@ export class UserItemDto {
 /**
  * Success response for list users endpoint
  */
-export class ListUsersResponseDto
-  implements BaseResponse<PaginationResult<UserItemDto>>
-{
+export class ListUsersResponseDto implements BaseResponse<Paged<UserItemDto>> {
   @ApiProperty({
     description: 'Response status',
     example: 'OK',
@@ -77,5 +75,5 @@ export class ListUsersResponseDto
   @ApiProperty({
     description: 'Paginated user data with items and meta',
   })
-  data: PaginationResult<UserItemDto>;
+  data: Paged<UserItemDto>;
 }

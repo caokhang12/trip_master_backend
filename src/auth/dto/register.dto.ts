@@ -7,7 +7,7 @@ import {
 } from 'class-validator';
 
 export class RegisterDto {
-  @ApiProperty({ example: 'newuser@example.com' })
+  @ApiProperty({ example: 'newjohn.doe@example.com' })
   @IsEmail()
   email: string;
 

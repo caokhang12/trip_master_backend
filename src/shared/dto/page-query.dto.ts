@@ -77,9 +77,9 @@ export class ExtendedPaginationDto
 }
 
 /**
- * Pagination metadata DTO - Swagger-compatible version of PaginationMeta
+ * Pagination metadata DTO - Swagger-compatible version of PageMetaDto
  */
-export class PageMetaDto {
+export class PageMetaDtoDto {
   @ApiProperty({
     description: 'Current page number',
     example: 2,

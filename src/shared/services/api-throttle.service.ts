@@ -1,4 +1,5 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { AIUsageMetrics } from '../../ai/interfaces/ai.interface';
 
 interface ServiceLimits {
@@ -14,13 +15,12 @@ interface UsageCounters {
 }
 
 type SupportedServices =
-  | 'goong'
-  | 'geoapify'
   | 'openweather'
   | 'exchangerate'
   | 'nominatim'
   | 'cloudinary'
-  | 'openai';
+  | 'openai'
+  | 'google_places';
 
 /**
  * Service to monitor and throttle API usage to stay within free tier limits
@@ -29,19 +29,47 @@ type SupportedServices =
 export class APIThrottleService {
   private readonly logger = new Logger(APIThrottleService.name);
 
-  private readonly limits: Record<SupportedServices, ServiceLimits> = {
-    goong: { daily: 1000, hourly: 100 },
-    geoapify: { daily: 3000, hourly: 500 },
-    openweather: { daily: 1000, hourly: 100 },
-    exchangerate: { monthly: 1500, daily: 50 },
-    nominatim: { daily: 10000, hourly: 1000 }, // Very generous limits
-    cloudinary: { daily: 2000, monthly: 25000 }, // Free tier: 25GB storage, 25GB bandwidth
-    openai: { daily: 100, hourly: 10 }, // Conservative limits for cost control
-  };
+  private readonly limits: Record<SupportedServices, ServiceLimits>;
 
-  // In-memory storage for development - should use Redis in production
+  // In-memory storage for development - should move to Redis (atomic counters) in production
   private usage: Record<string, UsageCounters> = {};
   private lastReset: Record<string, Date> = {};
+
+  constructor(private readonly config: ConfigService) {
+    // Load limits with environment override (fallback to safe defaults)
+    this.limits = {
+      openweather: {
+        daily: this.num('LIMIT_OPENWEATHER_DAILY', 1000),
+        hourly: this.num('LIMIT_OPENWEATHER_HOURLY', 100),
+      },
+      exchangerate: {
+        monthly: this.num('LIMIT_EXCHANGERATE_MONTHLY', 1500),
+        daily: this.num('LIMIT_EXCHANGERATE_DAILY', 50),
+      },
+      nominatim: {
+        daily: this.num('LIMIT_NOMINATIM_DAILY', 10000),
+        hourly: this.num('LIMIT_NOMINATIM_HOURLY', 1000),
+      },
+      cloudinary: {
+        daily: this.num('LIMIT_CLOUDINARY_DAILY', 2000),
+        monthly: this.num('LIMIT_CLOUDINARY_MONTHLY', 25000),
+      },
+      openai: {
+        daily: this.num('LIMIT_OPENAI_DAILY', 100),
+        hourly: this.num('LIMIT_OPENAI_HOURLY', 10),
+      },
+      google_places: {
+        daily: this.num('LIMIT_GOOGLE_PLACES_DAILY', 500),
+        hourly: this.num('LIMIT_GOOGLE_PLACES_HOURLY', 100),
+      },
+    } as const;
+  }
+
+  private num(key: string, fallback: number): number {
+    const val = this.config.get<string | number>(key);
+    const parsed = typeof val === 'string' ? parseInt(val, 10) : val;
+    return Number.isFinite(parsed as number) ? (parsed as number) : fallback;
+  }
 
   /**
    * Check if API service can be used and log usage
@@ -90,7 +118,7 @@ export class APIThrottleService {
       return false;
     }
 
-    // Increment usage
+    // Increment usage (one atomic logical operation; for Redis we'd use INCR + TTL buckets)
     serviceUsage.hourly++;
     serviceUsage.daily++;
     serviceUsage.monthly++;
@@ -193,26 +221,21 @@ export class APIThrottleService {
   /**
    * Get time until next reset for different periods
    */
-  getTimeUntilReset(service: string, userId?: string) {
-    const now = new Date();
-    const serviceKey = `${service}_${userId || 'global'}`;
-    const lastReset = this.lastReset[serviceKey] || now;
-
-    const nextHourReset = new Date(now);
-    nextHourReset.setMinutes(0, 0, 0);
-    nextHourReset.setHours(nextHourReset.getHours() + 1);
-
-    const nextDayReset = new Date(now);
-    nextDayReset.setHours(0, 0, 0, 0);
-    nextDayReset.setDate(nextDayReset.getDate() + 1);
-
-    const nextMonthReset = new Date(lastReset);
-    nextMonthReset.setMonth(nextMonthReset.getMonth() + 1);
-
+  /** Remaining quota percentages (0-100) */
+  getRemainingPercent(service: string, userId?: string) {
+    const stats = this.getUsageStats(service, userId);
+    if (!stats.limits) return null;
+    const { usage, limits } = stats;
     return {
-      hourly: Math.max(0, nextHourReset.getTime() - now.getTime()),
-      daily: Math.max(0, nextDayReset.getTime() - now.getTime()),
-      monthly: Math.max(0, nextMonthReset.getTime() - now.getTime()),
+      hourly: limits.hourly
+        ? Math.max(0, 100 - (usage.hourly / limits.hourly) * 100)
+        : null,
+      daily: limits.daily
+        ? Math.max(0, 100 - (usage.daily / limits.daily) * 100)
+        : null,
+      monthly: limits.monthly
+        ? Math.max(0, 100 - (usage.monthly / limits.monthly) * 100)
+        : null,
     };
   }
 
@@ -220,12 +243,12 @@ export class APIThrottleService {
    * Check OpenAI rate limits and track usage with error handling
    */
   checkRateLimit(userId: string, requestType: string): void {
-    const canUse = this.checkAndLog('openai', userId);
-    if (!canUse) {
+    const allowed = this.checkAndLog('openai', userId);
+    if (!allowed) {
       const stats = this.getUsageStats('openai', userId);
-      this.logger.warn(`Rate limit check for ${requestType}`);
+      this.logger.warn(`OpenAI rate limit exceeded for ${requestType}`);
       throw new BadRequestException(
-        `OpenAI rate limit exceeded. Current usage: ${stats.usage.hourly}/${stats.limits?.hourly} hourly, ${stats.usage.daily}/${stats.limits?.daily} daily`,
+        `OpenAI quota exceeded: ${stats.usage.hourly}/${stats.limits?.hourly} hourly, ${stats.usage.daily}/${stats.limits?.daily} daily`,
       );
     }
   }
@@ -234,25 +257,13 @@ export class APIThrottleService {
    * Log OpenAI API usage with token and cost tracking
    */
   logUsage(userId: string, metrics: AIUsageMetrics): void {
-    try {
-      // Log basic usage through existing system
-      this.checkAndLog('openai', userId);
-
-      // Additional logging for cost tracking
-      this.logger.debug(
-        `OpenAI usage logged for user ${userId}: ${metrics.tokensUsed} tokens, $${metrics.cost.toFixed(4)} cost, type: ${metrics.requestType}`,
-      );
-
-      if (!metrics.success) {
-        this.logger.warn(
-          `Failed OpenAI request for user ${userId}: ${metrics.requestType}`,
-        );
-      }
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error(
-        `Failed to log OpenAI usage for user ${userId}: ${errorMessage}`,
+    // IMPORTANT: no quota increment here (avoid double counting). Only logging metadata.
+    this.logger.debug(
+      `OpenAI usage: user=${userId} type=${metrics.requestType} tokens=${metrics.tokensUsed} cost=$${metrics.cost.toFixed(4)} success=${metrics.success}`,
+    );
+    if (!metrics.success) {
+      this.logger.warn(
+        `OpenAI request failed (post-count): user=${userId} type=${metrics.requestType}`,
       );
     }
   }
@@ -269,14 +280,11 @@ export class APIThrottleService {
   /**
    * Check if user can make OpenAI request
    */
-  canMakeOpenAIRequest(userId: string): boolean {
-    return this.checkAndLog('openai', userId);
-  }
-
-  /**
-   * Get OpenAI usage statistics for user
-   */
-  getOpenAIUsageStats(userId: string) {
+  // Convenience wrappers (optional future UI integration)
+  getOpenAIStats(userId: string) {
     return this.getUsageStats('openai', userId);
+  }
+  getGooglePlacesStats(userId?: string) {
+    return this.getUsageStats('google_places', userId);
   }
 }

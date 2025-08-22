@@ -2,7 +2,6 @@ import { Module, Global } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
-import { ErrorUtilService } from './utils/error.util';
 import { CountryDefaultsService } from './services/country-defaults.service';
 
 /**
@@ -39,7 +38,7 @@ import { CountryDefaultsService } from './services/country-defaults.service';
       }),
     }),
   ],
-  providers: [ErrorUtilService, CountryDefaultsService],
-  exports: [ConfigModule, JwtModule, ErrorUtilService, CountryDefaultsService],
+  providers: [CountryDefaultsService],
+  exports: [ConfigModule, JwtModule, CountryDefaultsService],
 })
 export class SharedModule {}

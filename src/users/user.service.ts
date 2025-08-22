@@ -12,10 +12,7 @@ import {
   UserProfileData,
   UserPreferencesData,
 } from '../shared/types/base-response.types';
-import {
-  PaginationResult,
-  PaginationHelper,
-} from '../shared/types/pagination.types';
+import { Paged, PaginationHelper } from '../shared/types/pagination';
 import { UploadService } from '../upload/upload.service';
 import { UpdateUserDto } from 'src/users/dto/update-user.dto';
 
@@ -384,16 +381,31 @@ export class UserService {
   async getAllUsers(
     page: number = 1,
     limit: number = 10,
-  ): Promise<PaginationResult<UserEntity>> {
+    sortBy?: string,
+    sortOrder: 'ASC' | 'DESC' = 'DESC',
+  ): Promise<Paged<UserEntity>> {
     const {
       page: validatedPage,
       limit: validatedLimit,
       skip,
     } = PaginationHelper.validateParams(page, limit);
 
+    // Whitelist allowed sort fields to prevent SQL injection / unexpected sorts
+    const allowedSortFields: Record<string, string> = {
+      createdAt: 'createdAt',
+      updatedAt: 'updatedAt',
+      email: 'email',
+      firstName: 'firstName',
+      lastName: 'lastName',
+      role: 'role',
+    };
+    const sortField =
+      sortBy && allowedSortFields[sortBy] ? sortBy : 'createdAt';
+    const orderDirection = sortOrder === 'ASC' ? 'ASC' : 'DESC';
+
     const [items, total] = await this.userRepository.findAndCount({
       relations: ['preferences'],
-      order: { createdAt: 'DESC' },
+      order: { [sortField]: orderDirection },
       skip,
       take: validatedLimit,
     });

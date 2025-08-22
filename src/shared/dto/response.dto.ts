@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { UserRole, TravelStyle } from '../types/base-response.types';
+import { UserBudgetRangeDto } from './money.dto';
 
 export class BaseResponseDto<T = any> {
   @ApiProperty({
@@ -120,27 +121,7 @@ export class UserProfileDataDto {
   updatedAt: Date;
 }
 
-export class BudgetRangeDto {
-  @ApiProperty({
-    description: 'Minimum budget amount',
-    minimum: 0,
-    example: 500,
-  })
-  min: number;
-
-  @ApiProperty({
-    description: 'Maximum budget amount',
-    minimum: 0,
-    example: 2000,
-  })
-  max: number;
-
-  @ApiProperty({
-    description: 'Currency code (ISO 4217)',
-    example: 'USD',
-  })
-  currency: string;
-}
+// NOTE: Removed local BudgetRangeDto to avoid duplication with Money DTOs.
 
 export class UserPreferencesDataDto {
   @ApiProperty({
@@ -154,10 +135,10 @@ export class UserPreferencesDataDto {
 
   @ApiProperty({
     description: 'Budget range for trips',
-    type: BudgetRangeDto,
+    type: UserBudgetRangeDto,
     required: false,
   })
-  budgetRange?: BudgetRangeDto;
+  budgetRange?: UserBudgetRangeDto;
 
   @ApiProperty({
     description: 'User interests and hobbies',

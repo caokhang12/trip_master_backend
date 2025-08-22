@@ -2,10 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { TripEntity } from '../schemas/trip.entity';
 import { CreateTripDto } from './dto/create-trip.dto';
 import { UpdateTripDto } from './dto/update-trip.dto';
-import {
-  PaginationHelper,
-  PaginationResult,
-} from '../shared/types/pagination.types';
+import { PaginationHelper, Paged } from '../shared/types/pagination';
 import { TripStatus } from './enum/trip-enum';
 import { TripRepository } from './trip.repository';
 
@@ -26,8 +23,6 @@ export class TripService {
       status: dto.status ?? TripStatus.PLANNING,
       isPublic: dto.isPublic ?? false,
       enableCostTracking: dto.enableCostTracking ?? true,
-      imageUrls: dto.imageUrls ?? [],
-      thumbnailUrl: dto.thumbnailUrl,
     });
     return entity;
   }
@@ -94,8 +89,14 @@ export class TripService {
     startDateTo?: string,
     endDateFrom?: string,
     endDateTo?: string,
-  ): Promise<PaginationResult<TripEntity>> {
-    const { skip, limit: take } = PaginationHelper.validateParams(page, limit);
+    sortBy?: 'createdAt' | 'startDate' | 'endDate' | 'title' | 'status',
+    sortOrder: 'ASC' | 'DESC' = 'DESC',
+  ): Promise<Paged<TripEntity>> {
+    const {
+      skip,
+      limit: take,
+      page: normalizedPage,
+    } = PaginationHelper.validateParams(page, limit);
     const { items, total } = await this.tripRepo.listByUser(userId, {
       skip,
       take,
@@ -105,8 +106,10 @@ export class TripService {
       startDateTo: startDateTo ? new Date(startDateTo) : undefined,
       endDateFrom: endDateFrom ? new Date(endDateFrom) : undefined,
       endDateTo: endDateTo ? new Date(endDateTo) : undefined,
+      sortBy,
+      sortOrder,
     });
-    return PaginationHelper.createResult(items, total, page, take);
+    return PaginationHelper.createResult(items, total, normalizedPage, take);
   }
 
   async listAll(
@@ -118,8 +121,14 @@ export class TripService {
     startDateTo?: string,
     endDateFrom?: string,
     endDateTo?: string,
-  ): Promise<PaginationResult<TripEntity>> {
-    const { skip, limit: take } = PaginationHelper.validateParams(page, limit);
+    sortBy?: 'createdAt' | 'startDate' | 'endDate' | 'title' | 'status',
+    sortOrder: 'ASC' | 'DESC' = 'DESC',
+  ): Promise<Paged<TripEntity>> {
+    const {
+      skip,
+      limit: take,
+      page: normalizedPage,
+    } = PaginationHelper.validateParams(page, limit);
     const { items, total } = await this.tripRepo.listAll({
       skip,
       take,
@@ -129,7 +138,9 @@ export class TripService {
       startDateTo: startDateTo ? new Date(startDateTo) : undefined,
       endDateFrom: endDateFrom ? new Date(endDateFrom) : undefined,
       endDateTo: endDateTo ? new Date(endDateTo) : undefined,
+      sortBy,
+      sortOrder,
     });
-    return PaginationHelper.createResult(items, total, page, take);
+    return PaginationHelper.createResult(items, total, normalizedPage, take);
   }
 }

@@ -2,6 +2,7 @@ import {
   Injectable,
   UnauthorizedException,
   ForbiddenException,
+  ConflictException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -47,12 +48,21 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto): Promise<UserProfileData> {
-    const user = await this.userService.createUser({
-      email: dto.email,
-      password: dto.password,
-      firstName: dto.firstName,
-      lastName: dto.lastName,
-    });
+    let user: UserEntity;
+    try {
+      user = await this.userService.createUser({
+        email: dto.email,
+        password: dto.password,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+      });
+    } catch (err) {
+      if (err instanceof ConflictException) {
+        // Email đã tồn tại
+        throw new ConflictException('Email đã được sử dụng');
+      }
+      throw err;
+    }
 
     const token = uuid().replace(/-/g, '') + uuid().replace(/-/g, '');
     await this.userService.setEmailVerificationToken(user.id, token);
@@ -71,7 +81,7 @@ export class AuthService {
   ): Promise<BaseResponse<{ verified: boolean } | ErrorResponseData>> {
     const user = await this.userService.verifyEmailAndGetUser(dto.token);
     if (!user) {
-      return ResponseUtil.error('Invalid or expired verification token');
+      return ResponseUtil.error('Token xác thực không hợp lệ hoặc đã hết hạn');
     }
     void this.emailService.sendWelcomeEmail(user.email, user.firstName, 'vi');
     return ResponseUtil.success<{ verified: boolean }>({ verified: true });
@@ -106,19 +116,21 @@ export class AuthService {
   ): Promise<BaseResponse<SecureAuthResponseData>> {
     const user = await this.userService.findByEmail(dto.email);
     if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
+      // Email không tồn tại
+      throw new UnauthorizedException('Email không tồn tại');
     }
     if (user.isLocked) {
-      throw new ForbiddenException('Account locked');
+      throw new ForbiddenException('Tài khoản đã bị khóa');
     }
     if (!user.emailVerified) {
-      throw new ForbiddenException('Email not verified');
+      throw new ForbiddenException('Email chưa được xác thực');
     }
     const isValid = await this.userService.verifyPassword(user, dto.password);
     if (!isValid) {
       user.incrementFailedAttempts();
       await this.userService.saveUser(user);
-      throw new UnauthorizedException('Invalid credentials');
+      // Mật khẩu sai
+      throw new UnauthorizedException('Mật khẩu không đúng');
     }
     user.resetFailedAttempts();
     user.lastLoginAt = new Date();
@@ -147,14 +159,14 @@ export class AuthService {
   ): Promise<BaseResponse<SecureAuthResponseData>> {
     const refreshTokenValue = req.cookies?.[this.refreshCookieName];
     if (!refreshTokenValue) {
-      throw new UnauthorizedException('Missing refresh token');
+      throw new UnauthorizedException('Thiếu refresh token');
     }
     const existing = await this.refreshRepo.findOne({
       where: { token: refreshTokenValue, isActive: true },
       relations: ['user'],
     });
     if (!existing || !existing.isValid) {
-      throw new UnauthorizedException('Invalid refresh token');
+      throw new UnauthorizedException('Refresh token không hợp lệ');
     }
     const user = existing.user;
     const rotate = true; // always rotate for security
@@ -199,7 +211,7 @@ export class AuthService {
     const refreshExpires = new Date();
     refreshExpires.setDate(
       refreshExpires.getDate() +
-        Number(this.configService.get('JWT_REFRESH_DAYS') || 7),
+        Number(this.configService.getOrThrow('JWT_REFRESH_DAYS') || 7),
     );
     await this.refreshRepo.insert({
       id: refreshTokenId,

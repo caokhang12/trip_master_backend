@@ -21,6 +21,8 @@ export interface ITripRepository {
       startDateTo?: Date;
       endDateFrom?: Date;
       endDateTo?: Date;
+      sortBy?: 'createdAt' | 'startDate' | 'endDate' | 'title' | 'status';
+      sortOrder?: 'ASC' | 'DESC';
     },
   ): Promise<{ items: TripEntity[]; total: number }>;
   listAll(options: {
@@ -32,6 +34,8 @@ export interface ITripRepository {
     startDateTo?: Date;
     endDateFrom?: Date;
     endDateTo?: Date;
+    sortBy?: 'createdAt' | 'startDate' | 'endDate' | 'title' | 'status';
+    sortOrder?: 'ASC' | 'DESC';
   }): Promise<{ items: TripEntity[]; total: number }>;
 }
 
@@ -77,6 +81,8 @@ export class TripRepository implements ITripRepository {
       startDateTo?: Date;
       endDateFrom?: Date;
       endDateTo?: Date;
+      sortBy?: 'createdAt' | 'startDate' | 'endDate' | 'title' | 'status';
+      sortOrder?: 'ASC' | 'DESC';
     },
   ): Promise<{ items: TripEntity[]; total: number }> {
     const qb = this.repo
@@ -112,8 +118,18 @@ export class TripRepository implements ITripRepository {
       });
     }
 
+    const allowed: Record<string, string> = {
+      createdAt: 'trip.createdAt',
+      startDate: 'trip.startDate',
+      endDate: 'trip.endDate',
+      title: 'trip.title',
+      status: 'trip.status',
+    };
+    const orderField = options.sortBy ? allowed[options.sortBy] : undefined;
+    const orderDir = options.sortOrder === 'ASC' ? 'ASC' : 'DESC';
+
     const [items, total] = await qb
-      .orderBy('trip.createdAt', 'DESC')
+      .orderBy(orderField ?? 'trip.createdAt', orderDir)
       .skip(options.skip)
       .take(options.take)
       .getManyAndCount();
@@ -130,6 +146,8 @@ export class TripRepository implements ITripRepository {
     startDateTo?: Date;
     endDateFrom?: Date;
     endDateTo?: Date;
+    sortBy?: 'createdAt' | 'startDate' | 'endDate' | 'title' | 'status';
+    sortOrder?: 'ASC' | 'DESC';
   }): Promise<{ items: TripEntity[]; total: number }> {
     const qb = this.repo.createQueryBuilder('trip');
 
@@ -162,8 +180,18 @@ export class TripRepository implements ITripRepository {
       });
     }
 
+    const allowed: Record<string, string> = {
+      createdAt: 'trip.createdAt',
+      startDate: 'trip.startDate',
+      endDate: 'trip.endDate',
+      title: 'trip.title',
+      status: 'trip.status',
+    };
+    const orderField = options.sortBy ? allowed[options.sortBy] : undefined;
+    const orderDir = options.sortOrder === 'ASC' ? 'ASC' : 'DESC';
+
     const [items, total] = await qb
-      .orderBy('trip.createdAt', 'DESC')
+      .orderBy(orderField ?? 'trip.createdAt', orderDir)
       .skip(options.skip)
       .take(options.take)
       .getManyAndCount();

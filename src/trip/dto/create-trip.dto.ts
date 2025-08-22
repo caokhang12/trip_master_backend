@@ -1,6 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
-  IsArray,
   IsBoolean,
   IsDateString,
   IsEnum,
@@ -73,15 +72,4 @@ export class CreateTripDto {
   @IsOptional()
   @IsBoolean()
   enableCostTracking?: boolean;
-
-  @ApiPropertyOptional({ description: 'Image URLs', type: [String] })
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  imageUrls?: string[];
-
-  @ApiPropertyOptional({ description: 'Thumbnail URL' })
-  @IsOptional()
-  @IsString()
-  thumbnailUrl?: string;
 }

@@ -25,9 +25,8 @@ import { BaseResponse } from '../shared/types/base-response.types';
 import { ResponseUtil } from '../shared/utils/response.util';
 import { Request } from 'express';
 import { TripMapper } from './dto/trip-response.dto';
-import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { AdminRoleGuard } from 'src/auth/roles.guard';
-import { TripStatus } from './enum/trip-enum';
+import { TripListQueryDto } from './dto/trip-list-query.dto';
 
 interface RequestWithUser extends Request {
   user: { id: string };
@@ -35,7 +34,6 @@ interface RequestWithUser extends Request {
 
 @ApiTags('Trips')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
 @Controller('trips')
 export class TripController {
   constructor(private readonly tripService: TripService) {}
@@ -56,27 +54,20 @@ export class TripController {
   @Get()
   async list(
     @Req() req: RequestWithUser,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
-    @Query('search') search?: string,
-    @Query('status') status?: string,
-    @Query('startDateFrom') startDateFrom?: string,
-    @Query('startDateTo') startDateTo?: string,
-    @Query('endDateFrom') endDateFrom?: string,
-    @Query('endDateTo') endDateTo?: string,
+    @Query() query: TripListQueryDto,
   ): Promise<BaseResponse<any>> {
     const result = await this.tripService.listForUser(
       req.user.id,
-      Number(page) || 1,
-      Number(limit) || 10,
-      search,
-      status && Object.values(TripStatus).includes(status as TripStatus)
-        ? (status as TripStatus)
-        : undefined,
-      startDateFrom,
-      startDateTo,
-      endDateFrom,
-      endDateTo,
+      query.page ?? 1,
+      query.limit ?? 10,
+      query.search,
+      query.status,
+      query.startDateFrom,
+      query.startDateTo,
+      query.endDateFrom,
+      query.endDateTo,
+      query.sortBy,
+      query.sortOrder ?? 'DESC',
     );
     return ResponseUtil.success(TripMapper.toUserList(result));
   }
@@ -121,24 +112,19 @@ export class TripController {
   @UseGuards(AdminRoleGuard)
   @Get('admin/all')
   async adminList(
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
-    @Query('search') search?: string,
-    @Query('status') status?: TripStatus,
-    @Query('startDateFrom') startDateFrom?: string,
-    @Query('startDateTo') startDateTo?: string,
-    @Query('endDateFrom') endDateFrom?: string,
-    @Query('endDateTo') endDateTo?: string,
+    @Query() query: TripListQueryDto,
   ): Promise<BaseResponse<any>> {
     const result = await this.tripService.listAll(
-      Number(page) || 1,
-      Number(limit) || 10,
-      search,
-      status && Object.values(TripStatus).includes(status) ? status : undefined,
-      startDateFrom,
-      startDateTo,
-      endDateFrom,
-      endDateTo,
+      query.page ?? 1,
+      query.limit ?? 10,
+      query.search,
+      query.status,
+      query.startDateFrom,
+      query.startDateTo,
+      query.endDateFrom,
+      query.endDateTo,
+      query.sortBy,
+      query.sortOrder ?? 'DESC',
     );
     return ResponseUtil.success(TripMapper.toAdminList(result));
   }

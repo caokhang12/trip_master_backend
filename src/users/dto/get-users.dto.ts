@@ -1,4 +1,4 @@
-import { PaginationDto } from '../../shared/dto/pagination.dto';
+import { PaginationDto } from '../../shared/dto/page-query.dto';
 
 /**
  * DTO for getting all users with pagination parameters
