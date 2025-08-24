@@ -1,7 +1,8 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
+import { Transform } from 'class-transformer';
 
-export class PlacesSearchDto {
+export class PlacesQuery {
   @ApiPropertyOptional({
     description: 'Text query for place search (name, type, etc.)',
   })
@@ -10,11 +11,17 @@ export class PlacesSearchDto {
 
   @ApiPropertyOptional({ description: 'Latitude for location biasing' })
   @IsOptional()
+  @Transform(({ value }) =>
+    value === undefined ? undefined : parseFloat(String(value)),
+  )
   @IsNumber()
   lat?: number;
 
   @ApiPropertyOptional({ description: 'Longitude for location biasing' })
   @IsOptional()
+  @Transform(({ value }) =>
+    value === undefined ? undefined : parseFloat(String(value)),
+  )
   @IsNumber()
   lng?: number;
 
@@ -23,6 +30,9 @@ export class PlacesSearchDto {
     default: 5000,
   })
   @IsOptional()
+  @Transform(({ value }) =>
+    value === undefined ? undefined : parseInt(String(value), 10),
+  )
   @IsNumber()
   @Min(100)
   @Max(50000)
@@ -30,6 +40,9 @@ export class PlacesSearchDto {
 
   @ApiPropertyOptional({ description: 'Max results to return', default: 10 })
   @IsOptional()
+  @Transform(({ value }) =>
+    value === undefined ? undefined : parseInt(String(value), 10),
+  )
   @IsNumber()
   @Min(1)
   @Max(20)

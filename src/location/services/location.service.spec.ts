@@ -2,7 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { CacheService } from '../../shared/services/cache.service';
 import { LocationService } from './location.service';
-import { LocationSearchDto, ReverseGeocodeDto } from '../dto/location.dto';
+import { SearchLocationDto, ReverseGeocodeRequest } from '../dto/location.dto';
+import { APIThrottleService } from '../../shared/services/api-throttle.service';
 import axios from 'axios';
 
 jest.mock('axios');
@@ -10,16 +11,19 @@ const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 describe('LocationService', () => {
   let service: LocationService;
-  let cacheService: CacheService;
 
   const mockCacheService = {
     get: jest.fn(),
     set: jest.fn(),
   };
 
+  const mockThrottleService = {
+    checkAndLog: jest.fn(() => true),
+  } as unknown as APIThrottleService;
+
   const mockConfigService = {
-    get: jest.fn((key: string) => {
-      const config = {
+    get: jest.fn((key: string): string | undefined => {
+      const config: Record<string, string> = {
         NOMINATIM_URL: 'https://nominatim.openstreetmap.org',
       };
       return config[key];
@@ -38,12 +42,14 @@ describe('LocationService', () => {
           provide: ConfigService,
           useValue: mockConfigService,
         },
+        {
+          provide: APIThrottleService,
+          useValue: mockThrottleService,
+        },
       ],
     }).compile();
 
     service = module.get<LocationService>(LocationService);
-    cacheService = module.get<CacheService>(CacheService);
-
     // Reset mocks
     jest.clearAllMocks();
   });
@@ -54,7 +60,7 @@ describe('LocationService', () => {
 
   describe('searchLocations', () => {
     it('should search locations successfully', async () => {
-      const searchDto: LocationSearchDto = {
+      const searchDto: SearchLocationDto = {
         query: 'hanoi',
         limit: 5,
       };
@@ -98,7 +104,7 @@ describe('LocationService', () => {
     });
 
     it('should return cached results if available', async () => {
-      const searchDto: LocationSearchDto = {
+      const searchDto: SearchLocationDto = {
         query: 'hanoi',
         limit: 5,
       };
@@ -128,7 +134,7 @@ describe('LocationService', () => {
     });
 
     it('should handle search errors', async () => {
-      const searchDto: LocationSearchDto = {
+      const searchDto: SearchLocationDto = {
         query: 'invalid',
         limit: 5,
       };
@@ -150,7 +156,7 @@ describe('LocationService', () => {
 
   describe('reverseGeocode', () => {
     it('should reverse geocode successfully', async () => {
-      const reverseDto: ReverseGeocodeDto = {
+      const reverseDto: ReverseGeocodeRequest = {
         lat: 21.0285,
         lng: 105.8542,
       };
@@ -186,7 +192,7 @@ describe('LocationService', () => {
     });
 
     it('should return cached results if available', async () => {
-      const reverseDto: ReverseGeocodeDto = {
+      const reverseDto: ReverseGeocodeRequest = {
         lat: 21.0285,
         lng: 105.8542,
       };
@@ -210,7 +216,7 @@ describe('LocationService', () => {
     });
 
     it('should handle reverse geocode errors', async () => {
-      const reverseDto: ReverseGeocodeDto = {
+      const reverseDto: ReverseGeocodeRequest = {
         lat: 0,
         lng: 0,
       };

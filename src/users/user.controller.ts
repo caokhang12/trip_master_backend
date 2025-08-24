@@ -42,6 +42,8 @@ import {
   AdminTestResponseDto,
 } from '../shared/dto/response.dto';
 import { ListUsersResponseDto } from './dto/list-users-response.dto';
+import { UserItemDto } from './dto/list-users-response.dto';
+import { Paged } from '../shared/types/pagination';
 import {
   FileUploadDto,
   UserProfileWithAvatarDto,
@@ -242,33 +244,15 @@ export class UserController {
   @Get()
   async getAllUsers(
     @Query() paginationDto: ListUsersDto,
-  ): Promise<BaseResponse<any>> {
+  ): Promise<BaseResponse<Paged<UserItemDto>>> {
     const { page = 1, limit = 10, sortBy, sortOrder } = paginationDto;
-
-    const paginationResult = await this.userService.getAllUsers(
+    const paged = await this.userService.getAllUsers(
       page,
       limit,
       sortBy,
       sortOrder,
     );
 
-    // Transform items to remove sensitive data
-    const transformedItems = paginationResult.items.map((user) => ({
-      id: user.id,
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      role: user.role,
-      emailVerified: user.emailVerified,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
-    }));
-
-    const responseData = {
-      items: transformedItems,
-      meta: paginationResult.meta,
-    };
-
-    return ResponseUtil.success(responseData);
+    return ResponseUtil.success(paged);
   }
 }

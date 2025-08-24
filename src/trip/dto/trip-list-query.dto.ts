@@ -16,7 +16,6 @@ class TripFiltersDto {
 
   @ApiPropertyOptional({
     description: 'startDate >= this (YYYY-MM-DD)',
-    example: '2025-01-01',
   })
   @IsOptional()
   @IsDateString()

@@ -15,6 +15,7 @@ import {
 import { Paged, PaginationHelper } from '../shared/types/pagination';
 import { UploadService } from '../upload/upload.service';
 import { UpdateUserDto } from 'src/users/dto/update-user.dto';
+import { UserItemDto } from './dto/list-users-response.dto';
 
 /**
  * User management service with profile data transformation and password security
@@ -373,6 +374,22 @@ export class UserService {
   }
 
   /**
+   * Transform user entity to list item (sanitized, no sensitive fields)
+   */
+  transformToListItem(user: UserEntity): UserItemDto {
+    return {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      role: user.role,
+      emailVerified: user.emailVerified,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
+  }
+
+  /**
    * Get all users with native TypeORM pagination
    * @param page - Page number (1-based)
    * @param limit - Items per page
@@ -383,7 +400,7 @@ export class UserService {
     limit: number = 10,
     sortBy?: string,
     sortOrder: 'ASC' | 'DESC' = 'DESC',
-  ): Promise<Paged<UserEntity>> {
+  ): Promise<Paged<UserItemDto>> {
     const {
       page: validatedPage,
       limit: validatedLimit,
@@ -410,8 +427,10 @@ export class UserService {
       take: validatedLimit,
     });
 
+    const sanitizedItems = items.map((u) => this.transformToListItem(u));
+
     return PaginationHelper.createResult(
-      items,
+      sanitizedItems,
       total,
       validatedPage,
       validatedLimit,

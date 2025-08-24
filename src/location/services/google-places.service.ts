@@ -1,10 +1,9 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
 import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Client, Language } from '@googlemaps/google-maps-services-js';
 import { CacheService } from '../../shared/services/cache.service';
 import { RedisCacheService } from '../../shared/services/redis-cache.service';
-import { PlacesSearchDto } from '../dto/places-search.dto';
+import { PlacesQuery } from '../dto/places-search.dto';
 import { APIThrottleService } from '../../shared/services/api-throttle.service';
 
 export interface PlaceSummary {
@@ -48,7 +47,7 @@ export class GooglePlacesService {
     ); // default 15m
   }
 
-  private buildCacheKey(dto: PlacesSearchDto) {
+  private buildCacheKey(dto: PlacesQuery) {
     const parts = [
       dto.query.trim().toLowerCase(),
       dto.lat,
@@ -60,7 +59,7 @@ export class GooglePlacesService {
   }
 
   async textSearch(
-    dto: PlacesSearchDto,
+    dto: PlacesQuery,
     userId?: string,
   ): Promise<PlacesSearchResponse> {
     if (!this.apiKey) {

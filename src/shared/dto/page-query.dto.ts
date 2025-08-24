@@ -50,7 +50,6 @@ export class ExtendedPaginationDto
 {
   @ApiPropertyOptional({
     description: 'Search query string',
-    example: 'search term',
   })
   @IsOptional()
   @IsString()

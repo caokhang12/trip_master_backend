@@ -1,19 +1,29 @@
 import { Controller, Get, Query } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import {
-  LocationService,
-  LocationSearchResponse,
-  SimpleLocation,
-} from './services/location.service';
-import { GooglePlacesService } from './services/google-places.service';
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
+import { LocationService } from './services/location.service';
+import {
+  LocationSearchResult,
+  LocationItem,
+} from './interfaces/location.interfaces';
+import {
+  GooglePlacesService,
+  PlacesSearchResponse,
+} from './services/google-places.service';
 import { ResponseUtil } from '../shared/utils/response.util';
-import { PlacesSearchDto } from './dto/places-search.dto';
+import { PlacesQuery } from './dto/places-search.dto';
 import {
-  LocationSearchDto,
-  ReverseGeocodeDto,
+  SearchLocationDto,
+  ReverseGeocodeRequest,
 } from 'src/location/dto/location.dto';
+import { BaseResponse } from '../shared/types/base-response.types';
 
 @ApiTags('Locations')
+@ApiBearerAuth()
 @Controller('location')
 export class LocationController {
   constructor(
@@ -25,22 +35,30 @@ export class LocationController {
   @ApiOperation({ summary: 'Search for locations' })
   @ApiResponse({ status: 200, description: 'Location search results' })
   async searchLocations(
-    @Query() searchDto: LocationSearchDto,
-  ): Promise<LocationSearchResponse> {
-    return await this.locationService.searchLocations(searchDto);
+    @Query() searchDto: SearchLocationDto,
+  ): Promise<BaseResponse<LocationSearchResult>> {
+    const data: LocationSearchResult =
+      await this.locationService.searchLocations(searchDto);
+    return ResponseUtil.success(data);
   }
 
   @Get('reverse-geocode')
   @ApiOperation({ summary: 'Reverse geocode coordinates to location' })
   @ApiResponse({ status: 200, description: 'Reverse geocoding result' })
   async reverseGeocode(
-    @Query() reverseDto: ReverseGeocodeDto,
-  ): Promise<SimpleLocation | null> {
-    return await this.locationService.reverseGeocode(reverseDto);
+    @Query() reverseDto: ReverseGeocodeRequest,
+  ): Promise<BaseResponse<LocationItem | null>> {
+    const data: LocationItem | null =
+      await this.locationService.reverseGeocode(reverseDto);
+    return ResponseUtil.success(data);
   }
 
   @Get('places')
-  async placesSearch(@Query() dto: PlacesSearchDto): Promise<any> {
+  @ApiOperation({ summary: 'Google Places text search' })
+  @ApiResponse({ status: 200, description: 'Places search results' })
+  async placesSearch(
+    @Query() dto: PlacesQuery,
+  ): Promise<BaseResponse<PlacesSearchResponse>> {
     const data = await this.googlePlaces.textSearch(dto);
     return ResponseUtil.success(data);
   }

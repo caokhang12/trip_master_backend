@@ -87,6 +87,13 @@ export class TripRepository implements ITripRepository {
   ): Promise<{ items: TripEntity[]; total: number }> {
     const qb = this.repo
       .createQueryBuilder('trip')
+      // Only join the thumbnail image to avoid loading all images
+      .leftJoinAndSelect(
+        'trip.images',
+        'images',
+        'images.isThumbnail = :isThumb',
+        { isThumb: true },
+      )
       .where('trip.userId = :userId', { userId });
 
     if (options.search) {
@@ -149,7 +156,15 @@ export class TripRepository implements ITripRepository {
     sortBy?: 'createdAt' | 'startDate' | 'endDate' | 'title' | 'status';
     sortOrder?: 'ASC' | 'DESC';
   }): Promise<{ items: TripEntity[]; total: number }> {
-    const qb = this.repo.createQueryBuilder('trip');
+    const qb = this.repo
+      .createQueryBuilder('trip')
+      // Only join the thumbnail image to avoid loading all images
+      .leftJoinAndSelect(
+        'trip.images',
+        'images',
+        'images.isThumbnail = :isThumb',
+        { isThumb: true },
+      );
 
     if (options.search) {
       qb.where('(trip.title ILIKE :q OR trip.description ILIKE :q)', {

@@ -2,7 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsString, IsNumber, IsOptional, Min, Max } from 'class-validator';
 import { Transform } from 'class-transformer';
 
-export class LocationSearchDto {
+export class SearchLocationDto {
   @ApiProperty({
     description: 'Search query (place name or address)',
     example: 'Ho Chi Minh City',
@@ -24,7 +24,7 @@ export class LocationSearchDto {
   limit?: number = 10;
 }
 
-export class ReverseGeocodeDto {
+export class ReverseGeocodeRequest {
   @ApiProperty({
     description: 'Latitude',
     example: 10.776889,

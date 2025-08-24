@@ -16,8 +16,8 @@ export class TripDto {
   @ApiProperty() currency: string;
   @ApiProperty() isPublic: boolean;
   @ApiProperty() enableCostTracking: boolean;
-  @ApiProperty({ type: [String] }) imageUrls: string[]; // derived
-  @ApiPropertyOptional() thumbnailUrl?: string; // derived
+  @ApiProperty({ type: [String] }) imageUrls: string[];
+  @ApiPropertyOptional() thumbnailUrl?: string;
   @ApiProperty() createdAt: Date;
   @ApiProperty() updatedAt: Date;
 }
@@ -26,8 +26,30 @@ export class AdminTripDto extends TripDto {
   @ApiProperty() userId: string;
 }
 
+// Lightweight list item DTOs (no imageUrls to keep payload small)
+export class TripListItemDto {
+  @ApiProperty() id: string;
+  @ApiProperty() title: string;
+  @ApiPropertyOptional() description?: string;
+  @ApiPropertyOptional() timezone?: string;
+  @ApiPropertyOptional({ type: String }) startDate?: Date;
+  @ApiPropertyOptional({ type: String }) endDate?: Date;
+  @ApiProperty({ enum: TripStatus }) status: TripStatus;
+  @ApiPropertyOptional() budget?: number;
+  @ApiProperty() currency: string;
+  @ApiProperty() isPublic: boolean;
+  @ApiProperty() enableCostTracking: boolean;
+  @ApiPropertyOptional() thumbnailUrl?: string;
+  @ApiProperty() createdAt: Date;
+  @ApiProperty() updatedAt: Date;
+}
+
+export class AdminTripListItemDto extends TripListItemDto {
+  @ApiProperty() userId: string;
+}
+
 export class TripListResponseDto {
-  @ApiProperty({ type: [TripDto] }) items: TripDto[];
+  @ApiProperty({ type: [TripListItemDto] }) items: TripListItemDto[];
   @ApiProperty() page: number;
   @ApiProperty() limit: number;
   @ApiProperty() total: number;
@@ -37,13 +59,15 @@ export class TripListResponseDto {
 }
 
 export class AdminTripListResponseDto {
-  @ApiProperty({ type: [AdminTripDto] }) items: AdminTripDto[];
-  @ApiProperty() page: number;
-  @ApiProperty() limit: number;
-  @ApiProperty() total: number;
-  @ApiProperty() totalPages: number;
-  @ApiProperty() hasNext: boolean;
-  @ApiProperty() hasPrev: boolean;
+  @ApiProperty({ type: [AdminTripListItemDto] }) items: AdminTripListItemDto[];
+  @ApiProperty() meta: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
 }
 
 export class TripMapper {
@@ -77,7 +101,26 @@ export class TripMapper {
 
   static toUserList(result: Paged<TripEntity>): TripListResponseDto {
     return {
-      items: result.items.map((i) => this.toUserDto(i)),
+      items: result.items.map((e) => {
+        // For list views, avoid building full image arrays; rely on thumbnail only
+        const thumb = (e.images || []).find((i) => i.isThumbnail)?.url;
+        return {
+          id: e.id,
+          title: e.title,
+          description: e.description,
+          timezone: e.timezone,
+          startDate: e.startDate,
+          endDate: e.endDate,
+          status: e.status,
+          budget: e.budget,
+          currency: e.currency,
+          isPublic: e.isPublic,
+          enableCostTracking: e.enableCostTracking,
+          thumbnailUrl: thumb,
+          createdAt: e.createdAt,
+          updatedAt: e.updatedAt,
+        } as TripListItemDto;
+      }),
       page: result.meta.page,
       limit: result.meta.limit,
       total: result.meta.total,
@@ -89,13 +132,27 @@ export class TripMapper {
 
   static toAdminList(result: Paged<TripEntity>): AdminTripListResponseDto {
     return {
-      items: result.items.map((i) => this.toAdminDto(i)),
-      page: result.meta.page,
-      limit: result.meta.limit,
-      total: result.meta.total,
-      totalPages: result.meta.totalPages,
-      hasNext: result.meta.hasNext,
-      hasPrev: result.meta.hasPrev,
+      items: result.items.map((e) => {
+        const thumb = (e.images || []).find((i) => i.isThumbnail)?.url;
+        return {
+          id: e.id,
+          title: e.title,
+          description: e.description,
+          timezone: e.timezone,
+          startDate: e.startDate,
+          endDate: e.endDate,
+          status: e.status,
+          budget: e.budget,
+          currency: e.currency,
+          isPublic: e.isPublic,
+          enableCostTracking: e.enableCostTracking,
+          thumbnailUrl: thumb,
+          createdAt: e.createdAt,
+          updatedAt: e.updatedAt,
+          userId: e.userId,
+        } as AdminTripListItemDto;
+      }),
+      meta: result.meta,
     };
   }
 }
