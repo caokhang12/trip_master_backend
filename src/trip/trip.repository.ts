@@ -47,7 +47,12 @@ export class TripRepository implements ITripRepository {
   ) {}
 
   async findById(id: string): Promise<TripEntity | null> {
-    return this.repo.findOne({ where: { id } });
+    const qb = this.repo.createQueryBuilder('trip');
+    return qb
+      .where('trip.id = :id', { id })
+      .leftJoinAndSelect('trip.user', 'user')
+      .addSelect(['user.firstName', 'user.lastName'])
+      .getOne();
   }
 
   async findByIdForUser(
@@ -164,7 +169,10 @@ export class TripRepository implements ITripRepository {
         'images',
         'images.isThumbnail = :isThumb',
         { isThumb: true },
-      );
+      )
+      // Join user to expose first/last name for admin listing
+      .leftJoin('trip.user', 'user')
+      .addSelect(['user.firstName', 'user.lastName']);
 
     if (options.search) {
       qb.where('(trip.title ILIKE :q OR trip.description ILIKE :q)', {

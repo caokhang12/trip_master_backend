@@ -123,7 +123,7 @@ export class TripService {
     endDateTo?: string,
     sortBy?: 'createdAt' | 'startDate' | 'endDate' | 'title' | 'status',
     sortOrder: 'ASC' | 'DESC' = 'DESC',
-  ): Promise<Paged<TripEntity>> {
+  ): Promise<Paged<any>> {
     const {
       skip,
       limit: take,

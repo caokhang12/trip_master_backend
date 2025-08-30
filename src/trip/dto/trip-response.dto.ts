@@ -24,6 +24,9 @@ export class TripDto {
 
 export class AdminTripDto extends TripDto {
   @ApiProperty() userId: string;
+  @ApiPropertyOptional() ownerFirstName?: string;
+  @ApiPropertyOptional() ownerLastName?: string;
+  @ApiPropertyOptional() ownerEmail?: string;
 }
 
 // Lightweight list item DTOs (no imageUrls to keep payload small)
@@ -46,16 +49,20 @@ export class TripListItemDto {
 
 export class AdminTripListItemDto extends TripListItemDto {
   @ApiProperty() userId: string;
+  @ApiPropertyOptional() ownerFirstName?: string;
+  @ApiPropertyOptional() ownerLastName?: string;
 }
 
 export class TripListResponseDto {
   @ApiProperty({ type: [TripListItemDto] }) items: TripListItemDto[];
-  @ApiProperty() page: number;
-  @ApiProperty() limit: number;
-  @ApiProperty() total: number;
-  @ApiProperty() totalPages: number;
-  @ApiProperty() hasNext: boolean;
-  @ApiProperty() hasPrev: boolean;
+  @ApiProperty() meta: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
 }
 
 export class AdminTripListResponseDto {
@@ -96,7 +103,13 @@ export class TripMapper {
   }
 
   static toAdminDto(e: TripEntity): AdminTripDto {
-    return { ...this.toUserDto(e), userId: e.userId };
+    return {
+      ...this.toUserDto(e),
+      userId: e.userId,
+      ownerFirstName: e.user?.firstName,
+      ownerLastName: e.user?.lastName,
+      ownerEmail: e.user?.email,
+    };
   }
 
   static toUserList(result: Paged<TripEntity>): TripListResponseDto {
@@ -121,12 +134,7 @@ export class TripMapper {
           updatedAt: e.updatedAt,
         } as TripListItemDto;
       }),
-      page: result.meta.page,
-      limit: result.meta.limit,
-      total: result.meta.total,
-      totalPages: result.meta.totalPages,
-      hasNext: result.meta.hasNext,
-      hasPrev: result.meta.hasPrev,
+      meta: result.meta,
     };
   }
 
@@ -150,6 +158,8 @@ export class TripMapper {
           createdAt: e.createdAt,
           updatedAt: e.updatedAt,
           userId: e.userId,
+          ownerFirstName: e.user?.firstName,
+          ownerLastName: e.user?.lastName,
         } as AdminTripListItemDto;
       }),
       meta: result.meta,
