@@ -197,7 +197,7 @@ export class AuthService {
         { isActive: false, lastUsedAt: new Date() },
       );
     }
-    res.clearCookie(this.refreshCookieName, { path: '/' });
+    this.clearRefreshCookie(res);
     return ResponseUtil.success({ success: true });
   }
 
@@ -248,6 +248,28 @@ export class AuthService {
       sameSite: 'lax',
       expires,
       path: '/',
+      domain: this.getCookieDomain(),
     });
+  }
+
+  private clearRefreshCookie(res: Response) {
+    const baseOptions = {
+      httpOnly: true,
+      secure: this.configService.get('NODE_ENV') === 'production',
+      sameSite: 'lax' as const,
+      path: '/',
+    };
+    const domain = this.getCookieDomain();
+    // Clear domain-scoped cookie (new)
+    if (domain) {
+      res.clearCookie(this.refreshCookieName, { ...baseOptions, domain });
+    }
+    // Also clear legacy host-only cookie (old)
+    res.clearCookie(this.refreshCookieName, baseOptions);
+  }
+
+  private getCookieDomain(): string | undefined {
+    const domain = this.configService.get<string>('COOKIE_DOMAIN');
+    return domain || undefined;
   }
 }

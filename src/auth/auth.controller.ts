@@ -1,4 +1,13 @@
-import { Controller, Post, Body, Res, Req, Get, Query } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Res,
+  Req,
+  Get,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { Response, Request } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
@@ -18,6 +27,7 @@ import {
   SecureAuthResponseData,
 } from '../shared/types/base-response.types';
 import { VerificationSuccessResponseDto } from '../shared/dto/response.dto';
+import { CsrfGuard } from './csrf.guard';
 
 export interface RequestWithUser extends Request {
   user: { id: string };
@@ -76,6 +86,7 @@ export class AuthController {
     summary: 'Refresh access token using HttpOnly refresh cookie',
   })
   @Public()
+  @UseGuards(CsrfGuard)
   @Post('refresh')
   async refresh(
     @Req() req: Request,
@@ -91,6 +102,7 @@ export class AuthController {
     summary: 'Logout (invalidate refresh token and clear cookie)',
   })
   @Public()
+  @UseGuards(CsrfGuard)
   @Post('logout')
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     return this.authService.logout(
