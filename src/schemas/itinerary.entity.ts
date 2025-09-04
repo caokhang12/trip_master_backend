@@ -12,7 +12,6 @@ import {
 import { TripEntity } from './trip.entity';
 import { ActivityCostEntity } from './activity-cost.entity';
 import { ActivityEntity } from './activity.entity';
-import { DestinationEntity } from 'src/schemas/destination.entity';
 
 /**
  * Itinerary entity representing the itineraries table in the database
@@ -78,16 +77,6 @@ export class ItineraryEntity {
   })
   @JoinColumn({ name: 'trip_id' })
   trip: TripEntity;
-
-  @ManyToOne(
-    () => DestinationEntity,
-    (destination) => destination.itineraries,
-    {
-      onDelete: 'CASCADE',
-    },
-  )
-  @JoinColumn({ name: 'destination_id' })
-  destination: DestinationEntity;
 
   @OneToMany(() => ActivityCostEntity, (cost) => cost.itinerary, {
     cascade: true,

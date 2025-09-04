@@ -7,10 +7,11 @@ import {
   ManyToOne,
   JoinColumn,
   Index,
+  OneToMany,
 } from 'typeorm';
 import { ItineraryEntity } from './itinerary.entity';
-import { DestinationEntity } from './destination.entity';
 import { ActivityCategory } from 'src/trip/enum/trip-enum';
+import { ActivityDestinationEntity } from 'src/schemas/activity-destination.entity';
 
 /**
  * Activity entity representing a single activity within an itinerary day.
@@ -64,7 +65,10 @@ export class ActivityEntity {
   @JoinColumn({ name: 'itinerary_id' })
   itinerary: ItineraryEntity;
 
-  @ManyToOne(() => DestinationEntity, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'destination_id' })
-  destination?: DestinationEntity | null;
+  @OneToMany(
+    () => ActivityDestinationEntity,
+    (activityDestinations) => activityDestinations.activity,
+    { nullable: true, onDelete: 'SET NULL' },
+  )
+  activityDestinations?: ActivityDestinationEntity[] | null;
 }

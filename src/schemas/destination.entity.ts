@@ -1,4 +1,4 @@
-import { ItineraryEntity } from 'src/schemas/itinerary.entity';
+import { ActivityDestinationEntity } from 'src/schemas/activity-destination.entity';
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -85,9 +85,13 @@ export class DestinationEntity {
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 
-  @OneToMany(() => ItineraryEntity, (itineraries) => itineraries.destination, {
-    cascade: true,
-    eager: false,
-  })
-  itineraries: ItineraryEntity[];
+  @OneToMany(
+    () => ActivityDestinationEntity,
+    (activityDestinations) => activityDestinations.destination,
+    {
+      cascade: true,
+      eager: false,
+    },
+  )
+  activityDestinations: ActivityDestinationEntity[];
 }

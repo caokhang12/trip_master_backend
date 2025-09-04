@@ -61,12 +61,6 @@ export class TripEntity {
   @Column({ name: 'enable_cost_tracking', default: true })
   enableCostTracking: boolean;
 
-  // Legacy columns removed by migration: image_urls, thumbnail_url
-  // Transitional shadow properties (not persisted) to keep current mappers working
-  // Removed legacy columns; no longer expose shadow arrays
-  imageUrls?: never;
-  thumbnailUrl?: never;
-
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
