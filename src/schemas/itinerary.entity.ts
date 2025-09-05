@@ -25,8 +25,11 @@ export class ItineraryEntity {
   @Column({ name: 'trip_id' })
   tripId: string;
 
-  @Column({ name: 'destination_id' })
-  destinationId: string;
+  @Column({ name: 'title' })
+  title: string;
+
+  @Column({ type: 'text', nullable: true })
+  notes?: string;
 
   @Column({ name: 'day_number' })
   dayNumber: number;

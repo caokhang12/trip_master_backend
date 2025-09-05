@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { useContainer } from 'class-validator';
 import * as cookieParser from 'cookie-parser';
 
 async function bootstrap(): Promise<void> {
@@ -26,6 +27,9 @@ async function bootstrap(): Promise<void> {
       forbidNonWhitelisted: true,
     }),
   );
+
+  // Enable DI in class-validator custom validators
+  useContainer(app.select(AppModule), { fallbackOnErrors: true });
 
   // API prefix
   app.setGlobalPrefix('api/v1');
