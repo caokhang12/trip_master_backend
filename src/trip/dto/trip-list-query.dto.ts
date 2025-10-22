@@ -50,7 +50,6 @@ export class TripListQueryDto extends IntersectionType(
   ExtendedPaginationDto,
   TripFiltersDto,
 ) {
-  // Override sort docs with whitelist (repo also whitelists at query level)
   @ApiPropertyOptional({
     description: 'Field to sort by',
     enum: ['createdAt', 'startDate', 'endDate', 'title', 'status'],
@@ -59,13 +58,13 @@ export class TripListQueryDto extends IntersectionType(
   })
   @IsOptional()
   @IsString()
-  declare sortBy?: 'createdAt' | 'startDate' | 'endDate' | 'title' | 'status';
+  declare sortBy?: 'createdAt' | 'title' | 'status';
 
   @ApiPropertyOptional({
     description: 'Sort direction',
     enum: ['ASC', 'DESC'],
-    example: 'DESC',
-    default: 'DESC',
+    example: 'ASC',
+    default: 'ASC',
   })
   @IsOptional()
   @IsEnum(['ASC', 'DESC'])

@@ -5,10 +5,10 @@ import { Request, Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { RefreshTokenEntity } from '../schemas/refresh-token.entity';
+import { RefreshTokenEntity } from '../../schemas/refresh-token.entity';
 import { v4 as uuid } from 'uuid';
 import { Reflector } from '@nestjs/core';
-import { IS_PUBLIC_KEY } from './public.decorator';
+import { IS_PUBLIC_KEY } from '../public.decorator';
 
 /**
  * JwtAuthGuard with rolling refresh token support.
@@ -78,7 +78,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     if (!refreshToken) return;
     // Validate refresh token in DB
     const stored = await this.refreshRepo.findOne({
-      where: { token: refreshToken, isActive: true },
+      where: { token: refreshToken, isRevoked: false },
     });
     if (!stored || !stored.isValid) return;
 
@@ -99,21 +99,21 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     let newRefreshTokenValue: string | undefined = refreshToken;
     if (refreshExpLeft < rotateWindowSeconds) {
       // Soft rotate: invalidate old, create new
-      stored.isActive = false;
+      stored.isRevoked = true;
       await this.refreshRepo.save(stored);
       const newRtId = uuid();
       const newRtExpires = new Date();
-      newRtExpires.setDate(
-        newRtExpires.getDate() +
-          Number(this.configService.get('JWT_REFRESH_DAYS') || 7),
-      );
+      const cfg = this.configService.get<string>('JWT_REFRESH_DAYS');
+      let ndays = Number(cfg ?? 7);
+      if (!Number.isFinite(ndays) || ndays <= 0) ndays = 7;
+      newRtExpires.setDate(newRtExpires.getDate() + ndays);
       const newRtValue = uuid().replace(/-/g, '') + uuid().replace(/-/g, '');
       await this.refreshRepo.insert({
         id: newRtId,
         token: newRtValue,
         userId: request.user.id,
         expiresAt: newRtExpires,
-        isActive: true,
+        isRevoked: false,
       });
       newRefreshTokenValue = newRtValue;
       this.setRefreshCookie(response, newRefreshTokenValue, newRtExpires);

@@ -27,7 +27,10 @@ import {
   SecureAuthResponseData,
 } from '../shared/types/base-response.types';
 import { VerificationSuccessResponseDto } from '../shared/dto/response.dto';
-import { CsrfGuard } from './csrf.guard';
+import { LogoutSuccessResponseDto } from '../shared/dto/response.dto';
+import { AuthGuard } from '@nestjs/passport';
+import { ConfigService } from '@nestjs/config';
+import { UserEntity } from '../schemas/user.entity';
 
 export interface RequestWithUser extends Request {
   user: { id: string };
@@ -36,7 +39,10 @@ export interface RequestWithUser extends Request {
 @ApiTags('Authentication')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly configService: ConfigService,
+  ) {}
 
   @ApiOperation({ summary: 'Register new user' })
   @Public()
@@ -73,20 +79,15 @@ export class AuthController {
   async login(
     @Body() dto: LoginDto,
     @Res({ passthrough: true }) res: Response,
-    @Req() req: Request,
   ): Promise<BaseResponse<SecureAuthResponseData>> {
-    return this.authService.login(dto, res, {
-      userAgent: req.headers['user-agent'],
-      ip: req.ip,
-      deviceType: 'web',
-    });
+    return this.authService.login(dto, res);
   }
 
   @ApiOperation({
     summary: 'Refresh access token using HttpOnly refresh cookie',
   })
   @Public()
-  @UseGuards(CsrfGuard)
+  //@UseGuards(CsrfGuard)
   @Post('refresh')
   async refresh(
     @Req() req: Request,
@@ -101,8 +102,12 @@ export class AuthController {
   @ApiOperation({
     summary: 'Logout (invalidate refresh token and clear cookie)',
   })
+  @ApiResponse({
+    status: 200,
+    description: 'Logged out',
+    type: LogoutSuccessResponseDto,
+  })
   @Public()
-  @UseGuards(CsrfGuard)
   @Post('logout')
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     return this.authService.logout(
@@ -119,5 +124,33 @@ export class AuthController {
   me(@Req() req: RequestWithUser) {
     if (!req.user) return ResponseUtil.unauthorized();
     return ResponseUtil.success({ id: req.user.id });
+  }
+
+  // Google OAuth Login
+  @ApiOperation({ summary: 'Google OAuth Login' })
+  @UseGuards(AuthGuard('google'))
+  @Get('google')
+  async googleAuth() {
+    // Initiates the Google OAuth2 login flow
+  }
+
+  @Get('google/callback')
+  @Public()
+  @UseGuards(AuthGuard('google'))
+  async googleCallback(
+    @Req() req: Request & { user?: UserEntity },
+    @Res() res: Response,
+  ) {
+    const user = req.user as UserEntity | undefined;
+    if (!user) {
+      return res
+        .status(401)
+        .send('Authentication failed: No user information received.');
+    }
+    await this.authService.createSessionForUser(user, res);
+    return res.redirect(
+      this.configService.getOrThrow<string>('FRONTEND_URL') ||
+        'http://localhost:5173',
+    );
   }
 }

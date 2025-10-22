@@ -26,7 +26,13 @@ export class UserEntity {
   email: string;
 
   @Column({ name: 'password_hash', length: 255 })
-  passwordHash: string;
+  passwordHash?: string;
+
+  @Column({ name: 'provider', length: 50, default: 'local' })
+  provider: string;
+
+  @Column({ name: 'oauth_id', nullable: true })
+  oauthId?: string;
 
   @Column({ name: 'first_name', length: 100, nullable: true })
   firstName?: string;
@@ -36,9 +42,6 @@ export class UserEntity {
 
   @Column({ name: 'avatar_url', type: 'text', nullable: true })
   avatarUrl?: string | null;
-
-  @Column({ name: 'home_country', length: 100, nullable: true })
-  homeCountry?: string;
 
   @Column({
     name: 'preferred_language',
@@ -54,6 +57,9 @@ export class UserEntity {
     default: UserRole.USER,
   })
   role: UserRole;
+
+  @Column({ name: 'home_country', length: 100, nullable: true })
+  homeCountry?: string;
 
   @Column({ name: 'email_verified', default: false })
   emailVerified: boolean;

@@ -6,11 +6,12 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { RefreshTokenEntity } from '../schemas/refresh-token.entity';
 import { UploadModule } from '../upload/upload.module';
-import { JwtStrategy } from './jwt.strategy';
 import { SharedModule } from '../shared/shared.module';
 import { UserModule } from 'src/users/user.module';
-import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
+import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { APP_GUARD } from '@nestjs/core';
+import { JwtStrategy } from 'src/auth/strategies/jwt.strategy';
+import { GoogleStrategy } from 'src/auth/strategies/google.strategy';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { APP_GUARD } from '@nestjs/core';
   providers: [
     AuthService,
     JwtStrategy,
+    GoogleStrategy,
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard, // Global JWT guard (public endpoints can be added later with decorator if needed)

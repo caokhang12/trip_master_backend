@@ -5,6 +5,7 @@ import { UpdateTripDto } from './dto/update-trip.dto';
 import { PaginationHelper, Paged } from '../shared/types/pagination';
 import { TripStatus } from './enum/trip-enum';
 import { TripRepository } from './trip.repository';
+import { TripListResponseDto } from 'src/trip/dto/trip-response.dto';
 
 @Injectable()
 export class TripService {
@@ -90,7 +91,7 @@ export class TripService {
     endDateFrom?: string,
     endDateTo?: string,
     sortBy?: 'createdAt' | 'startDate' | 'endDate' | 'title' | 'status',
-    sortOrder: 'ASC' | 'DESC' = 'DESC',
+    sortOrder?: 'ASC' | 'DESC',
   ): Promise<Paged<TripEntity>> {
     const {
       skip,
@@ -123,7 +124,7 @@ export class TripService {
     endDateTo?: string,
     sortBy?: 'createdAt' | 'startDate' | 'endDate' | 'title' | 'status',
     sortOrder: 'ASC' | 'DESC' = 'DESC',
-  ): Promise<Paged<any>> {
+  ): Promise<TripListResponseDto> {
     const {
       skip,
       limit: take,

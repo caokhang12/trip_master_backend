@@ -26,12 +26,13 @@ import {
 import { UserRole } from '../shared/types/base-response.types';
 import { ErrorResponseData } from '../shared/types/base-response.types';
 import { EmailService } from '../email/email.service';
+import { Profile } from 'passport-google-oauth20';
+import * as crypto from 'crypto';
 
 interface TokenPair {
   accessToken: string;
   refreshToken: string;
   refreshTokenExpires: Date;
-  refreshTokenId: string;
 }
 
 @Injectable()
@@ -76,6 +77,30 @@ export class AuthService {
     return this.userService.transformToProfileData(user);
   }
 
+  async googleLogin(email: string, oauthId: string, profile: Profile) {
+    const existing = await this.userService.findByEmail(email);
+    if (existing) {
+      // nếu đã linked
+      if (existing.oauthId === oauthId) return existing;
+      // nếu chưa linked, link vào account hiện có
+      existing.oauthId = oauthId;
+      existing.provider = profile.provider;
+      await this.userService.saveUser(existing);
+      return existing;
+    }
+    // tạo user mới (giữ password random/empty)
+    const user = await this.userService.createUser({
+      email,
+      password: uuid().replace(/-/g, ''),
+      firstName: profile._json.given_name,
+      lastName: profile._json.family_name,
+      provider: profile.provider,
+      oauthId,
+      profile,
+    });
+    return user;
+  }
+
   async verifyEmail(
     dto: VerifyEmailDto,
   ): Promise<BaseResponse<{ verified: boolean } | ErrorResponseData>> {
@@ -112,7 +137,6 @@ export class AuthService {
   async login(
     dto: LoginDto,
     res: Response,
-    deviceInfo?: RefreshTokenEntity['deviceInfo'],
   ): Promise<BaseResponse<SecureAuthResponseData>> {
     const user = await this.userService.findByEmail(dto.email);
     if (!user) {
@@ -136,7 +160,7 @@ export class AuthService {
     user.lastLoginAt = new Date();
     await this.userService.saveUser(user);
 
-    const tokenPair = await this.issueTokenPair(user, deviceInfo);
+    const tokenPair = await this.issueTokenPair(user);
     this.setRefreshCookie(
       res,
       tokenPair.refreshToken,
@@ -161,8 +185,12 @@ export class AuthService {
     if (!refreshTokenValue) {
       throw new UnauthorizedException('Thiếu refresh token');
     }
+    const hashed = crypto
+      .createHash('sha256')
+      .update(refreshTokenValue)
+      .digest('hex');
     const existing = await this.refreshRepo.findOne({
-      where: { token: refreshTokenValue, isActive: true },
+      where: { token: hashed, isRevoked: false },
       relations: ['user'],
     });
     if (!existing || !existing.isValid) {
@@ -171,10 +199,12 @@ export class AuthService {
     const user = existing.user;
     const rotate = true; // always rotate for security
     if (rotate) {
-      existing.isActive = false;
+      // Revoke the previous refresh token when rotating
+      existing.isRevoked = true;
+      existing.lastUsedAt = new Date();
       await this.refreshRepo.save(existing);
     }
-    const tokenPair = await this.issueTokenPair(user, existing.deviceInfo);
+    const tokenPair = await this.issueTokenPair(user);
     this.setRefreshCookie(
       res,
       tokenPair.refreshToken,
@@ -189,44 +219,62 @@ export class AuthService {
   async logout(
     req: { cookies?: Record<string, string> },
     res: Response,
-  ): Promise<BaseResponse<{ success: boolean }>> {
+  ): Promise<BaseResponse<{ logout: boolean }>> {
     const refreshTokenValue = req.cookies?.[this.refreshCookieName];
     if (refreshTokenValue) {
+      const hashed = crypto
+        .createHash('sha256')
+        .update(refreshTokenValue)
+        .digest('hex');
       await this.refreshRepo.update(
-        { token: refreshTokenValue },
-        { isActive: false, lastUsedAt: new Date() },
+        { token: hashed },
+        { isRevoked: true, lastUsedAt: new Date() },
       );
     }
     this.clearRefreshCookie(res);
-    return ResponseUtil.success({ success: true });
+    return ResponseUtil.success({ logout: true });
   }
 
-  private async issueTokenPair(
+  async createSessionForUser(
     user: UserEntity,
-    deviceInfo?: RefreshTokenEntity['deviceInfo'],
-  ): Promise<TokenPair> {
-    const refreshTokenId = uuid();
+    res: Response,
+  ): Promise<SecureAuthResponseData> {
+    const tokenPair = await this.issueTokenPair(user);
+    this.setRefreshCookie(
+      res,
+      tokenPair.refreshToken,
+      tokenPair.refreshTokenExpires,
+    );
+    return {
+      access_token: tokenPair.accessToken,
+      user_profile: this.userService.transformToProfileData(user),
+    };
+  }
+
+  protected async issueTokenPair(user: UserEntity): Promise<TokenPair> {
     const refreshTokenValue =
       uuid().replace(/-/g, '') + uuid().replace(/-/g, '');
-    const refreshExpires = new Date();
-    refreshExpires.setDate(
-      refreshExpires.getDate() +
-        Number(this.configService.getOrThrow('JWT_REFRESH_DAYS') || 7),
+    const hashed = crypto
+      .createHash('sha256')
+      .update(refreshTokenValue)
+      .digest('hex');
+    const days = Math.max(
+      Number(this.configService.get('JWT_REFRESH_DAYS')) || 0,
+      1,
     );
+    const refreshExpires = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+
     await this.refreshRepo.insert({
-      id: refreshTokenId,
-      token: refreshTokenValue,
+      token: hashed,
       userId: user.id,
       expiresAt: refreshExpires,
-      isActive: true,
-      deviceInfo,
+      isRevoked: false,
     });
     const accessToken = await this.jwtService.signAsync(
       {
         sub: user.id,
         email: user.email,
         role: user.role,
-        rtj: refreshTokenId,
       },
       {
         secret: this.configService.get('JWT_ACCESS_SECRET'),
@@ -237,7 +285,6 @@ export class AuthService {
       accessToken,
       refreshToken: refreshTokenValue,
       refreshTokenExpires: refreshExpires,
-      refreshTokenId,
     };
   }
 
@@ -247,7 +294,7 @@ export class AuthService {
       secure: this.configService.get('NODE_ENV') === 'production',
       sameSite: 'lax',
       expires,
-      path: '/',
+      path: '/auth/refresh',
       domain: this.getCookieDomain(),
     });
   }
@@ -257,7 +304,7 @@ export class AuthService {
       httpOnly: true,
       secure: this.configService.get('NODE_ENV') === 'production',
       sameSite: 'lax' as const,
-      path: '/',
+      path: '/auth/refresh',
     };
     const domain = this.getCookieDomain();
     // Clear domain-scoped cookie (new)

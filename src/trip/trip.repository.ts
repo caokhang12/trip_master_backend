@@ -138,10 +138,10 @@ export class TripRepository implements ITripRepository {
       status: 'trip.status',
     };
     const orderField = options.sortBy ? allowed[options.sortBy] : undefined;
-    const orderDir = options.sortOrder === 'ASC' ? 'ASC' : 'DESC';
 
     const [items, total] = await qb
-      .orderBy(orderField ?? 'trip.createdAt', orderDir)
+      .orderBy(orderField ?? 'trip.createdAt', options.sortOrder)
+
       .skip(options.skip)
       .take(options.take)
       .getManyAndCount();
@@ -211,10 +211,9 @@ export class TripRepository implements ITripRepository {
       status: 'trip.status',
     };
     const orderField = options.sortBy ? allowed[options.sortBy] : undefined;
-    const orderDir = options.sortOrder === 'ASC' ? 'ASC' : 'DESC';
 
     const [items, total] = await qb
-      .orderBy(orderField ?? 'trip.createdAt', orderDir)
+      .orderBy(orderField ?? 'trip.createdAt', options.sortOrder)
       .skip(options.skip)
       .take(options.take)
       .getManyAndCount();

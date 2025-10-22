@@ -16,6 +16,7 @@ import { Paged, PaginationHelper } from '../shared/types/pagination';
 import { UploadService } from '../upload/upload.service';
 import { UpdateUserDto } from 'src/users/dto/update-user.dto';
 import { UserItemDto } from './dto/list-users-response.dto';
+import { Profile } from 'passport-google-oauth20';
 
 /**
  * User management service with profile data transformation and password security
@@ -52,19 +53,39 @@ export class UserService {
     password: string;
     firstName?: string;
     lastName?: string;
+    provider?: string;
+    oauthId?: string;
+    profile?: Profile;
   }): Promise<UserEntity> {
-    const existingUser = await this.findByEmail(userData.email);
+    const email = userData.email.toLowerCase();
+    const existingUser = await this.findByEmail(email);
     if (existingUser) {
       throw new ConflictException('User with this email already exists');
     }
 
     const hashedPassword = await this.hashPassword(userData.password);
 
+    if (userData.provider && userData.oauthId) {
+      // OAuth user creation
+      const oauthUser = this.userRepository.create({
+        email: email,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        provider: userData.provider,
+        oauthId: userData.oauthId,
+        passwordHash: userData.password,
+        avatarUrl: userData.profile?.photos?.[0]?.value,
+      });
+      return this.userRepository.save(oauthUser);
+    }
+
     const user = this.userRepository.create({
       email: userData.email,
       passwordHash: hashedPassword,
       firstName: userData.firstName,
       lastName: userData.lastName,
+      provider: userData.provider,
+      oauthId: userData.oauthId,
     });
 
     return this.userRepository.save(user);
@@ -262,6 +283,9 @@ export class UserService {
    * Verify user password
    */
   async verifyPassword(user: UserEntity, password: string): Promise<boolean> {
+    if (!user.passwordHash) {
+      return false;
+    }
     return bcrypt.compare(password, user.passwordHash);
   }
 

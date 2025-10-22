@@ -24,9 +24,8 @@ import { UpdateTripDto } from './dto/update-trip.dto';
 import { BaseResponse } from '../shared/types/base-response.types';
 import { ResponseUtil } from '../shared/utils/response.util';
 import { Request } from 'express';
-import { TripMapper } from './dto/trip-response.dto';
-import { AdminRoleGuard } from 'src/auth/roles.guard';
 import { TripListQueryDto } from './dto/trip-list-query.dto';
+import { AdminRoleGuard } from 'src/auth/guards/roles.guard';
 
 interface RequestWithUser extends Request {
   user: { id: string };
@@ -46,7 +45,7 @@ export class TripController {
     @Body() dto: CreateTripDto,
   ): Promise<BaseResponse<any>> {
     const created = await this.tripService.create(req.user.id, dto);
-    return ResponseUtil.success(TripMapper.toUserDto(created));
+    return ResponseUtil.success(created);
   }
 
   @ApiOperation({ summary: 'List current user trips' })
@@ -67,9 +66,9 @@ export class TripController {
       query.endDateFrom,
       query.endDateTo,
       query.sortBy,
-      query.sortOrder ?? 'DESC',
+      query.sortOrder ?? 'ASC',
     );
-    return ResponseUtil.success(TripMapper.toUserList(result));
+    return ResponseUtil.success(result);
   }
 
   @ApiOperation({ summary: 'Get trip by id (current user owns)' })
@@ -80,7 +79,7 @@ export class TripController {
     @Param('id') id: string,
   ): Promise<BaseResponse<any>> {
     const trip = await this.tripService.findOneForUser(id, req.user.id);
-    return ResponseUtil.success(TripMapper.toUserDto(trip));
+    return ResponseUtil.success(trip);
   }
 
   @ApiOperation({ summary: 'Update trip (current user owns)' })
@@ -92,7 +91,7 @@ export class TripController {
     @Body() dto: UpdateTripDto,
   ): Promise<BaseResponse<any>> {
     const updated = await this.tripService.updateForUser(id, req.user.id, dto);
-    return ResponseUtil.success(TripMapper.toUserDto(updated));
+    return ResponseUtil.success(updated);
   }
 
   @ApiOperation({ summary: 'Delete trip (current user owns)' })
@@ -126,7 +125,7 @@ export class TripController {
       query.sortBy,
       query.sortOrder ?? 'DESC',
     );
-    return ResponseUtil.success(TripMapper.toAdminList(result));
+    return ResponseUtil.success(result);
   }
 
   @ApiOperation({ summary: 'Admin: Get trip by id' })
@@ -134,7 +133,7 @@ export class TripController {
   @Get('admin/:id')
   async adminGetOne(@Param('id') id: string): Promise<BaseResponse<any>> {
     const trip = await this.tripService.findOneAdmin(id);
-    return ResponseUtil.success(TripMapper.toAdminDto(trip));
+    return ResponseUtil.success(trip);
   }
 
   @ApiOperation({ summary: 'Admin: Update trip' })
@@ -145,7 +144,7 @@ export class TripController {
     @Body() dto: UpdateTripDto,
   ): Promise<BaseResponse<any>> {
     const updated = await this.tripService.updateAdmin(id, dto);
-    return ResponseUtil.success(TripMapper.toAdminDto(updated));
+    return ResponseUtil.success(updated);
   }
 
   @ApiOperation({ summary: 'Admin: Delete trip' })

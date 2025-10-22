@@ -14,9 +14,9 @@ import { GlobalExceptionFilter } from './shared/filters/global-exception.filter'
 import { GlobalValidationPipe } from './shared/pipes/global-validation.pipe';
 import { TripModule } from './trip/trip.module';
 import { AuthModule } from './auth/auth.module';
-import { RolesGuard } from './auth/roles.guard';
 import { ActivityModule } from './activity/activity.module';
 import { ItineraryModule } from './itinerary/itinerary.module';
+import { RolesGuard } from 'src/auth/guards/roles.guard';
 
 @Module({
   imports: [

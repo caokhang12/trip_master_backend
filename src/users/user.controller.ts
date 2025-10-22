@@ -49,7 +49,7 @@ import {
   UserProfileWithAvatarDto,
 } from '../upload/dto/file-operations.dto';
 import { FileValidationUtil } from '../upload/utils/file-validation.util';
-import { AdminRoleGuard } from '../auth/roles.guard';
+import { AdminRoleGuard } from 'src/auth/guards/roles.guard';
 
 interface RequestWithUser extends Request {
   user: { id: string };

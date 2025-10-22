@@ -14,8 +14,7 @@ import { UserEntity } from './user.entity';
  * Supports multi-device authentication and enhanced security
  */
 @Entity('refresh_tokens')
-@Index(['token'])
-@Index(['userId', 'isActive'])
+@Index(['userId', 'isRevoked'])
 @Index(['expiresAt'])
 export class RefreshTokenEntity {
   @PrimaryGeneratedColumn('uuid')
@@ -34,16 +33,8 @@ export class RefreshTokenEntity {
   @Column({ name: 'expires_at' })
   expiresAt: Date;
 
-  @Column({ name: 'is_active', default: true })
-  isActive: boolean;
-
-  @Column({ name: 'device_info', type: 'jsonb', nullable: true })
-  deviceInfo?: {
-    userAgent?: string;
-    ip?: string;
-    deviceType?: 'web' | 'mobile' | 'tablet';
-    deviceName?: string;
-  };
+  @Column({ name: 'is_revoked', default: false })
+  isRevoked: boolean;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
@@ -55,18 +46,6 @@ export class RefreshTokenEntity {
    * Check if the token is still valid
    */
   get isValid(): boolean {
-    return this.isActive && this.expiresAt > new Date();
-  }
-
-  /**
-   * Get a sanitized version of device info for client response
-   */
-  get sanitizedDeviceInfo(): Partial<typeof this.deviceInfo> {
-    if (!this.deviceInfo) return {};
-
-    return {
-      deviceType: this.deviceInfo.deviceType,
-      deviceName: this.deviceInfo.deviceName,
-    };
+    return !this.isRevoked && this.expiresAt > new Date();
   }
 }

@@ -1,8 +1,8 @@
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { ROLES_KEY } from './roles.decorator';
-import { UserRole } from '../shared/types/base-response.types';
 import { Request } from 'express';
+import { ROLES_KEY } from 'src/auth/roles.decorator';
+import { UserRole } from 'src/shared/types/base-response.types';
 
 interface RequestWithUser extends Request {
   user?: { id: string; role: UserRole };
