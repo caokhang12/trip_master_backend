@@ -12,6 +12,17 @@ export class PromptBuilderService {
   buildSystemPrompt(context: PromptContext): string {
     const basePrompt = `You are an expert travel planner specializing in ${context.country}.`;
 
+    // Preferences sections must be placed at the very top per requirements
+    const userPrefsSection = context.userPreferencesSection
+      ? `\n\n(1) USER LONG-TERM PREFERENCES\n${context.userPreferencesSection}`
+      : '';
+    const tripPrefsSection = context.tripPreferencesSection
+      ? `\n\n(2) TRIP-SPECIFIC PREFERENCES\n${context.tripPreferencesSection}`
+      : '';
+
+    // Rules section (3)
+    const rulesSection = `\n\n(3) MANDATORY RULES\n- Trip-specific preferences override when present; otherwise fallback to user preferences.\n- Never modify or infer user long-term preferences.\n- Always respect dietary restrictions and accessibility needs.\n- Strictly follow output JSON schema; respond with JSON ONLY.`;
+
     const culturalSection = context.culturalContext
       ? `\n\nCultural Context:\n${context.culturalContext}`
       : '';
@@ -108,11 +119,15 @@ CONTENT QUALITY REQUIREMENTS:
 - All locations must be real and verifiable`;
 
     return (
+      // Preferences at the top, then base, then rules, then schema
+      userPrefsSection +
+      tripPrefsSection +
       basePrompt +
       culturalSection +
       expertiseSection +
       budgetSection +
       seasonalSection +
+      rulesSection +
       jsonFormat
     );
   }

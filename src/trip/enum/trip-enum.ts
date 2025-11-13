@@ -1,4 +1,7 @@
 export enum ActivityCategory {
+  FLIGHT = 'flight',
+  HOTEL = 'hotel',
+  TRANSPORT = 'transport',
   SIGHTSEEING = 'sightseeing', // Tham quan
   CULTURAL = 'cultural', // Văn hóa
   ADVENTURE = 'adventure', // Phiêu lưu

@@ -7,6 +7,7 @@ import * as cookieParser from 'cookie-parser';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
+  const port = process.env.PORT ?? 3000;
 
   app.use(cookieParser());
   // Enable CORS
@@ -52,7 +53,10 @@ async function bootstrap(): Promise<void> {
     .addTag('Authentication', 'User authentication and account management')
     .addTag('Users', 'User profile and preference operations')
     .addTag('Trips', 'Trip planning and management')
-    .addServer('http://localhost:3000', 'Development Server')
+    .addServer(
+      `http://localhost:${process.env.PORT ?? 3000}/`,
+      'Development Server',
+    )
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
@@ -64,7 +68,6 @@ async function bootstrap(): Promise<void> {
     },
   });
 
-  const port = process.env.PORT ?? 3000;
   await app.listen(port);
   console.log(
     `🚀 TripMaster API is running on: http://localhost:${port}/api/v1`,

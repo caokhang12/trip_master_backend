@@ -7,6 +7,7 @@ import {
   PromptContext,
 } from '../interfaces/ai.interface';
 import { PromptBuilderService } from './prompt-builder.service';
+import { ContextBuilderService } from './context-builder.service';
 import { APIThrottleService } from '../../shared/services/api-throttle.service';
 import { ActivityCategory } from 'src/trip/enum/trip-enum';
 
@@ -76,6 +77,7 @@ export class AIService {
     private readonly configService: ConfigService,
     private readonly promptBuilder: PromptBuilderService,
     private readonly throttleService: APIThrottleService,
+    private readonly contextBuilder: ContextBuilderService,
   ) {
     // Initialize OpenAI client if API key is available
     const apiKey = this.configService.get<string>('OPENAI_API_KEY');
@@ -133,7 +135,19 @@ export class AIService {
       this.throttleService.checkRateLimit(userId, 'itinerary');
 
       // Build context and prompts
-      const promptContext = this.buildPromptContext(request);
+      const baseContext = {
+        country: request.country,
+        season: this.getCurrentSeason(request.startDate),
+        budgetGuidelines: this.buildBudgetGuidelines(
+          request.budget,
+          request.currency,
+          request.country,
+        ),
+      };
+      const promptContext = await this.contextBuilder.build(
+        baseContext,
+        userId,
+      );
       const systemPrompt = this.promptBuilder.buildSystemPrompt(promptContext);
       const userPrompt = this.promptBuilder.buildUserPrompt(request);
 
@@ -273,7 +287,19 @@ export class AIService {
       this.throttleService.checkRateLimit(userId, 'itinerary');
 
       // Build context and prompts
-      const promptContext = this.buildPromptContext(request);
+      const baseContext = {
+        country: request.country,
+        season: this.getCurrentSeason(request.startDate),
+        budgetGuidelines: this.buildBudgetGuidelines(
+          request.budget,
+          request.currency,
+          request.country,
+        ),
+      };
+      const promptContext = await this.contextBuilder.build(
+        baseContext,
+        userId,
+      );
       const systemPrompt = this.promptBuilder.buildSystemPrompt(promptContext);
       const userPrompt = this.promptBuilder.buildUserPrompt(request);
 

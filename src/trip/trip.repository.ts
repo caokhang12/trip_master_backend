@@ -59,7 +59,15 @@ export class TripRepository implements ITripRepository {
     id: string,
     userId: string,
   ): Promise<TripEntity | null> {
-    return this.repo.findOne({ where: { id, userId } });
+    return this.repo.findOne({
+      where: { id, userId },
+      relations: [
+        'images',
+        'itinerary',
+        'itinerary.activities',
+        'budgetTracking',
+      ],
+    });
   }
 
   async createTrip(data: Partial<TripEntity>): Promise<TripEntity> {

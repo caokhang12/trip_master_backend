@@ -12,9 +12,9 @@ import {
 import { UserEntity } from './user.entity';
 import { ItineraryEntity } from './itinerary.entity';
 import { TripShareEntity } from './trip-share.entity';
-import { BudgetTrackingEntity } from './budget-tracking.entity';
 import { TripImageEntity } from './trip-image.entity';
 import { TripStatus } from 'src/trip/enum/trip-enum';
+import { TripBudgetEntity } from 'src/schemas/trip-budget.entity';
 
 /**
  * Trip entity representing the trips table in the database
@@ -84,10 +84,10 @@ export class TripEntity {
   })
   shareInfo?: TripShareEntity;
 
-  @OneToMany(() => BudgetTrackingEntity, (budget) => budget.trip, {
+  @OneToMany(() => TripBudgetEntity, (budget) => budget.trip, {
     cascade: true,
   })
-  budgetTracking: BudgetTrackingEntity[];
+  budgetTracking: TripBudgetEntity[];
 
   @OneToMany(() => TripImageEntity, (img) => img.trip, { cascade: false })
   images: TripImageEntity[];

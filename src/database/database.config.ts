@@ -8,7 +8,6 @@ import { ItineraryEntity } from '../schemas/itinerary.entity';
 import { TripShareEntity } from '../schemas/trip-share.entity';
 import { DestinationEntity } from '../schemas/destination.entity';
 import { ActivityCostEntity } from '../schemas/activity-cost.entity';
-import { BudgetTrackingEntity } from '../schemas/budget-tracking.entity';
 
 /**
  * Database configuration service that provides TypeORM configuration
@@ -50,7 +49,6 @@ export class DatabaseConfig implements TypeOrmOptionsFactory {
         TripShareEntity,
         DestinationEntity,
         ActivityCostEntity,
-        BudgetTrackingEntity,
       ],
       synchronize: false, // Disabled - we use migrations instead
       logging: isDevelopment ? ['query', 'error'] : ['error'],

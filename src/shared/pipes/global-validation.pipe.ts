@@ -19,9 +19,10 @@ export class GlobalValidationPipe implements PipeTransform<unknown> {
     if (!metatype || !this.toValidate(metatype)) {
       return value;
     }
-
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const object = plainToInstance(metatype, value as Record<string, unknown>);
+    const object = plainToInstance(metatype, value, {
+      enableImplicitConversion: true,
+    });
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     const errors = await validate(object);
 

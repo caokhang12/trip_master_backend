@@ -86,7 +86,6 @@ export class ItineraryEntity {
   })
   activityCosts: ActivityCostEntity[];
 
-  // New normalized activities relation replacing the old JSON column
   @OneToMany(() => ActivityEntity, (activity) => activity.itinerary, {
     cascade: ['insert', 'update'],
   })

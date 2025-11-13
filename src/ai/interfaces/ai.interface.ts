@@ -124,6 +124,9 @@ export interface PromptContext {
   culturalContext?: string;
   budgetGuidelines?: string;
   localExpertise?: string;
+  // Injected by ContextBuilderService
+  userPreferencesSection?: string;
+  tripPreferencesSection?: string;
 }
 
 export interface AIUsageMetrics {

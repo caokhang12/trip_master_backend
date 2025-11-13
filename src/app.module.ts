@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_PIPE, APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
+import amadeusConfig from './config/amadeus.config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { SharedModule } from './shared/shared.module';
@@ -17,12 +18,18 @@ import { AuthModule } from './auth/auth.module';
 import { ActivityModule } from './activity/activity.module';
 import { ItineraryModule } from './itinerary/itinerary.module';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
+import { HotelsModule } from './hotels/hotels.module';
+import { TransportModule } from './transport/transport.module';
+import { BookingModule } from './booking/booking.module';
+import { BudgetModule } from './budget/budget.module';
+import { PreferencesModule } from './preferences/preferences.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
+      load: [amadeusConfig],
     }),
     SharedModule,
     EmailModule,
@@ -35,6 +42,11 @@ import { RolesGuard } from 'src/auth/guards/roles.guard';
     AuthModule,
     ActivityModule,
     ItineraryModule,
+    HotelsModule,
+    TransportModule,
+    BookingModule,
+    BudgetModule,
+    PreferencesModule,
   ],
   controllers: [AppController],
   providers: [

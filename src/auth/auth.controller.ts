@@ -150,7 +150,7 @@ export class AuthController {
     await this.authService.createSessionForUser(user, res);
     return res.redirect(
       this.configService.getOrThrow<string>('FRONTEND_URL') ||
-        'http://localhost:5173',
+        'http://localhost:3001',
     );
   }
 }

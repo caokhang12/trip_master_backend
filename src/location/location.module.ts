@@ -4,17 +4,16 @@ import { LocationController } from './location.controller';
 import { LocationService } from './services/location.service';
 import { CacheService } from '../shared/services/cache.service';
 import { GooglePlacesService } from './services/google-places.service';
-import { RedisCacheService } from '../shared/services/redis-cache.service';
+import { RedisModule } from '../redis/redis.module';
 import { APIThrottleService } from '../shared/services/api-throttle.service';
 
 @Module({
-  imports: [ConfigModule],
+  imports: [ConfigModule, RedisModule],
   controllers: [LocationController],
   providers: [
     LocationService,
     CacheService,
     GooglePlacesService,
-    RedisCacheService,
     APIThrottleService,
   ],
 })

@@ -26,30 +26,42 @@ export class UserPreferencesEntity {
   @PrimaryColumn('uuid', { name: 'user_id' })
   userId: string;
 
-  @Column({ name: 'travel_style', type: 'jsonb', nullable: true })
-  travelStyle?: TravelStyle[];
+  @Column({
+    name: 'travel_style',
+    type: 'jsonb',
+    nullable: true,
+    default: () => "'[]'::jsonb",
+  })
+  travelStyle?: TravelStyle[] = [];
 
-  @Column({ name: 'budget_range', type: 'jsonb', nullable: true })
+  @Column({
+    name: 'budget_range',
+    type: 'jsonb',
+    nullable: true,
+    default: () => "'{}'::jsonb",
+  })
   budgetRange?: BudgetRange;
 
-  @Column({ type: 'text', array: true, nullable: true })
-  interests?: string[];
+  @Column({ type: 'text', array: true, nullable: true, default: () => "'{}'" })
+  interests?: string[] = [];
 
   @Column({
     name: 'dietary_restrictions',
     type: 'text',
     array: true,
     nullable: true,
+    default: () => "'{}'",
   })
-  dietaryRestrictions?: string[];
+  dietaryRestrictions?: string[] = [];
 
   @Column({
     name: 'accessibility_needs',
     type: 'text',
     array: true,
     nullable: true,
+    default: () => "'{}'",
   })
-  accessibilityNeeds?: string[];
+  accessibilityNeeds?: string[] = [];
 
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;

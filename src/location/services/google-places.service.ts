@@ -2,7 +2,7 @@ import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Client, Language } from '@googlemaps/google-maps-services-js';
 import { CacheService } from '../../shared/services/cache.service';
-import { RedisCacheService } from '../../shared/services/redis-cache.service';
+import { RedisCacheService } from '../../redis/redis-cache.service';
 import { PlacesQuery } from '../dto/places-search.dto';
 import { APIThrottleService } from '../../shared/services/api-throttle.service';
 
