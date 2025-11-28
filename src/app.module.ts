@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_PIPE, APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import amadeusConfig from './config/amadeus.config';
+import googleMapsConfig from './config/google-maps.config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { SharedModule } from './shared/shared.module';
@@ -10,7 +11,6 @@ import { UserModule } from './users/user.module';
 import { LocationModule } from './location/location.module';
 import { CurrencyModule } from './currency/currency.module';
 import { UploadModule } from './upload/upload.module';
-import { AIModule } from './ai/ai.module';
 import { GlobalExceptionFilter } from './shared/filters/global-exception.filter';
 import { GlobalValidationPipe } from './shared/pipes/global-validation.pipe';
 import { TripModule } from './trip/trip.module';
@@ -23,13 +23,14 @@ import { TransportModule } from './transport/transport.module';
 import { BookingModule } from './booking/booking.module';
 import { BudgetModule } from './budget/budget.module';
 import { PreferencesModule } from './preferences/preferences.module';
+import { GoogleMapsModule } from './integrations/google-maps/google-maps.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
-      load: [amadeusConfig],
+      load: [amadeusConfig, googleMapsConfig],
     }),
     SharedModule,
     EmailModule,
@@ -37,7 +38,6 @@ import { PreferencesModule } from './preferences/preferences.module';
     LocationModule,
     CurrencyModule,
     UploadModule,
-    AIModule,
     TripModule,
     AuthModule,
     ActivityModule,
@@ -47,6 +47,7 @@ import { PreferencesModule } from './preferences/preferences.module';
     BookingModule,
     BudgetModule,
     PreferencesModule,
+    GoogleMapsModule,
   ],
   controllers: [AppController],
   providers: [

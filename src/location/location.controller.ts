@@ -10,12 +10,9 @@ import {
   LocationSearchResult,
   LocationItem,
 } from './interfaces/location.interfaces';
-import {
-  GooglePlacesService,
-  PlacesSearchResponse,
-} from './services/google-places.service';
+import { PlacesSearchService } from '../integrations/google-maps/services/places-search.service';
 import { ResponseUtil } from '../shared/utils/response.util';
-import { PlacesQuery } from './dto/places-search.dto';
+import { PlacesSearchDto } from '../integrations/google-maps/dto/places-search.dto';
 import {
   SearchLocationDto,
   ReverseGeocodeRequest,
@@ -28,7 +25,7 @@ import { BaseResponse } from '../shared/types/base-response.types';
 export class LocationController {
   constructor(
     private readonly locationService: LocationService,
-    private readonly googlePlaces: GooglePlacesService,
+    private readonly placesSearchService: PlacesSearchService,
   ) {}
 
   @Get('search')
@@ -56,10 +53,8 @@ export class LocationController {
   @Get('places')
   @ApiOperation({ summary: 'Google Places text search' })
   @ApiResponse({ status: 200, description: 'Places search results' })
-  async placesSearch(
-    @Query() dto: PlacesQuery,
-  ): Promise<BaseResponse<PlacesSearchResponse>> {
-    const data = await this.googlePlaces.textSearch(dto);
+  async placesSearch(@Query() dto: PlacesSearchDto) {
+    const data = await this.placesSearchService.textSearch(dto);
     return ResponseUtil.success(data);
   }
 }

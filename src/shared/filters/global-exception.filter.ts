@@ -34,20 +34,19 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         const responseObj = exceptionResponse as Record<string, unknown>;
         // Prefer explicit message field, fallback to error
         if (typeof responseObj.message === 'string') {
-          message = responseObj.message as string;
+          message = responseObj.message;
         } else if (typeof responseObj.error === 'string') {
-          message = responseObj.error as string;
+          message = responseObj.error;
         } else {
           message = 'An error occurred';
         }
 
         // If the exception provided a details array (our ValidationPipe does), use it.
         if (Array.isArray(responseObj.details)) {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           details = responseObj.details as string[];
         } else if (Array.isArray(responseObj.message)) {
           // Some libraries put validation messages into `message` as an array
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+
           details = responseObj.message as string[];
         } else {
           details = [];

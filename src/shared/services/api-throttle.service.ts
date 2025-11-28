@@ -1,6 +1,5 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { AIUsageMetrics } from '../../ai/interfaces/ai.interface';
 
 interface ServiceLimits {
   daily?: number;
@@ -249,21 +248,6 @@ export class APIThrottleService {
       this.logger.warn(`OpenAI rate limit exceeded for ${requestType}`);
       throw new BadRequestException(
         `OpenAI quota exceeded: ${stats.usage.hourly}/${stats.limits?.hourly} hourly, ${stats.usage.daily}/${stats.limits?.daily} daily`,
-      );
-    }
-  }
-
-  /**
-   * Log OpenAI API usage with token and cost tracking
-   */
-  logUsage(userId: string, metrics: AIUsageMetrics): void {
-    // IMPORTANT: no quota increment here (avoid double counting). Only logging metadata.
-    this.logger.debug(
-      `OpenAI usage: user=${userId} type=${metrics.requestType} tokens=${metrics.tokensUsed} cost=$${metrics.cost.toFixed(4)} success=${metrics.success}`,
-    );
-    if (!metrics.success) {
-      this.logger.warn(
-        `OpenAI request failed (post-count): user=${userId} type=${metrics.requestType}`,
       );
     }
   }
