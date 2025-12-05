@@ -6,17 +6,60 @@ import { PaginationHelper, Paged } from '../shared/types/pagination';
 import { TripStatus } from './enum/trip-enum';
 import { TripRepository } from './trip.repository';
 import { TripListResponseDto } from 'src/trip/dto/trip-response.dto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { DestinationEntity } from 'src/schemas/destination.entity';
+import { ItineraryRepository } from 'src/itinerary/itinerary.repository';
+import { ActivityRepository } from 'src/activity/activity.repository';
 
 @Injectable()
 export class TripService {
-  constructor(private readonly tripRepo: TripRepository) {}
+  constructor(
+    private readonly tripRepo: TripRepository,
+    @InjectRepository(DestinationEntity)
+    private readonly destinationRepo: Repository<DestinationEntity>,
+    private readonly itineraryRepo: ItineraryRepository,
+    private readonly activityRepo: ActivityRepository,
+  ) {}
 
   async create(userId: string, dto: CreateTripDto): Promise<TripEntity> {
+    // Attempt to resolve a primary destination if frontend provided a placeId
+    let primaryDestinationId: string | undefined = undefined;
+    // If client explicitly provided an existing destination id, use it
+    if (dto.primaryDestinationId) {
+      primaryDestinationId = dto.primaryDestinationId;
+    } else if (dto.destinationLocation?.placeId) {
+      const found = await this.destinationRepo.findOne({
+        where: { placeId: dto.destinationLocation.placeId },
+      });
+      if (found) {
+        primaryDestinationId = found.id;
+      } else {
+        // Create new destination from location data
+        // Parse country from address (simple heuristic - last part after comma)
+        const addressParts = dto.destinationLocation.address.split(',');
+        const country =
+          addressParts[addressParts.length - 1]?.trim() || 'Unknown';
+
+        const newDest = this.destinationRepo.create({
+          placeId: dto.destinationLocation.placeId,
+          name: dto.destinationLocation.name,
+          country: country,
+          countryCode: 'XX', // Default - should be enhanced with geocoding
+          city: dto.destinationLocation.name,
+          coordinates: `POINT(${dto.destinationLocation.lng} ${dto.destinationLocation.lat})`,
+        });
+        const savedDest = await this.destinationRepo.save(newDest);
+        primaryDestinationId = savedDest.id;
+      }
+    }
+
     const entity = await this.tripRepo.createTrip({
       userId,
       title: dto.title,
       description: dto.description,
       timezone: dto.timezone,
+      primaryDestinationId: primaryDestinationId,
       startDate: dto.startDate ? new Date(dto.startDate) : undefined,
       endDate: dto.endDate ? new Date(dto.endDate) : undefined,
       budget: dto.budget,
@@ -25,6 +68,46 @@ export class TripService {
       isPublic: dto.isPublic ?? false,
       enableCostTracking: dto.enableCostTracking ?? true,
     });
+
+    // Create itineraries and activities if provided
+    if (
+      dto.itineraries &&
+      Array.isArray(dto.itineraries) &&
+      dto.itineraries.length > 0
+    ) {
+      for (const itinInput of dto.itineraries) {
+        const itinerary = await this.itineraryRepo.create({
+          tripId: entity.id,
+          title: itinInput.title,
+          notes: itinInput.notes,
+          dayNumber: itinInput.dayNumber,
+          date: itinInput.date ? new Date(itinInput.date) : undefined,
+          aiGenerated: false,
+          userModified: false,
+        });
+
+        // Create activities for this itinerary
+        if (
+          itinInput.activities &&
+          Array.isArray(itinInput.activities) &&
+          itinInput.activities.length > 0
+        ) {
+          for (const actInput of itinInput.activities) {
+            await this.activityRepo.create({
+              itineraryId: itinerary.id,
+              time: actInput.time,
+              title: actInput.title,
+              description: actInput.description,
+              duration: actInput.duration,
+              cost: actInput.cost,
+              type: actInput.type,
+              orderIndex: actInput.orderIndex ?? 0,
+            });
+          }
+        }
+      }
+    }
+
     return entity;
   }
 

@@ -17,6 +17,6 @@ import { ActivityController } from './activity.controller';
   ],
   controllers: [ActivityController],
   providers: [ActivityRepository, ActivityService],
-  exports: [ActivityService],
+  exports: [ActivityService, ActivityRepository],
 })
 export class ActivityModule {}

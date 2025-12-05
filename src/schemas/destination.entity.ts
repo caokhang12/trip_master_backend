@@ -28,6 +28,9 @@ export class DestinationEntity {
   @Column({ name: 'country_code', length: 2 })
   countryCode: string;
 
+  @Column({ name: 'place_id', length: 255, nullable: true, unique: true })
+  placeId?: string;
+
   @Column({ length: 100, nullable: true })
   city?: string;
 

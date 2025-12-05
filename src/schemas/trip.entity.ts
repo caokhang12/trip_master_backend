@@ -15,6 +15,7 @@ import { TripShareEntity } from './trip-share.entity';
 import { TripImageEntity } from './trip-image.entity';
 import { TripStatus } from 'src/trip/enum/trip-enum';
 import { TripBudgetEntity } from 'src/schemas/trip-budget.entity';
+import { DestinationEntity } from './destination.entity';
 
 /**
  * Trip entity representing the trips table in the database
@@ -60,6 +61,13 @@ export class TripEntity {
 
   @Column({ name: 'enable_cost_tracking', default: true })
   enableCostTracking: boolean;
+
+  @Column({ name: 'primary_destination_id', type: 'uuid', nullable: true })
+  primaryDestinationId?: string;
+
+  @ManyToOne(() => DestinationEntity, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'primary_destination_id' })
+  primaryDestination?: DestinationEntity | null;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

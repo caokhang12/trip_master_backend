@@ -28,6 +28,7 @@
     "schema:sync": "npx ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js schema:sync -d src/data-source.ts"
   },
   "dependencies": {
+    "@google/genai": "^1.31.0",
     "@googlemaps/google-maps-services-js": "^3.4.2",
     "@nestjs-modules/mailer": "^2.0.2",
     "@nestjs/axios": "^4.0.1",

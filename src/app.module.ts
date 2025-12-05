@@ -3,6 +3,7 @@ import { APP_FILTER, APP_PIPE, APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import amadeusConfig from './config/amadeus.config';
 import googleMapsConfig from './config/google-maps.config';
+import geminiConfig from './config/gemini.config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { SharedModule } from './shared/shared.module';
@@ -24,13 +25,15 @@ import { BookingModule } from './booking/booking.module';
 import { BudgetModule } from './budget/budget.module';
 import { PreferencesModule } from './preferences/preferences.module';
 import { GoogleMapsModule } from './integrations/google-maps/google-maps.module';
+import { DestinationModule } from './destinations/destination.module';
+import { AIModule } from './ai/ai.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
-      load: [amadeusConfig, googleMapsConfig],
+      load: [amadeusConfig, googleMapsConfig, geminiConfig],
     }),
     SharedModule,
     EmailModule,
@@ -48,6 +51,8 @@ import { GoogleMapsModule } from './integrations/google-maps/google-maps.module'
     BudgetModule,
     PreferencesModule,
     GoogleMapsModule,
+    DestinationModule,
+    AIModule,
   ],
   controllers: [AppController],
   providers: [

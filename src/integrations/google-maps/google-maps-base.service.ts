@@ -25,6 +25,7 @@ export abstract class GoogleMapsBaseService {
     this.client = new Client({});
 
     this.apiKey = this.configService.get<string>('googleMaps.apiKey') || '';
+
     this.defaultRegion =
       this.configService.get<string>('googleMaps.defaultRegion') || 'US';
     this.timeout = this.configService.get<number>('googleMaps.timeout') || 5000;
@@ -189,6 +190,7 @@ export abstract class GoogleMapsBaseService {
       try {
         if (attempt > 0) {
           // Exponential backoff: 1s, 2s, 4s...
+
           const delay = Math.pow(2, attempt - 1) * 1000;
           this.logger.debug(
             `Retry ${attempt}/${this.maxRetries} after ${delay}ms`,

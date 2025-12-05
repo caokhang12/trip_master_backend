@@ -17,6 +17,6 @@ import { DateMatchesDayNumberConstraint } from './validators/date-matches-day-nu
     WithinTripRangeConstraint,
     DateMatchesDayNumberConstraint,
   ],
-  exports: [ItineraryService],
+  exports: [ItineraryService, ItineraryRepository],
 })
 export class ItineraryModule {}

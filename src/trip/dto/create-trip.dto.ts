@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, OmitType } from '@nestjs/swagger';
 import {
   IsBoolean,
   IsEnum,
@@ -10,9 +10,39 @@ import {
   MaxLength,
   Min,
   Validate,
+  ValidateNested,
+  IsArray,
+  IsObject,
+  IsUUID,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { TripStatus } from '../enum/trip-enum';
 import { EndAfterStartDateConstraint } from '../validators/end-after-start-date.validator';
+import { CreateActivityDto } from 'src/activity/dto/create-activity.dto';
+import { CreateItineraryDto } from 'src/itinerary/dto/create-itinerary.dto';
+
+export class CreateActivityInput extends OmitType(CreateActivityDto, [
+  'itineraryId',
+  'destinationIds',
+  'metadata',
+] as const) {}
+
+export class CreateItineraryInput extends OmitType(CreateItineraryDto, [
+  'tripId',
+  'aiGenerated',
+  'userModified',
+  'estimatedCost',
+  'actualCost',
+  'costCurrency',
+  'costBreakdown',
+] as const) {
+  @ApiPropertyOptional({ type: [CreateActivityInput] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateActivityInput)
+  activities?: CreateActivityInput[];
+}
 
 export class CreateTripDto {
   @ApiProperty({ description: 'Trip title', minLength: 3, maxLength: 255 })
@@ -20,11 +50,41 @@ export class CreateTripDto {
   @Length(3, 255)
   title: string;
 
-  @ApiPropertyOptional({ description: 'Trip description', maxLength: 500 })
+  @ApiPropertyOptional({ description: 'Trip description', maxLength: 2000 })
   @IsOptional()
   @IsString()
-  @MaxLength(500)
+  @MaxLength(2000)
   description?: string;
+
+  @ApiPropertyOptional({ description: 'Primary destination name (optional)' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  destination?: string;
+
+  @ApiPropertyOptional({
+    description: 'Destination location object from Places API',
+    type: Object,
+  })
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => Object)
+  destinationLocation?: {
+    placeId: string;
+    name: string;
+    address: string;
+    lat: number;
+    lng: number;
+    types?: string[];
+  };
+
+  @ApiPropertyOptional({
+    description: 'Existing destination id (UUID) to link as primaryDestination',
+  })
+  @IsOptional()
+  @IsUUID()
+  primaryDestinationId?: string;
 
   @ApiPropertyOptional({ description: 'Timezone, e.g. Asia/Ho_Chi_Minh' })
   @IsOptional()
@@ -76,4 +136,14 @@ export class CreateTripDto {
   @IsOptional()
   @IsBoolean()
   enableCostTracking?: boolean;
+
+  @ApiPropertyOptional({
+    type: [CreateItineraryInput],
+    description: 'Itineraries with nested activities to create with the trip',
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateItineraryInput)
+  itineraries?: CreateItineraryInput[];
 }
