@@ -12,9 +12,10 @@ import { CreateBudgetDto } from './dto/create-budget.dto';
 import { CreateBudgetItemDto } from './dto/create-item.dto';
 import { UpdateBudgetDto } from './dto/update-budget.dto';
 import { ResponseUtil } from 'src/shared/utils/response.util';
-import { ApiBearerAuth } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 @Controller('budget')
+@ApiTags('Budget Management')
 @ApiBearerAuth()
 export class BudgetController {
   constructor(private readonly budgetService: BudgetService) {}
@@ -44,8 +45,27 @@ export class BudgetController {
   }
 
   @Delete('item/:id')
+  @ApiOperation({ summary: 'Delete a budget item' })
   async deleteItem(@Param('id') id: string) {
     const result = await this.budgetService.deleteItem(id);
     return ResponseUtil.success(result);
+  }
+
+  @Get('summary/:tripId')
+  @ApiOperation({
+    summary: 'Get budget summary with percentages and remaining amount',
+  })
+  async getBudgetSummary(@Param('tripId') tripId: string) {
+    const summary = await this.budgetService.getBudgetSummary(tripId);
+    return ResponseUtil.success(summary);
+  }
+
+  @Get('analytics/:tripId')
+  @ApiOperation({
+    summary: 'Get budget analytics with breakdown by category',
+  })
+  async getBudgetAnalytics(@Param('tripId') tripId: string) {
+    const analytics = await this.budgetService.getBudgetAnalytics(tripId);
+    return ResponseUtil.success(analytics);
   }
 }
