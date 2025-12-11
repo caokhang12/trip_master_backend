@@ -12,7 +12,6 @@ import {
 import { TripEntity } from './trip.entity';
 import { ActivityCostEntity } from './activity-cost.entity';
 import { ActivityEntity } from './activity.entity';
-import { DestinationEntity } from './destination.entity';
 
 /**
  * Itinerary entity representing the itineraries table in the database
@@ -69,9 +68,6 @@ export class ItineraryEntity {
   })
   actualCost?: number;
 
-  @Column({ name: 'cost_currency', length: 3, default: 'USD' })
-  costCurrency: string;
-
   @Column({ name: 'cost_breakdown', type: 'jsonb', nullable: true })
   costBreakdown?: Record<string, number>;
 
@@ -86,13 +82,6 @@ export class ItineraryEntity {
     cascade: true,
   })
   activityCosts: ActivityCostEntity[];
-
-  @Column({ name: 'destination_id', type: 'uuid', nullable: true })
-  destinationId?: string;
-
-  @ManyToOne(() => DestinationEntity, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'destination_id' })
-  destination?: DestinationEntity | null;
 
   @OneToMany(() => ActivityEntity, (activity) => activity.itinerary, {
     cascade: ['insert', 'update'],

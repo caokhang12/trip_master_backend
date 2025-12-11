@@ -6,6 +6,8 @@ import { ItineraryEntity } from 'src/schemas/itinerary.entity';
 import { ActivityRepository } from './activity.repository';
 import { ActivityService } from './activity.service';
 import { ActivityController } from './activity.controller';
+import { RefreshTokenEntity } from 'src/schemas/refresh-token.entity';
+import { DestinationEntity } from 'src/schemas/destination.entity';
 
 @Module({
   imports: [
@@ -13,6 +15,8 @@ import { ActivityController } from './activity.controller';
       ActivityEntity,
       ActivityDestinationEntity,
       ItineraryEntity,
+      DestinationEntity,
+      RefreshTokenEntity,
     ]),
   ],
   controllers: [ActivityController],

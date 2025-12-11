@@ -8,10 +8,28 @@ import { CreateActivityDto } from './dto/create-activity.dto';
 import { UpdateActivityDto } from './dto/update-activity.dto';
 import { ActivityEntity } from 'src/schemas/activity.entity';
 import { BulkCreateActivitiesDto } from './dto/bulk-create-activities.dto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { DestinationEntity } from 'src/schemas/destination.entity';
+import { In, Repository } from 'typeorm';
 
 @Injectable()
 export class ActivityService {
-  constructor(private readonly repo: ActivityRepository) {}
+  constructor(
+    private readonly repo: ActivityRepository,
+    @InjectRepository(DestinationEntity)
+    private readonly destinationRepo: Repository<DestinationEntity>,
+  ) {}
+
+  private async ensureDestinationsExist(ids?: string[]) {
+    if (!ids || ids.length === 0) return;
+    const uniqueIds = Array.from(new Set(ids));
+    const count = await this.destinationRepo.count({
+      where: { id: In(uniqueIds) },
+    });
+    if (count !== uniqueIds.length) {
+      throw new NotFoundException('One or more destinations not found');
+    }
+  }
 
   async create(
     userId: string,
@@ -23,6 +41,8 @@ export class ActivityService {
     );
     if (!allowed)
       throw new ForbiddenException('Itinerary does not belong to user');
+
+    await this.ensureDestinationsExist(dto.destinationIds);
 
     const created = await this.repo.create({
       itineraryId: dto.itineraryId,
@@ -63,6 +83,11 @@ export class ActivityService {
     if (!allowed)
       throw new ForbiddenException('Itinerary does not belong to user');
 
+    const allDestinationIds = dto.activities
+      .flatMap((a) => a.destinationIds || [])
+      .filter(Boolean);
+    await this.ensureDestinationsExist(allDestinationIds);
+
     const items = dto.activities.map((a) => ({
       time: a.time,
       title: a.title,
@@ -95,6 +120,10 @@ export class ActivityService {
         userId,
       );
       if (!ok) throw new ForbiddenException('Target itinerary not accessible');
+    }
+
+    if (dto.destinationIds) {
+      await this.ensureDestinationsExist(dto.destinationIds);
     }
 
     await this.repo.update(id, {

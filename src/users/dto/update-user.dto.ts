@@ -86,6 +86,9 @@ export class UpdateUserDto extends UpdateProfileDto {
   declare firstName?: string;
   declare lastName?: string;
   declare avatarUrl?: string;
+  declare preferredLanguage?: string;
+  declare preferredCurrency?: string;
+  declare homeCountry?: string;
 
   @ApiProperty({
     description: 'User travel preferences and settings',

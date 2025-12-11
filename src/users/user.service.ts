@@ -73,7 +73,7 @@ export class UserService {
         lastName: userData.lastName,
         provider: userData.provider,
         oauthId: userData.oauthId,
-        passwordHash: userData.password,
+        passwordHash: hashedPassword,
         avatarUrl: userData.profile?.photos?.[0]?.value,
       });
       return this.userRepository.save(oauthUser);
@@ -109,6 +109,12 @@ export class UserService {
     if (updateData.lastName !== undefined) user.lastName = updateData.lastName;
     if (updateData.avatarUrl !== undefined)
       user.avatarUrl = updateData.avatarUrl;
+    if (updateData.preferredLanguage !== undefined)
+      user.preferredLanguage = updateData.preferredLanguage;
+    if (updateData.preferredCurrency !== undefined)
+      user.preferredCurrency = updateData.preferredCurrency;
+    if (updateData.homeCountry !== undefined)
+      user.homeCountry = updateData.homeCountry;
 
     await this.userRepository.save(user);
 
@@ -392,6 +398,18 @@ export class UserService {
       hasAvatar: Boolean(user.avatarUrl),
       role: user.role,
       emailVerified: user.emailVerified,
+      preferredLanguage: user.preferredLanguage,
+      preferredCurrency: user.preferredCurrency,
+      homeCountry: user.homeCountry,
+      preferences: user.preferences
+        ? {
+            travelStyle: user.preferences.travelStyle,
+            budgetRange: user.preferences.budgetRange,
+            interests: user.preferences.interests,
+            dietaryRestrictions: user.preferences.dietaryRestrictions,
+            accessibilityNeeds: user.preferences.accessibilityNeeds,
+          }
+        : undefined,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };

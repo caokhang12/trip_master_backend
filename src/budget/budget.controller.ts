@@ -8,9 +8,11 @@ import {
   Post,
 } from '@nestjs/common';
 import { BudgetService } from './budget.service';
+import { BudgetConversionService } from './budget-conversion.service';
 import { CreateBudgetDto } from './dto/create-budget.dto';
 import { CreateBudgetItemDto } from './dto/create-item.dto';
 import { UpdateBudgetDto } from './dto/update-budget.dto';
+import { ConvertCurrencyDto } from './dto/convert-currency.dto';
 import { ResponseUtil } from 'src/shared/utils/response.util';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
@@ -18,7 +20,10 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 @ApiTags('Budget Management')
 @ApiBearerAuth()
 export class BudgetController {
-  constructor(private readonly budgetService: BudgetService) {}
+  constructor(
+    private readonly budgetService: BudgetService,
+    private readonly conversionService: BudgetConversionService,
+  ) {}
 
   @Get(':tripId')
   async getBudget(@Param('tripId') tripId: string) {
@@ -67,5 +72,20 @@ export class BudgetController {
   async getBudgetAnalytics(@Param('tripId') tripId: string) {
     const analytics = await this.budgetService.getBudgetAnalytics(tripId);
     return ResponseUtil.success(analytics);
+  }
+
+  @Patch(':id/convert-currency')
+  @ApiOperation({
+    summary: 'Convert budget and all items to a different currency',
+  })
+  async convertBudgetCurrency(
+    @Param('id') id: string,
+    @Body() dto: ConvertCurrencyDto,
+  ) {
+    const budget = await this.conversionService.convertBudgetCurrency(
+      id,
+      dto.newCurrency,
+    );
+    return ResponseUtil.success(budget);
   }
 }

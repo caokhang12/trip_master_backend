@@ -43,9 +43,6 @@ export class ActivityCostEntity {
   })
   actualAmount?: number;
 
-  @Column({ length: 3, default: 'USD' })
-  currency: string;
-
   @Column({ name: 'cost_source', length: 100, nullable: true })
   costSource?: string;
 

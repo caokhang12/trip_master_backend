@@ -190,4 +190,229 @@ export class EmailService {
       return false;
     }
   }
+
+  /**
+   * Send collaboration invitation email
+   * @param email - Recipient email address
+   * @param recipientName - Name of the person being invited
+   * @param inviterName - Name of the person sending the invitation
+   * @param tripTitle - Title of the trip
+   * @param tripDescription - Optional trip description
+   * @param tripDates - Optional trip dates as formatted string
+   * @param role - Role being assigned (owner | editor | viewer)
+   * @param invitationUrl - URL to accept the invitation
+   * @param expiresAt - Optional expiration date as formatted string
+   * @param language - Email language preference (en | vi)
+   * @returns Success status
+   */
+  async sendCollaborationInvitation(
+    email: string,
+    recipientName: string,
+    inviterName: string,
+    tripTitle: string,
+    tripDescription: string | undefined,
+    tripDates: string | undefined,
+    role: 'owner' | 'editor' | 'viewer',
+    invitationUrl: string,
+    expiresAt: string | undefined,
+    language: 'en' | 'vi' = 'en',
+  ): Promise<boolean> {
+    try {
+      const subjects = {
+        en: `${inviterName} invited you to collaborate on a trip`,
+        vi: `${inviterName} đã mời bạn cộng tác trên một chuyến đi`,
+      };
+
+      await this.mailerService.sendMail({
+        to: email,
+        subject: subjects[language],
+        template: './invitation',
+        context: {
+          recipientName,
+          inviterName,
+          tripTitle,
+          tripDescription,
+          tripDates,
+          role,
+          invitationUrl,
+          expiresAt,
+          language,
+          isVietnamese: language === 'vi',
+        },
+      });
+
+      this.logger.log(
+        `Collaboration invitation sent successfully to ${email} for role ${role}`,
+      );
+      return true;
+    } catch (error) {
+      this.logger.error(
+        `Failed to send collaboration invitation to ${email}:`,
+        error,
+      );
+      return false;
+    }
+  }
+
+  /**
+   * Send notification when a new member joins a trip
+   * @param email - Trip owner's email address
+   * @param ownerName - Name of the trip owner
+   * @param newMemberName - Name of the new member
+   * @param newMemberEmail - Email of the new member
+   * @param tripTitle - Title of the trip
+   * @param role - Role assigned to the new member
+   * @param tripUrl - URL to view the trip
+   * @param language - Email language preference (en | vi)
+   * @returns Success status
+   */
+  async sendMemberAdded(
+    email: string,
+    ownerName: string,
+    newMemberName: string,
+    newMemberEmail: string,
+    tripTitle: string,
+    role: 'owner' | 'editor' | 'viewer',
+    tripUrl: string,
+    language: 'en' | 'vi' = 'en',
+  ): Promise<boolean> {
+    try {
+      const subjects = {
+        en: `New member joined your trip: ${tripTitle}`,
+        vi: `Thành viên mới đã tham gia chuyến đi: ${tripTitle}`,
+      };
+
+      await this.mailerService.sendMail({
+        to: email,
+        subject: subjects[language],
+        template: './member-added',
+        context: {
+          ownerName,
+          newMemberName,
+          newMemberEmail,
+          tripTitle,
+          role,
+          tripUrl,
+          language,
+          isVietnamese: language === 'vi',
+        },
+      });
+
+      this.logger.log(
+        `Member added notification sent successfully to ${email}`,
+      );
+      return true;
+    } catch (error) {
+      this.logger.error(
+        `Failed to send member added notification to ${email}:`,
+        error,
+      );
+      return false;
+    }
+  }
+
+  /**
+   * Send notification when a member is removed from a trip
+   * @param email - Removed member's email address
+   * @param memberName - Name of the removed member
+   * @param removerName - Name of the person who removed the member
+   * @param tripTitle - Title of the trip
+   * @param language - Email language preference (en | vi)
+   * @returns Success status
+   */
+  async sendMemberRemoved(
+    email: string,
+    memberName: string,
+    removerName: string,
+    tripTitle: string,
+    language: 'en' | 'vi' = 'en',
+  ): Promise<boolean> {
+    try {
+      const subjects = {
+        en: `You were removed from trip: ${tripTitle}`,
+        vi: `Bạn đã bị xóa khỏi chuyến đi: ${tripTitle}`,
+      };
+
+      await this.mailerService.sendMail({
+        to: email,
+        subject: subjects[language],
+        template: './member-removed',
+        context: {
+          memberName,
+          removerName,
+          tripTitle,
+          language,
+          isVietnamese: language === 'vi',
+        },
+      });
+
+      this.logger.log(
+        `Member removed notification sent successfully to ${email}`,
+      );
+      return true;
+    } catch (error) {
+      this.logger.error(
+        `Failed to send member removed notification to ${email}:`,
+        error,
+      );
+      return false;
+    }
+  }
+
+  /**
+   * Send notification when a member's permission is changed
+   * @param email - Member's email address
+   * @param memberName - Name of the member
+   * @param changerName - Name of the person who changed the permission
+   * @param tripTitle - Title of the trip
+   * @param oldRole - Previous role
+   * @param newRole - New role
+   * @param tripUrl - URL to view the trip
+   * @param language - Email language preference (en | vi)
+   * @returns Success status
+   */
+  async sendPermissionChanged(
+    email: string,
+    memberName: string,
+    changerName: string,
+    tripTitle: string,
+    oldRole: 'owner' | 'editor' | 'viewer',
+    newRole: 'owner' | 'editor' | 'viewer',
+    tripUrl: string,
+    language: 'en' | 'vi' = 'en',
+  ): Promise<boolean> {
+    try {
+      const subjects = {
+        en: `Your permission changed in trip: ${tripTitle}`,
+        vi: `Quyền của bạn đã thay đổi trong chuyến đi: ${tripTitle}`,
+      };
+
+      await this.mailerService.sendMail({
+        to: email,
+        subject: subjects[language],
+        template: './permission-changed',
+        context: {
+          memberName,
+          changerName,
+          tripTitle,
+          oldRole,
+          newRole,
+          tripUrl,
+          language,
+          isVietnamese: language === 'vi',
+        },
+      });
+
+      this.logger.log(
+        `Permission changed notification sent successfully to ${email}`,
+      );
+      return true;
+    } catch (error) {
+      this.logger.error(
+        `Failed to send permission changed notification to ${email}:`,
+        error,
+      );
+      return false;
+    }
+  }
 }

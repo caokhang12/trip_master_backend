@@ -45,84 +45,6 @@ export class ErrorResponseDataDto {
   code?: string;
 }
 
-export class UserProfileDataDto {
-  @ApiProperty({
-    description: 'User unique identifier',
-    example: '123e4567-e89b-12d3-a456-426614174000',
-  })
-  id: string;
-
-  @ApiProperty({
-    description: 'User email address',
-    example: 'john.doe@example.com',
-  })
-  email: string;
-
-  @ApiProperty({
-    description: 'User first name',
-    required: false,
-    example: 'John',
-  })
-  firstName?: string;
-
-  @ApiProperty({
-    description: 'User last name',
-    required: false,
-    example: 'Doe',
-  })
-  lastName?: string;
-
-  @ApiProperty({
-    description: 'User avatar URL',
-    required: false,
-    example: 'https://example.com/avatars/john-doe.jpg',
-  })
-  avatarUrl?: string;
-
-  @ApiProperty({
-    description:
-      'User home country for localized content and currency preferences',
-    required: false,
-    example: 'Vietnam',
-  })
-  homeCountry?: string;
-
-  @ApiProperty({
-    description: 'User preferred language for the application interface',
-    required: false,
-    example: 'vi',
-    enum: ['en', 'vi', 'zh', 'ja', 'ko', 'th', 'fr', 'de', 'es'],
-  })
-  preferredLanguage?: string;
-
-  @ApiProperty({
-    description: 'User role in the system',
-    enum: UserRole,
-    example: UserRole.USER,
-  })
-  role: UserRole;
-
-  @ApiProperty({
-    description: 'Email verification status',
-    example: true,
-  })
-  emailVerified: boolean;
-
-  @ApiProperty({
-    description: 'Account creation timestamp',
-    example: '2024-01-15T10:30:00.000Z',
-  })
-  createdAt: Date;
-
-  @ApiProperty({
-    description: 'Last profile update timestamp',
-    example: '2024-01-20T14:45:00.000Z',
-  })
-  updatedAt: Date;
-}
-
-// NOTE: Removed local BudgetRangeDto to avoid duplication with Money DTOs.
-
 export class UserPreferencesDataDto {
   @ApiProperty({
     description: 'Preferred travel styles',
@@ -163,6 +85,98 @@ export class UserPreferencesDataDto {
     example: ['wheelchair accessible', 'hearing assistance'],
   })
   accessibilityNeeds?: string[];
+}
+
+export class UserProfileDataDto {
+  @ApiProperty({
+    description: 'User unique identifier',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  id: string;
+
+  @ApiProperty({
+    description: 'User email address',
+    example: 'john.doe@example.com',
+  })
+  email: string;
+
+  @ApiProperty({
+    description: 'User first name',
+    required: false,
+    example: 'John',
+  })
+  firstName?: string;
+
+  @ApiProperty({
+    description: 'User last name',
+    required: false,
+    example: 'Doe',
+  })
+  lastName?: string;
+
+  @ApiProperty({
+    description: 'User avatar URL',
+    required: false,
+    example: 'https://example.com/avatars/john-doe.jpg',
+  })
+  avatarUrl?: string;
+
+  @ApiProperty({
+    description: 'User role in the system',
+    enum: UserRole,
+    example: UserRole.USER,
+  })
+  role: UserRole;
+
+  @ApiProperty({
+    description: 'Email verification status',
+    example: true,
+  })
+  emailVerified: boolean;
+
+  @ApiProperty({
+    description: 'Account creation timestamp',
+    example: '2024-01-15T10:30:00.000Z',
+  })
+  createdAt: Date;
+
+  @ApiProperty({
+    description: 'Last profile update timestamp',
+    example: '2024-01-20T14:45:00.000Z',
+  })
+  updatedAt: Date;
+
+  @ApiProperty({
+    required: false,
+    description: 'Preferred language (ISO 639-1)',
+    example: 'vi',
+    nullable: true,
+  })
+  preferredLanguage?: string;
+
+  @ApiProperty({
+    required: false,
+    description: 'Preferred currency (ISO 4217)',
+    example: 'VND',
+    nullable: true,
+  })
+  preferredCurrency?: string;
+
+  @ApiProperty({
+    required: false,
+    description: 'Home country',
+    example: 'Vietnam',
+    nullable: true,
+  })
+  homeCountry?: string;
+
+  @ApiProperty({
+    required: false,
+    description: 'User travel preferences',
+    type: UserPreferencesDataDto,
+    nullable: true,
+  })
+  preferences?: UserPreferencesDataDto;
 }
 
 export class AuthResponseDataDto {

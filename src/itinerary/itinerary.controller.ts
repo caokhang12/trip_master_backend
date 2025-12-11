@@ -15,16 +15,12 @@ import {
   ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
-import { Request } from 'express';
 import { ItineraryService } from './itinerary.service';
 import { CreateItineraryDto } from './dto/create-itinerary.dto';
 import { UpdateItineraryDto } from './dto/update-itinerary.dto';
 import { BaseResponse } from 'src/shared/types/base-response.types';
 import { ResponseUtil } from 'src/shared/utils/response.util';
-
-interface RequestWithUser extends Request {
-  user: { id: string };
-}
+import { AuthenticatedRequest } from 'src/auth/types/authenticated-request';
 
 @ApiTags('Itineraries')
 @ApiBearerAuth()
@@ -35,7 +31,7 @@ export class ItineraryController {
   @ApiOperation({ summary: 'Create itinerary for a trip the user owns' })
   @Post()
   async create(
-    @Req() req: RequestWithUser,
+    @Req() req: AuthenticatedRequest,
     @Body() dto: CreateItineraryDto,
   ): Promise<BaseResponse<any>> {
     const created = await this.service.create(req.user.id, dto);
@@ -48,7 +44,7 @@ export class ItineraryController {
   @ApiQuery({ name: 'tripId', required: false })
   @Get()
   async list(
-    @Req() req: RequestWithUser,
+    @Req() req: AuthenticatedRequest,
     @Query('tripId') tripId?: string,
   ): Promise<BaseResponse<any>> {
     const items = await this.service.listForUser(req.user.id, tripId);
@@ -58,7 +54,7 @@ export class ItineraryController {
   @ApiOperation({ summary: 'Get itinerary' })
   @Get(':id')
   async getOne(
-    @Req() req: RequestWithUser,
+    @Req() req: AuthenticatedRequest,
     @Param('id') id: string,
   ): Promise<BaseResponse<any>> {
     const item = await this.service.getOne(req.user.id, id);
@@ -68,7 +64,7 @@ export class ItineraryController {
   @ApiOperation({ summary: 'Update itinerary' })
   @Put(':id')
   async update(
-    @Req() req: RequestWithUser,
+    @Req() req: AuthenticatedRequest,
     @Param('id') id: string,
     @Body() dto: UpdateItineraryDto,
   ): Promise<BaseResponse<any>> {
@@ -79,7 +75,7 @@ export class ItineraryController {
   @ApiOperation({ summary: 'Delete itinerary' })
   @Delete(':id')
   async remove(
-    @Req() req: RequestWithUser,
+    @Req() req: AuthenticatedRequest,
     @Param('id') id: string,
   ): Promise<BaseResponse<any>> {
     await this.service.remove(req.user.id, id);

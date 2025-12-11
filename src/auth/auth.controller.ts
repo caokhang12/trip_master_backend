@@ -31,10 +31,7 @@ import { LogoutSuccessResponseDto } from '../shared/dto/response.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
 import { UserEntity } from '../schemas/user.entity';
-
-export interface RequestWithUser extends Request {
-  user: { id: string };
-}
+import { AuthenticatedRequest } from 'src/auth/types/authenticated-request';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -121,7 +118,7 @@ export class AuthController {
   })
   @ApiBearerAuth()
   @Get('me')
-  me(@Req() req: RequestWithUser) {
+  me(@Req() req: AuthenticatedRequest) {
     if (!req.user) return ResponseUtil.unauthorized();
     return ResponseUtil.success({ id: req.user.id });
   }

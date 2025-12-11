@@ -55,7 +55,7 @@ export class CreateActivityDto {
   @ApiPropertyOptional({ type: 'integer', default: 0 })
   @IsOptional()
   @IsNumber()
-  @Min(1)
+  @Min(0)
   orderIndex?: number;
 
   @ApiPropertyOptional({

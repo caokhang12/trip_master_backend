@@ -46,6 +46,10 @@ export interface UserProfileData {
   hasAvatar?: boolean;
   role: UserRole;
   emailVerified: boolean;
+  preferredLanguage?: string;
+  preferredCurrency?: string;
+  homeCountry?: string;
+  preferences?: UserPreferencesData;
   createdAt: Date;
   updatedAt: Date;
 }

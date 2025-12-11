@@ -10,11 +10,7 @@ import { PreferencesService } from './preferences.service';
 import { UpdateTripPreferencesDto } from './dto/update-trip-preferences.dto';
 import { ResponseUtil } from 'src/shared/utils/response.util';
 import { BaseResponse } from 'src/shared/types/base-response.types';
-import { Request } from 'express';
-
-interface RequestWithUser extends Request {
-  user: { id: string };
-}
+import { AuthenticatedRequest } from 'src/auth/types/authenticated-request';
 
 @ApiTags('Preferences')
 @ApiBearerAuth()
@@ -29,7 +25,7 @@ export class TripPreferencesController {
   })
   @Get()
   async getTripPrefs(
-    @Req() req: RequestWithUser,
+    @Req() req: AuthenticatedRequest,
     @Param('tripId') tripId: string,
   ): Promise<BaseResponse<any>> {
     const prefs = await this.preferencesService.getTripPreferences(
@@ -75,7 +71,7 @@ export class TripPreferencesController {
   })
   @Patch()
   async updateTripPrefs(
-    @Req() req: RequestWithUser,
+    @Req() req: AuthenticatedRequest,
     @Param('tripId') tripId: string,
     @Body() dto: UpdateTripPreferencesDto,
   ): Promise<BaseResponse<any>> {

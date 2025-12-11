@@ -17,7 +17,10 @@ export class ItineraryRepository {
   }
 
   async findById(id: string): Promise<ItineraryEntity | null> {
-    return this.repo.findOne({ where: { id } });
+    return this.repo.findOne({
+      where: { id },
+      relations: ['trip'],
+    });
   }
 
   async findByIdForUser(
@@ -27,6 +30,7 @@ export class ItineraryRepository {
     return this.repo
       .createQueryBuilder('iti')
       .innerJoin('iti.trip', 'trip')
+      .leftJoinAndSelect('iti.trip', 'tripData')
       .where('iti.id = :id', { id })
       .andWhere('trip.userId = :userId', { userId })
       .getOne();
@@ -39,6 +43,7 @@ export class ItineraryRepository {
     const qb = this.repo
       .createQueryBuilder('iti')
       .innerJoin('iti.trip', 'trip')
+      .leftJoinAndSelect('iti.trip', 'tripData')
       .where('trip.userId = :userId', { userId });
     if (tripId) qb.andWhere('iti.tripId = :tripId', { tripId });
     return qb.orderBy('iti.dayNumber', 'ASC').getMany();

@@ -28,7 +28,9 @@ import { EmailService } from './email.service';
         },
         template: {
           dir: join(__dirname, 'templates'),
-          adapter: new HandlebarsAdapter(),
+          adapter: new HandlebarsAdapter({
+            eq: (a, b) => a === b,
+          }),
           options: {
             strict: true,
           },

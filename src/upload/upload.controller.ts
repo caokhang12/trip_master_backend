@@ -1,8 +1,7 @@
 import { Controller, Delete, Param, Request } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { UploadService } from './upload.service';
-
-import { RequestWithUser } from 'src/auth/auth.controller';
+import { AuthenticatedRequest } from 'src/auth/types/authenticated-request';
 
 /**
  * Simplified upload controller for direct file operations
@@ -21,7 +20,7 @@ export class UploadController {
   @Delete(':publicId')
   @ApiOperation({ summary: 'Delete file' })
   async deleteFile(
-    @Request() req: RequestWithUser,
+    @Request() req: AuthenticatedRequest,
     @Param('publicId') publicId: string,
   ) {
     const decodedPublicId = decodeURIComponent(publicId);

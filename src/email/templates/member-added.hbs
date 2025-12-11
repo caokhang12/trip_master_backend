@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{#if isVietnamese}}Thành viên mới{{else}}New Member Added{{/if}}</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            line-height: 1.6; 
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .container { 
+            max-width: 600px; 
+            margin: 0 auto; 
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 2px solid #28a745;
+            margin-bottom: 30px;
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #28a745;
+        }
+        .content {
+            padding: 0 20px;
+        }
+        h1 {
+            color: #28a745;
+            text-align: center;
+            font-size: 28px;
+            margin-bottom: 20px;
+        }
+        .member-card {
+            background-color: #f8f9fa;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .member-name {
+            font-size: 18px;
+            font-weight: bold;
+            color: #28a745;
+            margin-bottom: 5px;
+        }
+        .member-email {
+            color: #666;
+            font-size: 14px;
+        }
+        .trip-info {
+            background-color: #e9ecef;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .trip-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #17a2b8;
+            margin-bottom: 10px;
+        }
+        .role-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .role-owner {
+            background-color: #ffc107;
+            color: #000;
+        }
+        .role-editor {
+            background-color: #28a745;
+            color: #fff;
+        }
+        .role-viewer {
+            background-color: #6c757d;
+            color: #fff;
+        }
+        .button { 
+            display: inline-block; 
+            padding: 15px 40px; 
+            background-color: #28a745; 
+            color: white !important; 
+            text-decoration: none; 
+            border-radius: 5px;
+            font-weight: bold;
+            text-align: center;
+            margin: 20px 0;
+            transition: background-color 0.3s;
+        }
+        .button:hover {
+            background-color: #218838;
+        }
+        .button-container {
+            text-align: center;
+            margin: 30px 0;
+        }
+        .footer { 
+            text-align: center; 
+            margin-top: 40px; 
+            padding-top: 20px; 
+            border-top: 1px solid #dee2e6;
+            font-size: 12px; 
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🌍 TripMaster</div>
+        </div>
+        
+        <div class="content">
+            {{#if isVietnamese}}
+                <h1>✅ Thành viên mới đã tham gia!</h1>
+                <p>Xin chào {{ownerName}},</p>
+                <p><strong>{{newMemberName}}</strong> đã chấp nhận lời mời và tham gia vào chuyến đi của bạn:</p>
+            {{else}}
+                <h1>✅ New Member Joined!</h1>
+                <p>Hello {{ownerName}},</p>
+                <p><strong>{{newMemberName}}</strong> has accepted the invitation and joined your trip:</p>
+            {{/if}}
+
+            <div class="trip-info">
+                <div class="trip-title">📍 {{tripTitle}}</div>
+            </div>
+
+            <div class="member-card">
+                <div class="member-name">👤 {{newMemberName}}</div>
+                <div class="member-email">📧 {{newMemberEmail}}</div>
+                <div>
+                    {{#if (eq role "owner")}}
+                        <span class="role-badge role-owner">👑 {{#if isVietnamese}}Chủ sở hữu{{else}}Owner{{/if}}</span>
+                    {{else if (eq role "editor")}}
+                        <span class="role-badge role-editor">✏️ {{#if isVietnamese}}Biên tập viên{{else}}Editor{{/if}}</span>
+                    {{else}}
+                        <span class="role-badge role-viewer">👁️ {{#if isVietnamese}}Người xem{{else}}Viewer{{/if}}</span>
+                    {{/if}}
+                </div>
+            </div>
+
+            <div class="button-container">
+                <a href="{{tripUrl}}" class="button">
+                    {{#if isVietnamese}}
+                        🗺️ Xem chuyến đi
+                    {{else}}
+                        🗺️ View Trip
+                    {{/if}}
+                </a>
+            </div>
+
+            {{#if isVietnamese}}
+                <p>Bạn có thể quản lý các thành viên và quyền của họ bất cứ lúc nào từ trang chi tiết chuyến đi.</p>
+            {{else}}
+                <p>You can manage members and their permissions anytime from the trip details page.</p>
+            {{/if}}
+        </div>
+
+        <div class="footer">
+            {{#if isVietnamese}}
+                <p>Email này được gửi từ <strong>TripMaster</strong></p>
+                <p>Nền tảng lập kế hoạch chuyến đi thông minh</p>
+            {{/if}}
+            {{#unless isVietnamese}}
+                <p>This email was sent from <strong>TripMaster</strong></p>
+                <p>Smart Trip Planning Platform</p>
+            {{/unless}}
+        </div>
+    </div>
+</body>
+</html>

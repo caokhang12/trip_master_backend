@@ -12,7 +12,6 @@ import {
   Req,
   Query,
 } from '@nestjs/common';
-import { Request } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiTags,
@@ -50,10 +49,7 @@ import {
 } from '../upload/dto/file-operations.dto';
 import { FileValidationUtil } from '../upload/utils/file-validation.util';
 import { AdminRoleGuard } from 'src/auth/guards/roles.guard';
-
-interface RequestWithUser extends Request {
-  user: { id: string };
-}
+import { AuthenticatedRequest } from 'src/auth/types/authenticated-request';
 
 /**
  * User profile management with avatar upload integration
@@ -84,7 +80,7 @@ export class UserController {
   })
   @Get('profile')
   async getProfile(
-    @Req() req: RequestWithUser,
+    @Req() req: AuthenticatedRequest,
   ): Promise<BaseResponse<UserProfileData | ErrorResponseData>> {
     const userProfile = await this.userService.findById(req.user.id);
 
@@ -122,7 +118,7 @@ export class UserController {
   })
   @Put('profile')
   async updateProfile(
-    @Req() req: RequestWithUser,
+    @Req() req: AuthenticatedRequest,
     @Body() updateUserDto: UpdateUserDto,
   ): Promise<BaseResponse<UserProfileData>> {
     const updatedUser = await this.userService.updateProfile(
@@ -178,7 +174,7 @@ export class UserController {
   )
   @Post('avatar')
   async uploadAvatar(
-    @Req() req: RequestWithUser,
+    @Req() req: AuthenticatedRequest,
     @UploadedFile() file: Express.Multer.File,
   ): Promise<BaseResponse<UserProfileData>> {
     if (!file) {
@@ -205,7 +201,7 @@ export class UserController {
   })
   @Delete('avatar')
   async removeAvatar(
-    @Req() req: RequestWithUser,
+    @Req() req: AuthenticatedRequest,
   ): Promise<BaseResponse<UserProfileData>> {
     const updatedProfile = await this.userService.removeUserAvatar(req.user.id);
     return ResponseUtil.success(updatedProfile);

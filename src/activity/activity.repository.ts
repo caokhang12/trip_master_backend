@@ -34,7 +34,8 @@ export class ActivityRepository {
   async list(query: ActivityListQuery): Promise<ActivityEntity[]> {
     const qb = this.activityRepo
       .createQueryBuilder('act')
-      .leftJoinAndSelect('act.activityDestinations', 'ad');
+      .leftJoinAndSelect('act.activityDestinations', 'ad')
+      .leftJoinAndSelect('ad.destination', 'dest');
     if (query.itineraryId) {
       qb.andWhere('act.itineraryId = :itineraryId', {
         itineraryId: query.itineraryId,
@@ -60,6 +61,7 @@ export class ActivityRepository {
       .innerJoin('act.itinerary', 'iti')
       .innerJoin('iti.trip', 'trip')
       .leftJoinAndSelect('act.activityDestinations', 'ad')
+      .leftJoinAndSelect('ad.destination', 'dest')
       .where('trip.userId = :userId', { userId });
     if (query.itineraryId)
       qb.andWhere('act.itineraryId = :itineraryId', {

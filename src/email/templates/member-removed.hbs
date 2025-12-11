@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{#if isVietnamese}}Đã xóa khỏi chuyến đi{{else}}Removed from Trip{{/if}}</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            line-height: 1.6; 
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .container { 
+            max-width: 600px; 
+            margin: 0 auto; 
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 2px solid #dc3545;
+            margin-bottom: 30px;
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #dc3545;
+        }
+        .content {
+            padding: 0 20px;
+        }
+        h1 {
+            color: #dc3545;
+            text-align: center;
+            font-size: 28px;
+            margin-bottom: 20px;
+        }
+        .trip-info {
+            background-color: #f8f9fa;
+            border-left: 4px solid #dc3545;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .trip-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #17a2b8;
+            margin-bottom: 10px;
+        }
+        .info-box {
+            background-color: #e9ecef;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .footer { 
+            text-align: center; 
+            margin-top: 40px; 
+            padding-top: 20px; 
+            border-top: 1px solid #dee2e6;
+            font-size: 12px; 
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🌍 TripMaster</div>
+        </div>
+        
+        <div class="content">
+            {{#if isVietnamese}}
+                <h1>❌ Đã xóa khỏi chuyến đi</h1>
+                <p>Xin chào {{memberName}},</p>
+                <p><strong>{{removerName}}</strong> đã xóa bạn khỏi chuyến đi:</p>
+            {{else}}
+                <h1>❌ Removed from Trip</h1>
+                <p>Hello {{memberName}},</p>
+                <p><strong>{{removerName}}</strong> has removed you from the trip:</p>
+            {{/if}}
+
+            <div class="trip-info">
+                <div class="trip-title">📍 {{tripTitle}}</div>
+            </div>
+
+            <div class="info-box">
+                {{#if isVietnamese}}
+                    <p>Bạn sẽ không còn có quyền truy cập vào chuyến đi này. Nếu bạn cho rằng đây là một sai lầm, vui lòng liên hệ với chủ sở hữu chuyến đi.</p>
+                {{else}}
+                    <p>You will no longer have access to this trip. If you believe this was a mistake, please contact the trip owner.</p>
+                {{/if}}
+            </div>
+
+            {{#if isVietnamese}}
+                <p>Cảm ơn bạn đã sử dụng TripMaster!</p>
+            {{else}}
+                <p>Thank you for using TripMaster!</p>
+            {{/if}}
+        </div>
+
+        <div class="footer">
+            {{#if isVietnamese}}
+                <p>Email này được gửi từ <strong>TripMaster</strong></p>
+                <p>Nền tảng lập kế hoạch chuyến đi thông minh</p>
+            {{else}}
+                <p>This email was sent from <strong>TripMaster</strong></p>
+                <p>Smart Trip Planning Platform</p>
+            {{/if}}
+        </div>
+    </div>
+</body>
+</html>

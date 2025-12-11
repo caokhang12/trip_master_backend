@@ -16,6 +16,7 @@ import { TripImageEntity } from './trip-image.entity';
 import { TripStatus } from 'src/trip/enum/trip-enum';
 import { TripBudgetEntity } from 'src/schemas/trip-budget.entity';
 import { DestinationEntity } from './destination.entity';
+import { TripMemberEntity } from './trip-member.entity';
 
 /**
  * Trip entity representing the trips table in the database
@@ -99,4 +100,10 @@ export class TripEntity {
 
   @OneToMany(() => TripImageEntity, (img) => img.trip, { cascade: false })
   images: TripImageEntity[];
+
+  @OneToMany(() => TripMemberEntity, (member) => member.trip, {
+    cascade: true,
+    eager: false,
+  })
+  members: TripMemberEntity[];
 }

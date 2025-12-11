@@ -39,6 +39,16 @@ export class TripListItemDto {
   @ApiProperty() currency: string;
   @ApiProperty() isPublic: boolean;
   @ApiProperty() enableCostTracking: boolean;
+  @ApiPropertyOptional() location?: string;
+  @ApiPropertyOptional() destinationLocation?: {
+    placeId: string;
+    name: string;
+    province?: string;
+    country: string;
+    city?: string;
+    lat: number;
+    lng: number;
+  };
   @ApiPropertyOptional() thumbnailUrl?: string;
   @ApiProperty() createdAt: Date;
   @ApiProperty() updatedAt: Date;

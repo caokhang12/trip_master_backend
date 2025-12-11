@@ -15,17 +15,13 @@ import {
   ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
-import { Request } from 'express';
 import { ActivityService } from './activity.service';
 import { CreateActivityDto } from './dto/create-activity.dto';
 import { UpdateActivityDto } from './dto/update-activity.dto';
 import { BulkCreateActivitiesDto } from './dto/bulk-create-activities.dto';
 import { BaseResponse } from 'src/shared/types/base-response.types';
 import { ResponseUtil } from 'src/shared/utils/response.util';
-
-interface RequestWithUser extends Request {
-  user: { id: string };
-}
+import { AuthenticatedRequest } from 'src/auth/types/authenticated-request';
 
 @ApiTags('Activities')
 @ApiBearerAuth()
@@ -36,7 +32,7 @@ export class ActivityController {
   @ApiOperation({ summary: 'Create activity in an itinerary the user owns' })
   @Post()
   async create(
-    @Req() req: RequestWithUser,
+    @Req() req: AuthenticatedRequest,
     @Body() dto: CreateActivityDto,
   ): Promise<BaseResponse<any>> {
     const created = await this.service.create(req.user.id, dto);
@@ -48,7 +44,7 @@ export class ActivityController {
   @ApiQuery({ name: 'tripId', required: false })
   @Get()
   async list(
-    @Req() req: RequestWithUser,
+    @Req() req: AuthenticatedRequest,
     @Query('itineraryId') itineraryId?: string,
     @Query('tripId') tripId?: string,
   ): Promise<BaseResponse<any>> {
@@ -62,7 +58,7 @@ export class ActivityController {
   @ApiOperation({ summary: 'Bulk create activities' })
   @Post('bulk')
   async bulkCreate(
-    @Req() req: RequestWithUser,
+    @Req() req: AuthenticatedRequest,
     @Body() dto: BulkCreateActivitiesDto,
   ): Promise<BaseResponse<any>> {
     const items = await this.service.bulkCreate(req.user.id, dto);
@@ -72,7 +68,7 @@ export class ActivityController {
   @ApiOperation({ summary: 'Update activity' })
   @Put(':id')
   async update(
-    @Req() req: RequestWithUser,
+    @Req() req: AuthenticatedRequest,
     @Param('id') id: string,
     @Body() dto: UpdateActivityDto,
   ): Promise<BaseResponse<any>> {
@@ -83,7 +79,7 @@ export class ActivityController {
   @ApiOperation({ summary: 'Delete activity' })
   @Delete(':id')
   async remove(
-    @Req() req: RequestWithUser,
+    @Req() req: AuthenticatedRequest,
     @Param('id') id: string,
   ): Promise<BaseResponse<any>> {
     await this.service.remove(req.user.id, id);

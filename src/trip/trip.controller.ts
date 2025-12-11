@@ -23,13 +23,9 @@ import { CreateTripDto } from './dto/create-trip.dto';
 import { UpdateTripDto } from './dto/update-trip.dto';
 import { BaseResponse } from '../shared/types/base-response.types';
 import { ResponseUtil } from '../shared/utils/response.util';
-import { Request } from 'express';
 import { TripListQueryDto } from './dto/trip-list-query.dto';
 import { AdminRoleGuard } from 'src/auth/guards/roles.guard';
-
-interface RequestWithUser extends Request {
-  user: { id: string };
-}
+import { AuthenticatedRequest } from 'src/auth/types/authenticated-request';
 
 @ApiTags('Trips')
 @ApiBearerAuth()
@@ -41,7 +37,7 @@ export class TripController {
   @ApiResponse({ status: 201, description: 'Trip created successfully' })
   @Post()
   async create(
-    @Req() req: RequestWithUser,
+    @Req() req: AuthenticatedRequest,
     @Body() dto: CreateTripDto,
   ): Promise<BaseResponse<any>> {
     const created = await this.tripService.create(req.user.id, dto);
@@ -52,7 +48,7 @@ export class TripController {
   @ApiResponse({ status: 200, description: 'Trips retrieved successfully' })
   @Get()
   async list(
-    @Req() req: RequestWithUser,
+    @Req() req: AuthenticatedRequest,
     @Query() query: TripListQueryDto,
   ): Promise<BaseResponse<any>> {
     const result = await this.tripService.listForUser(
@@ -75,7 +71,7 @@ export class TripController {
   @ApiNotFoundResponse({ description: 'Trip not found' })
   @Get(':id')
   async getOne(
-    @Req() req: RequestWithUser,
+    @Req() req: AuthenticatedRequest,
     @Param('id') id: string,
   ): Promise<BaseResponse<any>> {
     const trip = await this.tripService.findOneForUser(id, req.user.id);
@@ -86,7 +82,7 @@ export class TripController {
   @ApiResponse({ status: 200, description: 'Trip updated successfully' })
   @Put(':id')
   async update(
-    @Req() req: RequestWithUser,
+    @Req() req: AuthenticatedRequest,
     @Param('id') id: string,
     @Body() dto: UpdateTripDto,
   ): Promise<BaseResponse<any>> {
@@ -98,7 +94,7 @@ export class TripController {
   @ApiResponse({ status: 200, description: 'Trip deleted successfully' })
   @Delete(':id')
   async remove(
-    @Req() req: RequestWithUser,
+    @Req() req: AuthenticatedRequest,
     @Param('id') id: string,
   ): Promise<BaseResponse<any>> {
     await this.tripService.removeForUser(id, req.user.id);

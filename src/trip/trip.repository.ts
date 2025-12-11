@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Brackets, Repository } from 'typeorm';
 import { TripEntity } from '../schemas/trip.entity';
 import { TripStatus } from './enum/trip-enum';
 
@@ -47,7 +47,9 @@ export class TripRepository implements ITripRepository {
   ) {}
 
   async findById(id: string): Promise<TripEntity | null> {
-    const qb = this.repo.createQueryBuilder('trip');
+    const qb = this.repo
+      .createQueryBuilder('trip')
+      .leftJoinAndSelect('trip.primaryDestination', 'primaryDestination');
     return qb
       .where('trip.id = :id', { id })
       .leftJoinAndSelect('trip.user', 'user')
@@ -59,15 +61,27 @@ export class TripRepository implements ITripRepository {
     id: string,
     userId: string,
   ): Promise<TripEntity | null> {
-    return this.repo.findOne({
-      where: { id, userId },
-      relations: [
-        'images',
-        'itinerary',
-        'itinerary.activities',
-        'budgetTracking',
-      ],
-    });
+    const qb = this.repo
+      .createQueryBuilder('trip')
+      .leftJoinAndSelect('trip.primaryDestination', 'primaryDestination')
+      .leftJoinAndSelect('trip.images', 'images')
+      .leftJoinAndSelect('trip.itinerary', 'itinerary')
+      .leftJoinAndSelect('itinerary.activities', 'activities')
+      .leftJoinAndSelect('trip.budgetTracking', 'budgetTracking')
+      .leftJoinAndSelect('trip.members', 'members')
+      .where('trip.id = :id', { id })
+      .andWhere(
+        new Brackets((sqb) =>
+          sqb
+            .where('trip.userId = :userId', { userId })
+            .orWhere('members.userId = :userId', { userId }),
+        ),
+      )
+      .orderBy('itinerary.dayNumber', 'ASC')
+      .addOrderBy('activities.orderIndex', 'ASC')
+      .addOrderBy('activities.time', 'ASC');
+
+    return qb.getOne();
   }
 
   async createTrip(data: Partial<TripEntity>): Promise<TripEntity> {
@@ -98,42 +112,38 @@ export class TripRepository implements ITripRepository {
       sortOrder?: 'ASC' | 'DESC';
     },
   ): Promise<{ items: TripEntity[]; total: number }> {
-    const qb = this.repo
+    const baseQb = this.repo
       .createQueryBuilder('trip')
-      // Only join the thumbnail image to avoid loading all images
-      .leftJoinAndSelect(
-        'trip.images',
-        'images',
-        'images.isThumbnail = :isThumb',
-        { isThumb: true },
-      )
-      .where('trip.userId = :userId', { userId });
+      .leftJoin('trip.members', 'members')
+      .where('trip.userId = :userId OR members.userId = :userId', {
+        userId,
+      });
 
     if (options.search) {
-      qb.andWhere('(trip.title ILIKE :q OR trip.description ILIKE :q)', {
+      baseQb.andWhere('(trip.title ILIKE :q OR trip.description ILIKE :q)', {
         q: `%${options.search}%`,
       });
     }
     if (options.status) {
-      qb.andWhere('trip.status = :status', { status: options.status });
+      baseQb.andWhere('trip.status = :status', { status: options.status });
     }
     if (options.startDateFrom) {
-      qb.andWhere('trip.startDate >= :startDateFrom', {
+      baseQb.andWhere('trip.startDate >= :startDateFrom', {
         startDateFrom: options.startDateFrom,
       });
     }
     if (options.startDateTo) {
-      qb.andWhere('trip.startDate <= :startDateTo', {
+      baseQb.andWhere('trip.startDate <= :startDateTo', {
         startDateTo: options.startDateTo,
       });
     }
     if (options.endDateFrom) {
-      qb.andWhere('trip.endDate >= :endDateFrom', {
+      baseQb.andWhere('trip.endDate >= :endDateFrom', {
         endDateFrom: options.endDateFrom,
       });
     }
     if (options.endDateTo) {
-      qb.andWhere('trip.endDate <= :endDateTo', {
+      baseQb.andWhere('trip.endDate <= :endDateTo', {
         endDateTo: options.endDateTo,
       });
     }
@@ -147,12 +157,59 @@ export class TripRepository implements ITripRepository {
     };
     const orderField = options.sortBy ? allowed[options.sortBy] : undefined;
 
-    const [items, total] = await qb
-      .orderBy(orderField ?? 'trip.createdAt', options.sortOrder)
+    // First query: get paginated trip ids
+    const idsQb = baseQb.clone().select('trip.id', 'id').distinct(true);
 
+    // Ensure ORDER BY fields are present in select list for DISTINCT
+    const primaryOrder = orderField ?? 'trip.createdAt';
+    idsQb.addSelect(primaryOrder, 'order_value');
+
+    idsQb
+      .orderBy(primaryOrder, options.sortOrder)
+      .addOrderBy('trip.id', 'ASC')
       .skip(options.skip)
-      .take(options.take)
-      .getManyAndCount();
+      .take(options.take);
+    const idRows = await idsQb.getRawMany<{ id: string }>();
+    const ids = idRows.map((r) => r.id);
+
+    // Count separately to avoid DISTINCT ON with json fields
+    const countRow = await baseQb
+      .clone()
+      .select('COUNT(DISTINCT trip.id)', 'cnt')
+      .getRawOne<{ cnt: string }>();
+    const total = Number(countRow?.cnt ?? 0);
+
+    if (ids.length === 0) return { items: [], total };
+
+    // Second query: fetch full rows for the page
+    const dataQb = this.repo
+      .createQueryBuilder('trip')
+      .select([
+        'trip.id',
+        'trip.title',
+        'trip.description',
+        'trip.startDate',
+        'trip.endDate',
+        'trip.status',
+        'trip.budget',
+        'trip.currency',
+        'trip.isPublic',
+        'trip.enableCostTracking',
+        'trip.createdAt',
+        'trip.updatedAt',
+      ])
+      .leftJoinAndSelect('trip.primaryDestination', 'primaryDestination')
+      .leftJoinAndSelect(
+        'trip.images',
+        'images',
+        'images.isThumbnail = :isThumb',
+        { isThumb: true },
+      )
+      .where('trip.id IN (:...ids)', { ids })
+      .orderBy(orderField ?? 'trip.createdAt', options.sortOrder)
+      .addOrderBy('trip.id', 'ASC');
+
+    const items = await dataQb.getMany();
 
     return { items, total };
   }
@@ -171,16 +228,33 @@ export class TripRepository implements ITripRepository {
   }): Promise<{ items: TripEntity[]; total: number }> {
     const qb = this.repo
       .createQueryBuilder('trip')
-      // Only join the thumbnail image to avoid loading all images
+      // Only select essential admin fields (no itinerary, budget tracking, members)
+      .select([
+        'trip.id',
+        'trip.title',
+        'trip.description',
+        'trip.startDate',
+        'trip.endDate',
+        'trip.status',
+        'trip.budget',
+        'trip.currency',
+        'trip.isPublic',
+        'trip.enableCostTracking',
+        'trip.userId',
+        'trip.createdAt',
+        'trip.updatedAt',
+      ])
+      .leftJoinAndSelect('trip.primaryDestination', 'primaryDestination')
+      // Only select thumbnail image
       .leftJoinAndSelect(
         'trip.images',
         'images',
         'images.isThumbnail = :isThumb',
         { isThumb: true },
       )
-      // Join user to expose first/last name for admin listing
+      // Join user for owner info
       .leftJoin('trip.user', 'user')
-      .addSelect(['user.firstName', 'user.lastName']);
+      .addSelect(['user.firstName', 'user.lastName', 'user.email']);
 
     if (options.search) {
       qb.where('(trip.title ILIKE :q OR trip.description ILIKE :q)', {

@@ -3,8 +3,10 @@ import {
   IsString,
   IsUrl,
   MaxLength,
+  MinLength,
   IsEmail,
   IsIn,
+  Matches,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -42,7 +44,11 @@ export class OptionalUserNameDto {
   })
   @IsOptional()
   @IsString({ message: 'First name must be a string' })
+  @MinLength(2, { message: 'First name must be at least 2 characters' })
   @MaxLength(50, { message: 'First name must not exceed 50 characters' })
+  @Matches(/^[a-zA-ZÀ-ỹ\s]+$/, {
+    message: 'First name can only contain letters and spaces',
+  })
   firstName?: string;
 
   @ApiPropertyOptional({
@@ -52,7 +58,11 @@ export class OptionalUserNameDto {
   })
   @IsOptional()
   @IsString({ message: 'Last name must be a string' })
+  @MinLength(2, { message: 'Last name must be at least 2 characters' })
   @MaxLength(50, { message: 'Last name must not exceed 50 characters' })
+  @Matches(/^[a-zA-ZÀ-ỹ\s]+$/, {
+    message: 'Last name can only contain letters and spaces',
+  })
   lastName?: string;
 }
 
@@ -96,6 +106,46 @@ export class UserLocationDto {
       'Preferred language must be one of: en, vi, zh, ja, ko, th, fr, de, es',
   })
   preferredLanguage?: string;
+
+  @ApiPropertyOptional({
+    description: 'User preferred currency for budgets and expenses',
+    example: 'VND',
+    enum: [
+      'VND',
+      'USD',
+      'EUR',
+      'GBP',
+      'JPY',
+      'THB',
+      'SGD',
+      'AUD',
+      'CAD',
+      'CNY',
+      'KRW',
+    ],
+  })
+  @IsOptional()
+  @IsString({ message: 'Preferred currency must be a string' })
+  @IsIn(
+    [
+      'VND',
+      'USD',
+      'EUR',
+      'GBP',
+      'JPY',
+      'THB',
+      'SGD',
+      'AUD',
+      'CAD',
+      'CNY',
+      'KRW',
+    ],
+    {
+      message:
+        'Preferred currency must be one of: VND, USD, EUR, GBP, JPY, THB, SGD, AUD, CAD, CNY, KRW',
+    },
+  )
+  preferredCurrency?: string;
 }
 
 /**
@@ -125,4 +175,28 @@ export class UserProfileDto extends OptionalUserNameDto {
   @IsString({ message: 'Avatar URL must be a string' })
   @IsUrl({}, { message: 'Avatar URL must be a valid URL' })
   avatarUrl?: string;
+
+  @ApiPropertyOptional({
+    description: 'User preferred language for the application interface',
+    example: 'vi',
+  })
+  @IsOptional()
+  @IsString({ message: 'Preferred language must be a string' })
+  preferredLanguage?: string;
+
+  @ApiPropertyOptional({
+    description: 'User preferred currency for budgets and expenses',
+    example: 'VND',
+  })
+  @IsOptional()
+  @IsString({ message: 'Preferred currency must be a string' })
+  preferredCurrency?: string;
+
+  @ApiPropertyOptional({
+    description: 'User home country',
+    example: 'Vietnam',
+  })
+  @IsOptional()
+  @IsString({ message: 'Home country must be a string' })
+  homeCountry?: string;
 }

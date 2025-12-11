@@ -61,14 +61,6 @@ export class CreateItineraryDto {
   @Min(0)
   actualCost?: number;
 
-  @ApiPropertyOptional({
-    description: 'ISO currency code (3 letters)',
-    default: 'USD',
-  })
-  @IsOptional()
-  @Matches(/^[A-Z]{3}$/)
-  costCurrency?: string;
-
   @ApiPropertyOptional({ type: Object })
   @IsOptional()
   costBreakdown?: Record<string, number>;

@@ -18,6 +18,7 @@ import { RefreshTokenEntity } from './refresh-token.entity';
 @Entity('users')
 @Index(['homeCountry'])
 @Index(['preferredLanguage'])
+@Index(['preferredCurrency'])
 export class UserEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -50,6 +51,14 @@ export class UserEntity {
     default: 'en',
   })
   preferredLanguage?: string;
+
+  @Column({
+    name: 'preferred_currency',
+    length: 3,
+    nullable: true,
+    default: 'VND',
+  })
+  preferredCurrency?: string;
 
   @Column({
     type: 'enum',

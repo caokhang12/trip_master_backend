@@ -11,11 +11,7 @@ import { PreferencesMergerService } from './preferences-merger.service';
 import { UpdateUserPreferencesDto } from './dto/update-user-preferences.dto';
 import { ResponseUtil } from 'src/shared/utils/response.util';
 import { BaseResponse } from 'src/shared/types/base-response.types';
-import { Request } from 'express';
-
-interface RequestWithUser extends Request {
-  user: { id: string };
-}
+import { AuthenticatedRequest } from 'src/auth/types/authenticated-request';
 
 @ApiTags('Preferences')
 @ApiBearerAuth()
@@ -32,7 +28,7 @@ export class UserPreferencesController {
     description: 'Preferences retrieved successfully',
   })
   @Get()
-  async getMine(@Req() req: RequestWithUser): Promise<BaseResponse<any>> {
+  async getMine(@Req() req: AuthenticatedRequest): Promise<BaseResponse<any>> {
     const prefs = await this.preferencesService.getUserPreferences(req.user.id);
     return ResponseUtil.success(prefs ?? {});
   }
@@ -65,7 +61,7 @@ export class UserPreferencesController {
   })
   @Patch()
   async updateMine(
-    @Req() req: RequestWithUser,
+    @Req() req: AuthenticatedRequest,
     @Body() dto: UpdateUserPreferencesDto,
   ): Promise<BaseResponse<any>> {
     const updated = await this.preferencesService.upsertUserPreferences(

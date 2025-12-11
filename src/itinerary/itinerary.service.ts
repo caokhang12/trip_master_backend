@@ -38,7 +38,6 @@ export class ItineraryService {
       userModified: dto.userModified ?? false,
       estimatedCost: dto.estimatedCost ?? 0,
       actualCost: dto.actualCost,
-      costCurrency: dto.costCurrency ?? 'USD',
       costBreakdown: dto.costBreakdown,
     });
     return created;
@@ -94,7 +93,6 @@ export class ItineraryService {
       userModified: dto.userModified ?? existing.userModified,
       estimatedCost: dto.estimatedCost ?? existing.estimatedCost,
       actualCost: dto.actualCost ?? existing.actualCost,
-      costCurrency: dto.costCurrency ?? existing.costCurrency,
       costBreakdown: dto.costBreakdown ?? existing.costBreakdown,
     });
     const updated = await this.repo.findById(id);

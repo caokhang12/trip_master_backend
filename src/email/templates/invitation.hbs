@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{#if isVietnamese}}Lời mời cộng tác{{else}}Collaboration Invitation{{/if}}</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            line-height: 1.6; 
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .container { 
+            max-width: 600px; 
+            margin: 0 auto; 
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 2px solid #17a2b8;
+            margin-bottom: 30px;
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #17a2b8;
+        }
+        .content {
+            padding: 0 20px;
+        }
+        h1 {
+            color: #17a2b8;
+            text-align: center;
+            font-size: 28px;
+            margin-bottom: 20px;
+        }
+        .trip-info {
+            background-color: #f8f9fa;
+            border-left: 4px solid #17a2b8;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .trip-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #17a2b8;
+            margin-bottom: 10px;
+        }
+        .trip-details {
+            color: #666;
+            font-size: 14px;
+        }
+        .role-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .role-owner {
+            background-color: #ffc107;
+            color: #000;
+        }
+        .role-editor {
+            background-color: #28a745;
+            color: #fff;
+        }
+        .role-viewer {
+            background-color: #6c757d;
+            color: #fff;
+        }
+        .button { 
+            display: inline-block; 
+            padding: 15px 40px; 
+            background-color: #17a2b8; 
+            color: white !important; 
+            text-decoration: none; 
+            border-radius: 5px;
+            font-weight: bold;
+            text-align: center;
+            margin: 20px 0;
+            transition: background-color 0.3s;
+        }
+        .button:hover {
+            background-color: #138496;
+        }
+        .button-container {
+            text-align: center;
+            margin: 30px 0;
+        }
+        .permissions-list {
+            background-color: #e9ecef;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .permissions-list ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .permissions-list li {
+            margin: 5px 0;
+        }
+        .footer { 
+            text-align: center; 
+            margin-top: 40px; 
+            padding-top: 20px; 
+            border-top: 1px solid #dee2e6;
+            font-size: 12px; 
+            color: #6c757d;
+        }
+        .note {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 10px 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🌍 TripMaster</div>
+        </div>
+        
+        <div class="content">
+            {{#if isVietnamese}}
+                <h1>🎉 Lời mời cộng tác!</h1>
+                <p>Xin chào {{recipientName}},</p>
+                <p><strong>{{inviterName}}</strong> đã mời bạn cộng tác trên chuyến đi của họ:</p>
+            {{else}}
+                <h1>🎉 You're Invited to Collaborate!</h1>
+                <p>Hello {{recipientName}},</p>
+                <p><strong>{{inviterName}}</strong> has invited you to collaborate on their trip:</p>
+            {{/if}}
+
+            <div class="trip-info">
+                <div class="trip-title">📍 {{tripTitle}}</div>
+                {{#if tripDescription}}
+                    <div class="trip-details">{{tripDescription}}</div>
+                {{/if}}
+                {{#if tripDates}}
+                    <div class="trip-details">
+                        {{#if isVietnamese}}
+                            📅 Ngày: {{tripDates}}
+                        {{else}}
+                            📅 Dates: {{tripDates}}
+                        {{/if}}
+                    </div>
+                {{/if}}
+                <div>
+                    {{#if isVietnamese}}
+                        Vai trò của bạn: 
+                    {{else}}
+                        Your role: 
+                    {{/if}}
+                    {{#if (eq role "owner")}}
+                        <span class="role-badge role-owner">👑 {{#if isVietnamese}}Chủ sở hữu{{else}}Owner{{/if}}</span>
+                    {{else if (eq role "editor")}}
+                        <span class="role-badge role-editor">✏️ {{#if isVietnamese}}Biên tập viên{{else}}Editor{{/if}}</span>
+                    {{else}}
+                        <span class="role-badge role-viewer">👁️ {{#if isVietnamese}}Người xem{{else}}Viewer{{/if}}</span>
+                    {{/if}}
+                </div>
+            </div>
+
+            <div class="permissions-list">
+                {{#if isVietnamese}}
+                    <strong>Với vai trò này, bạn có thể:</strong>
+                {{else}}
+                    <strong>With this role, you can:</strong>
+                {{/if}}
+                <ul>
+                    {{#if (eq role "owner")}}
+                        {{#if isVietnamese}}
+                            <li>✅ Quản lý toàn bộ chuyến đi</li>
+                            <li>✅ Mời và xóa thành viên</li>
+                            <li>✅ Thay đổi quyền của thành viên</li>
+                            <li>✅ Chỉnh sửa mọi thông tin</li>
+                            <li>✅ Xóa chuyến đi</li>
+                        {{else}}
+                            <li>✅ Manage the entire trip</li>
+                            <li>✅ Invite and remove members</li>
+                            <li>✅ Change member permissions</li>
+                            <li>✅ Edit all information</li>
+                            <li>✅ Delete the trip</li>
+                        {{/if}}
+                    {{else if (eq role "editor")}}
+                        {{#if isVietnamese}}
+                            <li>✅ Xem toàn bộ chi tiết chuyến đi</li>
+                            <li>✅ Thêm và chỉnh sửa hành trình</li>
+                            <li>✅ Thêm và chỉnh sửa hoạt động</li>
+                            <li>✅ Cập nhật ngân sách</li>
+                            <li>✅ Thêm hình ảnh</li>
+                            <li>❌ Không thể xóa chuyến đi hoặc quản lý thành viên</li>
+                        {{else}}
+                            <li>✅ View all trip details</li>
+                            <li>✅ Add and edit itineraries</li>
+                            <li>✅ Add and edit activities</li>
+                            <li>✅ Update budget</li>
+                            <li>✅ Add images</li>
+                            <li>❌ Cannot delete trip or manage members</li>
+                        {{/if}}
+                    {{else}}
+                        {{#if isVietnamese}}
+                            <li>✅ Xem toàn bộ chi tiết chuyến đi</li>
+                            <li>✅ Xem hành trình và hoạt động</li>
+                            <li>✅ Xem ngân sách</li>
+                            <li>❌ Không thể chỉnh sửa hoặc xóa</li>
+                        {{else}}
+                            <li>✅ View all trip details</li>
+                            <li>✅ View itineraries and activities</li>
+                            <li>✅ View budget</li>
+                            <li>❌ Cannot edit or delete</li>
+                        {{/if}}
+                    {{/if}}
+                </ul>
+            </div>
+
+            <div class="button-container">
+                <a href="{{invitationUrl}}" class="button">
+                    {{#if isVietnamese}}
+                        🎯 Chấp nhận lời mời
+                    {{else}}
+                        🎯 Accept Invitation
+                    {{/if}}
+                </a>
+            </div>
+
+            {{#if expiresAt}}
+                <div class="note">
+                    {{#if isVietnamese}}
+                        ⚠️ <strong>Lưu ý:</strong> Lời mời này sẽ hết hạn vào {{expiresAt}}
+                    {{else}}
+                        ⚠️ <strong>Note:</strong> This invitation will expire on {{expiresAt}}
+                    {{/if}}
+                </div>
+            {{/if}}
+
+            {{#if isVietnamese}}
+                <p>Nếu bạn không mong đợi email này, bạn có thể bỏ qua nó một cách an toàn.</p>
+            {{else}}
+                <p>If you weren't expecting this email, you can safely ignore it.</p>
+            {{/if}}
+        </div>
+
+        <div class="footer">
+            {{#if isVietnamese}}
+                <p>Email này được gửi từ <strong>TripMaster</strong></p>
+                <p>Nền tảng lập kế hoạch chuyến đi thông minh</p>
+            {{else}}
+                <p>This email was sent from <strong>TripMaster</strong></p>
+                <p>Smart Trip Planning Platform</p>
+            {{/if}}
+        </div>
+    </div>
+</body>
+</html>

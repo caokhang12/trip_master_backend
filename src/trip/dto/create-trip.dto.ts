@@ -21,6 +21,34 @@ import { EndAfterStartDateConstraint } from '../validators/end-after-start-date.
 import { CreateActivityDto } from 'src/activity/dto/create-activity.dto';
 import { CreateItineraryDto } from 'src/itinerary/dto/create-itinerary.dto';
 
+export class DestinationLocationDto {
+  @ApiProperty()
+  @IsString()
+  placeId: string;
+
+  @ApiProperty()
+  @IsString()
+  name: string;
+
+  @ApiProperty()
+  @IsString()
+  address: string;
+
+  @ApiProperty()
+  @IsNumber()
+  lat: number;
+
+  @ApiProperty()
+  @IsNumber()
+  lng: number;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  types?: string[];
+}
+
 export class CreateActivityInput extends OmitType(CreateActivityDto, [
   'itineraryId',
   'destinationIds',
@@ -33,7 +61,6 @@ export class CreateItineraryInput extends OmitType(CreateItineraryDto, [
   'userModified',
   'estimatedCost',
   'actualCost',
-  'costCurrency',
   'costBreakdown',
 ] as const) {
   @ApiPropertyOptional({ type: [CreateActivityInput] })
@@ -69,15 +96,8 @@ export class CreateTripDto {
   @IsOptional()
   @IsObject()
   @ValidateNested()
-  @Type(() => Object)
-  destinationLocation?: {
-    placeId: string;
-    name: string;
-    address: string;
-    lat: number;
-    lng: number;
-    types?: string[];
-  };
+  @Type(() => DestinationLocationDto)
+  destinationLocation?: DestinationLocationDto;
 
   @ApiPropertyOptional({
     description: 'Existing destination id (UUID) to link as primaryDestination',

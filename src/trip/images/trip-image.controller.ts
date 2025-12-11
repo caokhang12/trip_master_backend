@@ -18,11 +18,7 @@ import {
   SetThumbnailDto,
 } from './dto/confirm-images.dto';
 import { ResponseUtil } from '../../shared/utils/response.util';
-import { Request } from 'express';
-
-interface RequestWithUser extends Request {
-  user: { id: string };
-}
+import { AuthenticatedRequest } from 'src/auth/types/authenticated-request';
 
 @ApiTags('Trip Images')
 @ApiBearerAuth()
@@ -33,7 +29,7 @@ export class TripImageController {
   @Post('sign')
   @ApiOperation({ summary: 'Xin chữ ký upload trực tiếp Cloudinary' })
   async sign(
-    @Req() req: RequestWithUser,
+    @Req() req: AuthenticatedRequest,
     @Param('tripId') tripId: string,
     @Body() dto: SignTripImagesRequestDto,
   ) {
@@ -44,7 +40,7 @@ export class TripImageController {
   @Post('confirm')
   @ApiOperation({ summary: 'Xác nhận và lưu các ảnh đã upload' })
   async confirm(
-    @Req() req: RequestWithUser,
+    @Req() req: AuthenticatedRequest,
     @Param('tripId') tripId: string,
     @Body() dto: ConfirmTripImagesDto,
   ) {
@@ -55,7 +51,7 @@ export class TripImageController {
   @Patch('reorder')
   @ApiOperation({ summary: 'Sắp xếp lại thứ tự ảnh' })
   async reorder(
-    @Req() req: RequestWithUser,
+    @Req() req: AuthenticatedRequest,
     @Param('tripId') tripId: string,
     @Body() dto: ReorderTripImagesDto,
   ) {
@@ -66,7 +62,7 @@ export class TripImageController {
   @Patch('thumbnail')
   @ApiOperation({ summary: 'Đặt thumbnail cho trip' })
   async setThumbnail(
-    @Req() req: RequestWithUser,
+    @Req() req: AuthenticatedRequest,
     @Param('tripId') tripId: string,
     @Body() dto: SetThumbnailDto,
   ) {
@@ -77,7 +73,7 @@ export class TripImageController {
   @Post('diff')
   @ApiOperation({ summary: 'Đồng bộ danh sách ảnh (xóa phần dư)' })
   async diff(
-    @Req() req: RequestWithUser,
+    @Req() req: AuthenticatedRequest,
     @Param('tripId') tripId: string,
     @Body() dto: DiffTripImagesDto,
   ) {
@@ -88,7 +84,7 @@ export class TripImageController {
   @Delete(':publicId')
   @ApiOperation({ summary: 'Xóa 1 ảnh đơn lẻ' })
   async deleteSingle(
-    @Req() req: RequestWithUser,
+    @Req() req: AuthenticatedRequest,
     @Param('tripId') tripId: string,
     @Param('publicId') publicId: string,
   ) {
@@ -99,7 +95,10 @@ export class TripImageController {
 
   @Get('gallery')
   @ApiOperation({ summary: 'Lấy gallery hiện tại' })
-  async gallery(@Req() req: RequestWithUser, @Param('tripId') tripId: string) {
+  async gallery(
+    @Req() req: AuthenticatedRequest,
+    @Param('tripId') tripId: string,
+  ) {
     const gallery = await this.svc.buildGallery(tripId);
     return ResponseUtil.success(gallery);
   }

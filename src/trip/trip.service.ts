@@ -2,15 +2,22 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { TripEntity } from '../schemas/trip.entity';
 import { CreateTripDto } from './dto/create-trip.dto';
 import { UpdateTripDto } from './dto/update-trip.dto';
-import { PaginationHelper, Paged } from '../shared/types/pagination';
+import { PaginationHelper } from '../shared/types/pagination';
 import { TripStatus } from './enum/trip-enum';
 import { TripRepository } from './trip.repository';
-import { TripListResponseDto } from 'src/trip/dto/trip-response.dto';
+import {
+  TripListResponseDto,
+  AdminTripListResponseDto,
+  TripListItemDto,
+  AdminTripListItemDto,
+} from 'src/trip/dto/trip-response.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { DestinationEntity } from 'src/schemas/destination.entity';
 import { ItineraryRepository } from 'src/itinerary/itinerary.repository';
 import { ActivityRepository } from 'src/activity/activity.repository';
+import { TripMemberEntity, MemberRole } from 'src/schemas/trip-member.entity';
+import { DestinationService } from 'src/destinations/destination.service';
 
 @Injectable()
 export class TripService {
@@ -18,40 +25,140 @@ export class TripService {
     private readonly tripRepo: TripRepository,
     @InjectRepository(DestinationEntity)
     private readonly destinationRepo: Repository<DestinationEntity>,
+    @InjectRepository(TripMemberEntity)
+    private readonly tripMemberRepo: Repository<TripMemberEntity>,
     private readonly itineraryRepo: ItineraryRepository,
     private readonly activityRepo: ActivityRepository,
+    private readonly destinationService: DestinationService,
   ) {}
 
-  async create(userId: string, dto: CreateTripDto): Promise<TripEntity> {
-    // Attempt to resolve a primary destination if frontend provided a placeId
-    let primaryDestinationId: string | undefined = undefined;
-    // If client explicitly provided an existing destination id, use it
-    if (dto.primaryDestinationId) {
-      primaryDestinationId = dto.primaryDestinationId;
-    } else if (dto.destinationLocation?.placeId) {
-      const found = await this.destinationRepo.findOne({
-        where: { placeId: dto.destinationLocation.placeId },
-      });
-      if (found) {
-        primaryDestinationId = found.id;
-      } else {
-        // Create new destination from location data
-        // Parse country from address (simple heuristic - last part after comma)
-        const addressParts = dto.destinationLocation.address.split(',');
-        const country =
-          addressParts[addressParts.length - 1]?.trim() || 'Unknown';
+  /**
+   * Map TripEntity to TripListItemDto (lightweight for list responses)
+   */
+  private parseDestinationCoordinates(
+    coordinates: any,
+  ): { lat: number; lng: number } | undefined {
+    if (!coordinates) return undefined;
 
-        const newDest = this.destinationRepo.create({
-          placeId: dto.destinationLocation.placeId,
-          name: dto.destinationLocation.name,
-          country: country,
-          countryCode: 'XX', // Default - should be enhanced with geocoding
-          city: dto.destinationLocation.name,
-          coordinates: `POINT(${dto.destinationLocation.lng} ${dto.destinationLocation.lat})`,
-        });
-        const savedDest = await this.destinationRepo.save(newDest);
-        primaryDestinationId = savedDest.id;
+    if (typeof coordinates === 'string') {
+      const coordMatch = coordinates.match(/POINT\(([^ ]+) ([^ ]+)\)/);
+      if (coordMatch) {
+        return {
+          lng: parseFloat(coordMatch[1]),
+          lat: parseFloat(coordMatch[2]),
+        };
       }
+    }
+
+    // Handle PostGIS object or GeoJSON { type: 'Point', coordinates: [lng, lat] }
+    if (
+      typeof coordinates === 'object' &&
+      Array.isArray(coordinates.coordinates) &&
+      coordinates.coordinates.length >= 2
+    ) {
+      return {
+        lng: Number(coordinates.coordinates[0]),
+        lat: Number(coordinates.coordinates[1]),
+      };
+    }
+
+    // Fallback if driver returns { x, y }
+    if (
+      typeof coordinates === 'object' &&
+      typeof coordinates.x === 'number' &&
+      typeof coordinates.y === 'number'
+    ) {
+      return { lng: coordinates.x, lat: coordinates.y };
+    }
+
+    return undefined;
+  }
+
+  private mapToListItemDto(trip: TripEntity): TripListItemDto {
+    const thumbnailUrl =
+      trip.images?.find((img) => img.isThumbnail)?.url || undefined;
+
+    // Map primaryDestination to structured destinationLocation
+    let destinationLocation:
+      | {
+          placeId: string;
+          name: string;
+          province?: string;
+          country: string;
+          city?: string;
+          lat: number;
+          lng: number;
+        }
+      | undefined = undefined;
+
+    if (trip.primaryDestination) {
+      const parsed = this.parseDestinationCoordinates(
+        trip.primaryDestination.coordinates,
+      );
+
+      destinationLocation = {
+        placeId: trip.primaryDestination.placeId || '',
+        name: trip.primaryDestination.name,
+        province: trip.primaryDestination.province,
+        country: trip.primaryDestination.country,
+        city: trip.primaryDestination.city,
+        lat: parsed?.lat ?? 0,
+        lng: parsed?.lng ?? 0,
+      };
+    }
+
+    return {
+      id: trip.id,
+      title: trip.title,
+      description: trip.description,
+      timezone: trip.timezone,
+      startDate: trip.startDate,
+      endDate: trip.endDate,
+      location: trip.primaryDestination?.name,
+      destinationLocation,
+      status: trip.status,
+      budget: trip.budget,
+      currency: trip.currency,
+      isPublic: trip.isPublic,
+      enableCostTracking: trip.enableCostTracking,
+      thumbnailUrl,
+      createdAt: trip.createdAt,
+      updatedAt: trip.updatedAt,
+    };
+  }
+
+  /**
+   * Map TripEntity to AdminTripListItemDto (with owner info)
+   */
+  private mapToAdminListItemDto(trip: TripEntity): AdminTripListItemDto {
+    const dto = this.mapToListItemDto(trip);
+    return {
+      ...dto,
+      userId: trip.userId,
+      ownerFirstName: trip.user?.firstName,
+      ownerLastName: trip.user?.lastName,
+    };
+  }
+
+  async create(userId: string, dto: CreateTripDto): Promise<TripEntity> {
+    // Resolve or reuse primary destination
+    let primaryDestinationId: string | undefined = undefined;
+    if (dto.primaryDestinationId) {
+      const exists = await this.destinationRepo.findOne({
+        where: { id: dto.primaryDestinationId },
+      });
+      if (!exists) throw new NotFoundException('Primary destination not found');
+      primaryDestinationId = dto.primaryDestinationId;
+    } else if (dto.destinationLocation) {
+      const { placeId, name, lat, lng } = dto.destinationLocation;
+      const resolved = await this.destinationService.resolve({
+        placeId,
+        name,
+        lat,
+        lng,
+        createIfNotFound: true,
+      });
+      primaryDestinationId = resolved?.id;
     }
 
     const entity = await this.tripRepo.createTrip({
@@ -67,6 +174,14 @@ export class TripService {
       status: dto.status ?? TripStatus.PLANNING,
       isPublic: dto.isPublic ?? false,
       enableCostTracking: dto.enableCostTracking ?? true,
+    });
+
+    // Automatically add trip creator as OWNER member
+    await this.tripMemberRepo.save({
+      trip: { id: entity.id },
+      user: { id: userId },
+      role: MemberRole.OWNER,
+      joinedAt: new Date(),
     });
 
     // Create itineraries and activities if provided
@@ -130,11 +245,38 @@ export class TripService {
   ): Promise<TripEntity> {
     const existing = await this.findOneForUser(id, userId);
 
+    let primaryDestinationId =
+      dto.primaryDestinationId ?? existing.primaryDestinationId;
+    if (dto.destinationLocation) {
+      const { placeId, name, lat, lng } = dto.destinationLocation;
+      const resolved = await this.destinationService.resolve({
+        placeId,
+        name,
+        lat,
+        lng,
+        createIfNotFound: true,
+      });
+      primaryDestinationId = resolved?.id ?? primaryDestinationId;
+    }
+    if (dto.primaryDestinationId) {
+      const exists = await this.destinationRepo.findOne({
+        where: { id: dto.primaryDestinationId },
+      });
+      if (!exists) throw new NotFoundException('Primary destination not found');
+    }
+
     const patched: Partial<TripEntity> = {
-      ...existing,
-      ...dto,
+      title: dto.title ?? existing.title,
+      description: dto.description ?? existing.description,
+      timezone: dto.timezone ?? existing.timezone,
+      primaryDestinationId,
       startDate: dto.startDate ? new Date(dto.startDate) : existing.startDate,
       endDate: dto.endDate ? new Date(dto.endDate) : existing.endDate,
+      budget: dto.budget ?? existing.budget,
+      currency: dto.currency ?? existing.currency,
+      status: dto.status ?? existing.status,
+      isPublic: dto.isPublic ?? existing.isPublic,
+      enableCostTracking: dto.enableCostTracking ?? existing.enableCostTracking,
     };
     await this.tripRepo.updateTrip(id, patched);
     return (await this.tripRepo.findById(id))!;
@@ -143,11 +285,38 @@ export class TripService {
   async updateAdmin(id: string, dto: UpdateTripDto): Promise<TripEntity> {
     const existing = await this.findOneAdmin(id);
 
+    let primaryDestinationId =
+      dto.primaryDestinationId ?? existing.primaryDestinationId;
+    if (dto.destinationLocation) {
+      const { placeId, name, lat, lng } = dto.destinationLocation;
+      const resolved = await this.destinationService.resolve({
+        placeId,
+        name,
+        lat,
+        lng,
+        createIfNotFound: true,
+      });
+      primaryDestinationId = resolved?.id ?? primaryDestinationId;
+    }
+    if (dto.primaryDestinationId) {
+      const exists = await this.destinationRepo.findOne({
+        where: { id: dto.primaryDestinationId },
+      });
+      if (!exists) throw new NotFoundException('Primary destination not found');
+    }
+
     const patched: Partial<TripEntity> = {
-      ...existing,
-      ...dto,
+      title: dto.title ?? existing.title,
+      description: dto.description ?? existing.description,
+      timezone: dto.timezone ?? existing.timezone,
+      primaryDestinationId,
       startDate: dto.startDate ? new Date(dto.startDate) : existing.startDate,
       endDate: dto.endDate ? new Date(dto.endDate) : existing.endDate,
+      budget: dto.budget ?? existing.budget,
+      currency: dto.currency ?? existing.currency,
+      status: dto.status ?? existing.status,
+      isPublic: dto.isPublic ?? existing.isPublic,
+      enableCostTracking: dto.enableCostTracking ?? existing.enableCostTracking,
     };
     await this.tripRepo.updateTrip(id, patched);
     return (await this.tripRepo.findById(id))!;
@@ -175,7 +344,7 @@ export class TripService {
     endDateTo?: string,
     sortBy?: 'createdAt' | 'startDate' | 'endDate' | 'title' | 'status',
     sortOrder?: 'ASC' | 'DESC',
-  ): Promise<Paged<TripEntity>> {
+  ): Promise<TripListResponseDto> {
     const {
       skip,
       limit: take,
@@ -193,7 +362,14 @@ export class TripService {
       sortBy,
       sortOrder,
     });
-    return PaginationHelper.createResult(items, total, normalizedPage, take);
+    // Map entities to DTOs
+    const mappedItems = items.map((trip) => this.mapToListItemDto(trip));
+    return PaginationHelper.createResult(
+      mappedItems,
+      total,
+      normalizedPage,
+      take,
+    );
   }
 
   async listAll(
@@ -207,7 +383,7 @@ export class TripService {
     endDateTo?: string,
     sortBy?: 'createdAt' | 'startDate' | 'endDate' | 'title' | 'status',
     sortOrder: 'ASC' | 'DESC' = 'DESC',
-  ): Promise<TripListResponseDto> {
+  ): Promise<AdminTripListResponseDto> {
     const {
       skip,
       limit: take,
@@ -225,6 +401,13 @@ export class TripService {
       sortBy,
       sortOrder,
     });
-    return PaginationHelper.createResult(items, total, normalizedPage, take);
+    // Map entities to admin DTOs
+    const mappedItems = items.map((trip) => this.mapToAdminListItemDto(trip));
+    return PaginationHelper.createResult(
+      mappedItems,
+      total,
+      normalizedPage,
+      take,
+    );
   }
 }
