@@ -195,17 +195,17 @@ export class CreateCollaborationTables1765200000000
     // Drop enums (only if they exist)
     try {
       await queryRunner.query(`DROP TYPE IF EXISTS "activity_action_enum"`);
-    } catch (e) {
+    } catch {
       // Type might not exist
     }
     try {
       await queryRunner.query(`DROP TYPE IF EXISTS "invitation_status_enum"`);
-    } catch (e) {
+    } catch {
       // Type might not exist
     }
     try {
       await queryRunner.query(`DROP TYPE IF EXISTS "member_role_enum"`);
-    } catch (e) {
+    } catch {
       // Type might not exist
     }
 

@@ -70,17 +70,17 @@ export class CurrencyController {
     schema: {
       type: 'object',
       properties: {
-        result: { type: 'string', example: 'ERROR' },
+        result: { type: 'string', example: 'NG' },
         status: { type: 'number', example: 429 },
-        error: {
+        data: {
           type: 'object',
           properties: {
-            code: { type: 'string', example: 'RATE_LIMIT_EXCEEDED' },
             message: {
               type: 'string',
               example: 'Exchange rate API limit exceeded',
             },
-            retryAfter: { type: 'number', example: 3600 },
+            details: { type: 'array', items: { type: 'string' }, example: [] },
+            code: { type: 'string', example: 'RATE_LIMIT_EXCEEDED' },
           },
         },
       },
@@ -166,16 +166,17 @@ export class CurrencyController {
     schema: {
       type: 'object',
       properties: {
-        result: { type: 'string', example: 'ERROR' },
+        result: { type: 'string', example: 'NG' },
         status: { type: 'number', example: 400 },
-        error: {
+        data: {
           type: 'object',
           properties: {
-            code: { type: 'string', example: 'INVALID_CURRENCY' },
             message: {
               type: 'string',
               example: 'Exchange rate not available for ABC',
             },
+            details: { type: 'array', items: { type: 'string' }, example: [] },
+            code: { type: 'string', example: 'INVALID_CURRENCY' },
           },
         },
       },

@@ -112,7 +112,7 @@ export abstract class GoogleMapsBaseService {
    * Check API throttling limits
    */
   protected checkThrottle(userId?: string): void {
-    const allowed = this.throttleService.checkAndLog('google_maps', userId);
+    const allowed = this.throttleService.checkAndLog('google_places', userId);
     if (!allowed) {
       throw new HttpException(
         'Google Maps API quota exceeded. Please try again later.',

@@ -19,6 +19,7 @@ import { ActivityService } from './activity.service';
 import { CreateActivityDto } from './dto/create-activity.dto';
 import { UpdateActivityDto } from './dto/update-activity.dto';
 import { BulkCreateActivitiesDto } from './dto/bulk-create-activities.dto';
+import { BulkUpdateActivitiesDto } from './dto/bulk-update-activities.dto';
 import { BaseResponse } from 'src/shared/types/base-response.types';
 import { ResponseUtil } from 'src/shared/utils/response.util';
 import { AuthenticatedRequest } from 'src/auth/types/authenticated-request';
@@ -63,6 +64,16 @@ export class ActivityController {
   ): Promise<BaseResponse<any>> {
     const items = await this.service.bulkCreate(req.user.id, dto);
     return ResponseUtil.success(items);
+  }
+
+  @ApiOperation({ summary: 'Bulk update activities (reorder/move)' })
+  @Put('bulk')
+  async bulkUpdate(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: BulkUpdateActivitiesDto,
+  ): Promise<BaseResponse<any>> {
+    const result = await this.service.bulkUpdate(req.user.id, dto);
+    return ResponseUtil.success(result);
   }
 
   @ApiOperation({ summary: 'Update activity' })

@@ -8,6 +8,7 @@ import {
   Index,
   OneToMany,
 } from 'typeorm';
+import type { GeoPointInput } from 'src/shared/utils/geo-point.util';
 
 /**
  * Destination entity representing the destinations table in the database
@@ -42,7 +43,7 @@ export class DestinationEntity {
     spatialFeatureType: 'Point',
     srid: 4326,
   })
-  coordinates: string;
+  coordinates: GeoPointInput;
 
   @Column({ type: 'text', nullable: true })
   description?: string;

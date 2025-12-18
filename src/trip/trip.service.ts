@@ -12,12 +12,15 @@ import {
   AdminTripListItemDto,
 } from 'src/trip/dto/trip-response.dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { DestinationEntity } from 'src/schemas/destination.entity';
 import { ItineraryRepository } from 'src/itinerary/itinerary.repository';
 import { ActivityRepository } from 'src/activity/activity.repository';
 import { TripMemberEntity, MemberRole } from 'src/schemas/trip-member.entity';
 import { DestinationService } from 'src/destinations/destination.service';
+import { ItineraryEntity } from 'src/schemas/itinerary.entity';
+import { ActivityEntity } from 'src/schemas/activity.entity';
+import { GeoPointInput, parseGeoPoint } from 'src/shared/utils/geo-point.util';
 
 @Injectable()
 export class TripService {
@@ -30,48 +33,16 @@ export class TripService {
     private readonly itineraryRepo: ItineraryRepository,
     private readonly activityRepo: ActivityRepository,
     private readonly destinationService: DestinationService,
+    private readonly dataSource: DataSource,
   ) {}
 
   /**
    * Map TripEntity to TripListItemDto (lightweight for list responses)
    */
   private parseDestinationCoordinates(
-    coordinates: any,
+    coordinates: GeoPointInput | null | undefined,
   ): { lat: number; lng: number } | undefined {
-    if (!coordinates) return undefined;
-
-    if (typeof coordinates === 'string') {
-      const coordMatch = coordinates.match(/POINT\(([^ ]+) ([^ ]+)\)/);
-      if (coordMatch) {
-        return {
-          lng: parseFloat(coordMatch[1]),
-          lat: parseFloat(coordMatch[2]),
-        };
-      }
-    }
-
-    // Handle PostGIS object or GeoJSON { type: 'Point', coordinates: [lng, lat] }
-    if (
-      typeof coordinates === 'object' &&
-      Array.isArray(coordinates.coordinates) &&
-      coordinates.coordinates.length >= 2
-    ) {
-      return {
-        lng: Number(coordinates.coordinates[0]),
-        lat: Number(coordinates.coordinates[1]),
-      };
-    }
-
-    // Fallback if driver returns { x, y }
-    if (
-      typeof coordinates === 'object' &&
-      typeof coordinates.x === 'number' &&
-      typeof coordinates.y === 'number'
-    ) {
-      return { lng: coordinates.x, lat: coordinates.y };
-    }
-
-    return undefined;
+    return parseGeoPoint(coordinates);
   }
 
   private mapToListItemDto(trip: TripEntity): TripListItemDto {
@@ -161,69 +132,80 @@ export class TripService {
       primaryDestinationId = resolved?.id;
     }
 
-    const entity = await this.tripRepo.createTrip({
-      userId,
-      title: dto.title,
-      description: dto.description,
-      timezone: dto.timezone,
-      primaryDestinationId: primaryDestinationId,
-      startDate: dto.startDate ? new Date(dto.startDate) : undefined,
-      endDate: dto.endDate ? new Date(dto.endDate) : undefined,
-      budget: dto.budget,
-      currency: dto.currency ?? 'USD',
-      status: dto.status ?? TripStatus.PLANNING,
-      isPublic: dto.isPublic ?? false,
-      enableCostTracking: dto.enableCostTracking ?? true,
-    });
+    const createdTrip = await this.dataSource.transaction(async (manager) => {
+      const tripRepoTx = manager.getRepository(TripEntity);
+      const tripMemberRepoTx = manager.getRepository(TripMemberEntity);
+      const itineraryRepoTx = manager.getRepository(ItineraryEntity);
+      const activityRepoTx = manager.getRepository(ActivityEntity);
 
-    // Automatically add trip creator as OWNER member
-    await this.tripMemberRepo.save({
-      trip: { id: entity.id },
-      user: { id: userId },
-      role: MemberRole.OWNER,
-      joinedAt: new Date(),
-    });
+      const trip = tripRepoTx.create({
+        userId,
+        title: dto.title,
+        description: dto.description,
+        timezone: dto.timezone,
+        primaryDestinationId: primaryDestinationId,
+        startDate: dto.startDate ? new Date(dto.startDate) : undefined,
+        endDate: dto.endDate ? new Date(dto.endDate) : undefined,
+        budget: dto.budget,
+        currency: dto.currency ?? 'USD',
+        status: dto.status ?? TripStatus.PLANNING,
+        isPublic: dto.isPublic ?? false,
+        enableCostTracking: dto.enableCostTracking ?? true,
+      });
+      await tripRepoTx.save(trip);
 
-    // Create itineraries and activities if provided
-    if (
-      dto.itineraries &&
-      Array.isArray(dto.itineraries) &&
-      dto.itineraries.length > 0
-    ) {
-      for (const itinInput of dto.itineraries) {
-        const itinerary = await this.itineraryRepo.create({
-          tripId: entity.id,
-          title: itinInput.title,
-          notes: itinInput.notes,
-          dayNumber: itinInput.dayNumber,
-          date: itinInput.date ? new Date(itinInput.date) : undefined,
-          aiGenerated: false,
-          userModified: false,
-        });
+      // Automatically add trip creator as OWNER member
+      await tripMemberRepoTx.save({
+        trip: { id: trip.id },
+        user: { id: userId },
+        role: MemberRole.OWNER,
+        joinedAt: new Date(),
+      });
 
-        // Create activities for this itinerary
-        if (
-          itinInput.activities &&
-          Array.isArray(itinInput.activities) &&
-          itinInput.activities.length > 0
-        ) {
-          for (const actInput of itinInput.activities) {
-            await this.activityRepo.create({
-              itineraryId: itinerary.id,
-              time: actInput.time,
-              title: actInput.title,
-              description: actInput.description,
-              duration: actInput.duration,
-              cost: actInput.cost,
-              type: actInput.type,
-              orderIndex: actInput.orderIndex ?? 0,
-            });
+      // Create itineraries and activities if provided
+      if (
+        dto.itineraries &&
+        Array.isArray(dto.itineraries) &&
+        dto.itineraries.length > 0
+      ) {
+        for (const itinInput of dto.itineraries) {
+          const itinerary = itineraryRepoTx.create({
+            tripId: trip.id,
+            title: itinInput.title,
+            notes: itinInput.notes,
+            dayNumber: itinInput.dayNumber,
+            date: itinInput.date ? new Date(itinInput.date) : undefined,
+            aiGenerated: false,
+            userModified: false,
+          });
+          await itineraryRepoTx.save(itinerary);
+
+          if (
+            itinInput.activities &&
+            Array.isArray(itinInput.activities) &&
+            itinInput.activities.length > 0
+          ) {
+            const activities = itinInput.activities.map((actInput) =>
+              activityRepoTx.create({
+                itineraryId: itinerary.id,
+                time: actInput.time,
+                title: actInput.title,
+                description: actInput.description,
+                duration: actInput.duration,
+                cost: actInput.cost,
+                type: actInput.type,
+                orderIndex: actInput.orderIndex ?? 0,
+              }),
+            );
+            await activityRepoTx.save(activities);
           }
         }
       }
-    }
 
-    return entity;
+      return trip;
+    });
+
+    return createdTrip;
   }
 
   async findOneForUser(id: string, userId: string): Promise<TripEntity> {
@@ -342,7 +324,13 @@ export class TripService {
     startDateTo?: string,
     endDateFrom?: string,
     endDateTo?: string,
-    sortBy?: 'createdAt' | 'startDate' | 'endDate' | 'title' | 'status',
+    sortBy?:
+      | 'createdAt'
+      | 'startDate'
+      | 'endDate'
+      | 'title'
+      | 'status'
+      | 'budget',
     sortOrder?: 'ASC' | 'DESC',
   ): Promise<TripListResponseDto> {
     const {
@@ -381,8 +369,14 @@ export class TripService {
     startDateTo?: string,
     endDateFrom?: string,
     endDateTo?: string,
-    sortBy?: 'createdAt' | 'startDate' | 'endDate' | 'title' | 'status',
-    sortOrder: 'ASC' | 'DESC' = 'DESC',
+    sortBy?:
+      | 'createdAt'
+      | 'startDate'
+      | 'endDate'
+      | 'title'
+      | 'status'
+      | 'budget',
+    sortOrder?: 'ASC' | 'DESC',
   ): Promise<AdminTripListResponseDto> {
     const {
       skip,

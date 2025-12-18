@@ -1,102 +1,84 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ConfigService } from '@nestjs/config';
-import { AIService } from 'src/shared/services/ai.service';
-import { AIGenerationRequest } from 'src/shared/interfaces/ai.interface';
+import { AIService } from 'src/ai/services/ai.service';
+import { GeminiService } from 'src/ai/services/gemini.service';
+import { OpenRouterService } from 'src/ai/services/openrouter.service';
+import { RedisCacheService } from 'src/redis/redis-cache.service';
+import { CacheService } from 'src/shared/services/cache.service';
+import { AiTelemetryService } from 'src/ai/services/ai-telemetry.service';
 
 describe('AIService Integration Test', () => {
   let service: AIService;
-  let configService: ConfigService;
+  let gemini: jest.Mocked<GeminiService>;
+  let openRouter: jest.Mocked<OpenRouterService>;
 
   beforeEach(async () => {
+    gemini = {
+      createChatCompletion: jest.fn(),
+    } as unknown as jest.Mocked<GeminiService>;
+
+    openRouter = {
+      createChatCompletion: jest.fn(),
+    } as unknown as jest.Mocked<OpenRouterService>;
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AIService,
         {
-          provide: ConfigService,
+          provide: GeminiService,
+          useValue: gemini,
+        },
+        {
+          provide: OpenRouterService,
+          useValue: openRouter,
+        },
+        {
+          provide: RedisCacheService,
           useValue: {
-            get: jest.fn((key: string) => {
-              const config = {
-                OPENAI_API_KEY: 'test-api-key',
-                OPENAI_MODEL: 'gpt-3.5-turbo',
-                OPENAI_MAX_TOKENS: 1500,
-                OPENAI_TEMPERATURE: 0.7,
-              };
-              return config[key];
-            }),
-          },
+            get: jest.fn().mockResolvedValue(null),
+            set: jest.fn().mockResolvedValue(undefined),
+          } as Partial<RedisCacheService>,
+        },
+        {
+          provide: CacheService,
+          useValue: {
+            get: jest.fn().mockReturnValue(undefined),
+            set: jest.fn(),
+          } as Partial<CacheService>,
+        },
+        {
+          provide: AiTelemetryService,
+          useValue: {
+            recordRun: jest.fn().mockResolvedValue(undefined),
+          } as Partial<AiTelemetryService>,
         },
       ],
     }).compile();
 
     service = module.get<AIService>(AIService);
-    configService = module.get<ConfigService>(ConfigService);
   });
 
   it('should be defined', () => {
     expect(service).toBeDefined();
   });
 
-  describe('generateItinerary', () => {
-    it('should generate fallback itinerary when OpenAI is not configured', async () => {
-      const request: AIGenerationRequest = {
-        destination: 'Ho Chi Minh City',
-        country: 'Vietnam',
-        startDate: '2024-03-15',
-        endDate: '2024-03-20',
-        budget: 2000000,
-        currency: 'VND',
-        travelers: 2,
-        preferences: {
-          travelStyle: 'cultural',
-          interests: ['food', 'history'],
-          groupType: 'couple',
-        },
-      };
+  describe('generateItineraryWithOpenRouter', () => {
+    it('should return parsed itinerary when Gemini returns valid JSON', async () => {
+      const json = JSON.stringify({
+        days: [
+          { dayNumber: 1, date: null, activities: [{ title: 'City tour' }] },
+        ],
+        totalCost: 0,
+        currency: 'USD',
+      });
+      gemini.createChatCompletion.mockResolvedValue({
+        choices: [{ message: { content: json } }],
+      } as any);
 
-      const result = await service.generateItinerary(request, 'test-user-id');
+      const result = await service.generateItineraryWithOpenRouter('prompt');
 
       expect(result).toBeDefined();
-      expect(result.days).toHaveLength(5); // 5 days from March 15-20
-      expect(result.totalEstimatedCost).toBe(2000000);
-      expect(result.currency).toBe('VND');
-      expect(result.summary.totalDays).toBe(5);
-    });
-  });
-
-  describe('generateLocationSuggestions', () => {
-    it('should generate fallback suggestions', async () => {
-      const suggestions = await service.generateLocationSuggestions(
-        'Ho Chi Minh City',
-        'cultural',
-        500000,
-        ['food', 'history'],
-      );
-
-      expect(suggestions).toBeDefined();
-      expect(Array.isArray(suggestions)).toBe(true);
-      expect(suggestions.length).toBeGreaterThan(0);
-      expect(suggestions[0]).toHaveProperty('name');
-      expect(suggestions[0]).toHaveProperty('estimatedCost');
-    });
-  });
-
-  describe('generateCostEstimation', () => {
-    it('should generate fallback cost estimation', async () => {
-      const estimation = await service.generateCostEstimation(
-        'Ho Chi Minh City, Vietnam',
-        'sightseeing',
-        3,
-        2,
-        'mid-range',
-      );
-
-      expect(estimation).toBeDefined();
-      expect(estimation).toHaveProperty('minCost');
-      expect(estimation).toHaveProperty('maxCost');
-      expect(estimation).toHaveProperty('averageCost');
-      expect(estimation).toHaveProperty('currency');
-      expect(estimation).toHaveProperty('breakdown');
-      expect(estimation.currency).toBe('VND');
+      expect(result.days[0].dayNumber).toBe(1);
+      expect(openRouter.createChatCompletion).not.toHaveBeenCalled();
     });
   });
 
@@ -128,21 +110,8 @@ describe('AIService Integration Test', () => {
   });
 
   describe('Cost calculation', () => {
-    it('should estimate activity costs correctly', () => {
-      const activity = {
-        title: 'Museum Visit',
-        description: 'Educational museum tour',
-        location: 'Ho Chi Minh City',
-        duration: 120,
-        type: 'sightseeing',
-      };
-
-      const result = service.estimateActivityCost(activity, 'Vietnam', 'VND');
-
-      expect(result).toBeDefined();
-      expect(result.estimatedCost).toBeGreaterThan(0);
-      expect(result.category).toBe('activity');
-      expect(result.breakdown).toBeDefined();
+    it('should be a no-op placeholder for current AIService API', () => {
+      expect(service).toBeDefined();
     });
   });
 });

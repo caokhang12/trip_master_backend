@@ -31,6 +31,19 @@ export class ActivityRepository {
     return this.activityRepo.findOne({ where: { id } });
   }
 
+  async findOwnedActivityById(
+    activityId: string,
+    userId: string,
+  ): Promise<ActivityEntity | null> {
+    return this.activityRepo
+      .createQueryBuilder('act')
+      .innerJoin('act.itinerary', 'iti')
+      .innerJoin('iti.trip', 'trip')
+      .where('act.id = :activityId', { activityId })
+      .andWhere('trip.userId = :userId', { userId })
+      .getOne();
+  }
+
   async list(query: ActivityListQuery): Promise<ActivityEntity[]> {
     const qb = this.activityRepo
       .createQueryBuilder('act')
@@ -108,6 +121,18 @@ export class ActivityRepository {
     return exists;
   }
 
+  async findOwnedItineraryById(
+    itineraryId: string,
+    userId: string,
+  ): Promise<ItineraryEntity | null> {
+    return this.itineraryRepo
+      .createQueryBuilder('iti')
+      .innerJoin('iti.trip', 'trip')
+      .where('iti.id = :itineraryId', { itineraryId })
+      .andWhere('trip.userId = :userId', { userId })
+      .getOne();
+  }
+
   async activityOwnedByUser(
     activityId: string,
     userId: string,
@@ -120,6 +145,71 @@ export class ActivityRepository {
       .andWhere('trip.userId = :userId', { userId })
       .getExists();
     return exists;
+  }
+
+  /**
+   * Bulk update activities - optimized for reorder/move operations
+   * Returns the updated activity IDs
+   */
+  async bulkUpdate(
+    items: Array<{
+      id: string;
+      itineraryId?: string;
+      orderIndex?: number;
+      time?: string;
+      title?: string;
+    }>,
+  ): Promise<string[]> {
+    return this.activityRepo.manager.transaction(async (manager) => {
+      const actRepo = manager.getRepository(ActivityEntity);
+      for (const item of items) {
+        const patch: Partial<ActivityEntity> = {};
+        if (item.itineraryId !== undefined)
+          patch.itineraryId = item.itineraryId;
+        if (item.orderIndex !== undefined) patch.orderIndex = item.orderIndex;
+        if (item.time !== undefined) patch.time = item.time;
+        if (item.title !== undefined) patch.title = item.title;
+        if (Object.keys(patch).length > 0) {
+          await actRepo.update(item.id, patch);
+        }
+      }
+      return items.map((i) => i.id);
+    });
+  }
+
+  /**
+   * Check if multiple activities belong to user
+   */
+  async activitiesOwnedByUser(
+    activityIds: string[],
+    userId: string,
+  ): Promise<boolean> {
+    if (activityIds.length === 0) return true;
+    const count = await this.activityRepo
+      .createQueryBuilder('act')
+      .innerJoin('act.itinerary', 'iti')
+      .innerJoin('iti.trip', 'trip')
+      .where('act.id IN (:...activityIds)', { activityIds })
+      .andWhere('trip.userId = :userId', { userId })
+      .getCount();
+    return count === activityIds.length;
+  }
+
+  /**
+   * Check if multiple itineraries belong to user
+   */
+  async itinerariesBelongToUser(
+    itineraryIds: string[],
+    userId: string,
+  ): Promise<boolean> {
+    if (itineraryIds.length === 0) return true;
+    const count = await this.itineraryRepo
+      .createQueryBuilder('iti')
+      .innerJoin('iti.trip', 'trip')
+      .where('iti.id IN (:...itineraryIds)', { itineraryIds })
+      .andWhere('trip.userId = :userId', { userId })
+      .getCount();
+    return count === itineraryIds.length;
   }
 
   async bulkCreate(
@@ -142,6 +232,7 @@ export class ActivityRepository {
           cost: i.cost ?? null,
           type: i.type ?? null,
           orderIndex: i.orderIndex ?? 0,
+          poi: i.poi ?? null,
           metadata: i.metadata ?? null,
         }),
       );

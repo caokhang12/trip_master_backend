@@ -22,25 +22,25 @@ import { CreateActivityDto } from 'src/activity/dto/create-activity.dto';
 import { CreateItineraryDto } from 'src/itinerary/dto/create-itinerary.dto';
 
 export class DestinationLocationDto {
-  @ApiProperty()
+  @ApiProperty({ example: 'ChIJx9Lr6t0udTERpL7gE3o0h1E' })
   @IsString()
-  placeId: string;
+  placeId!: string;
 
-  @ApiProperty()
+  @ApiProperty({ example: 'Da Nang' })
   @IsString()
-  name: string;
+  name!: string;
 
-  @ApiProperty()
+  @ApiProperty({ example: 'Da Nang, Vietnam' })
   @IsString()
-  address: string;
+  address!: string;
 
-  @ApiProperty()
+  @ApiProperty({ example: 16.054407 })
   @IsNumber()
-  lat: number;
+  lat!: number;
 
-  @ApiProperty()
+  @ApiProperty({ example: 108.202167 })
   @IsNumber()
-  lng: number;
+  lng!: number;
 
   @ApiPropertyOptional({ type: [String] })
   @IsOptional()
@@ -72,18 +72,31 @@ export class CreateItineraryInput extends OmitType(CreateItineraryDto, [
 }
 
 export class CreateTripDto {
-  @ApiProperty({ description: 'Trip title', minLength: 3, maxLength: 255 })
+  @ApiProperty({
+    description: 'Trip title',
+    minLength: 3,
+    maxLength: 255,
+    example: 'Da Nang 3D2N - Food & Beach',
+  })
   @IsString()
   @Length(3, 255)
-  title: string;
+  title!: string;
 
-  @ApiPropertyOptional({ description: 'Trip description', maxLength: 2000 })
+  @ApiPropertyOptional({
+    description: 'Trip description',
+    maxLength: 2000,
+    example:
+      'Quick weekend getaway focusing on local food, beach time, and cafes.',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(2000)
   description?: string;
 
-  @ApiPropertyOptional({ description: 'Primary destination name (optional)' })
+  @ApiPropertyOptional({
+    description: 'Primary destination name (optional)',
+    example: 'Da Nang',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(255)
@@ -101,29 +114,41 @@ export class CreateTripDto {
 
   @ApiPropertyOptional({
     description: 'Existing destination id (UUID) to link as primaryDestination',
+    example: '33333333-3333-3333-3333-333333333333',
   })
   @IsOptional()
   @IsUUID()
   primaryDestinationId?: string;
 
-  @ApiPropertyOptional({ description: 'Timezone, e.g. Asia/Ho_Chi_Minh' })
+  @ApiPropertyOptional({
+    description: 'Timezone, e.g. Asia/Ho_Chi_Minh',
+    example: 'Asia/Ho_Chi_Minh',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(50)
   timezone?: string;
 
-  @ApiPropertyOptional({ description: 'Start date (YYYY-MM-DD)', type: String })
+  @ApiPropertyOptional({
+    description: 'Start date (YYYY-MM-DD)',
+    type: String,
+    example: '2025-12-20',
+  })
   @IsOptional()
   @Matches(/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/)
   startDate?: string;
 
-  @ApiPropertyOptional({ description: 'End date (YYYY-MM-DD)', type: String })
+  @ApiPropertyOptional({
+    description: 'End date (YYYY-MM-DD)',
+    type: String,
+    example: '2025-12-22',
+  })
   @IsOptional()
   @Matches(/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/)
   @Validate(EndAfterStartDateConstraint)
   endDate?: string;
 
-  @ApiPropertyOptional({ description: 'Budget amount', example: 1000 })
+  @ApiPropertyOptional({ description: 'Budget amount', example: 3000000 })
   @IsOptional()
   @IsNumber()
   @Min(0)
@@ -131,7 +156,7 @@ export class CreateTripDto {
 
   @ApiPropertyOptional({
     description: '3-letter currency code',
-    example: 'USD',
+    example: 'VND',
   })
   @IsOptional()
   @IsString()

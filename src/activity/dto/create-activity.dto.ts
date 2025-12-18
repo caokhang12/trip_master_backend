@@ -13,29 +13,33 @@ import {
   Min,
 } from 'class-validator';
 import { ActivityCategory } from 'src/trip/enum/trip-enum';
+import type { GeneratedActivity } from 'src/ai/dto/generated-itinerary.dto';
 
 export class CreateActivityDto {
-  @ApiProperty({ format: 'uuid' })
+  @ApiProperty({
+    format: 'uuid',
+    example: '22222222-2222-2222-2222-222222222222',
+  })
   @IsUUID()
   @IsNotEmpty()
-  itineraryId: string;
+  itineraryId!: string;
 
   @ApiProperty({ example: '09:00', description: 'HH:mm (24h)' })
   @IsString()
   @Matches(/^([01]\d|2[0-3]):([0-5]\d)$/)
-  time: string;
+  time!: string;
 
-  @ApiProperty({ maxLength: 255 })
+  @ApiProperty({ maxLength: 255, example: 'Visit My Khe Beach' })
   @IsString()
   @Length(1, 255)
-  title: string;
+  title!: string;
 
   @ApiPropertyOptional({ maxLength: 5000 })
   @IsOptional()
   @IsString()
   description?: string;
 
-  @ApiPropertyOptional({ description: 'minutes' })
+  @ApiPropertyOptional({ description: 'minutes', example: 90 })
   @IsOptional()
   @IsNumber({ allowInfinity: false, allowNaN: false })
   @Min(0)
@@ -47,7 +51,10 @@ export class CreateActivityDto {
   @Min(0)
   cost?: number | null;
 
-  @ApiPropertyOptional({ enum: ActivityCategory })
+  @ApiPropertyOptional({
+    enum: ActivityCategory,
+    example: ActivityCategory.SIGHTSEEING,
+  })
   @IsOptional()
   @IsEnum(ActivityCategory)
   type?: ActivityCategory | null;
@@ -65,6 +72,13 @@ export class CreateActivityDto {
   })
   @IsOptional()
   metadata?: Record<string, any> | null;
+
+  @ApiPropertyOptional({
+    description: 'Optional POI snapshot (thin) to persist into activity.poi',
+    nullable: true,
+  })
+  @IsOptional()
+  poi?: GeneratedActivity['poi'];
 
   @ApiPropertyOptional({
     type: [String],

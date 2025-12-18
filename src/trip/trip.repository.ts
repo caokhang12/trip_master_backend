@@ -21,7 +21,13 @@ export interface ITripRepository {
       startDateTo?: Date;
       endDateFrom?: Date;
       endDateTo?: Date;
-      sortBy?: 'createdAt' | 'startDate' | 'endDate' | 'title' | 'status';
+      sortBy?:
+        | 'createdAt'
+        | 'startDate'
+        | 'endDate'
+        | 'title'
+        | 'status'
+        | 'budget';
       sortOrder?: 'ASC' | 'DESC';
     },
   ): Promise<{ items: TripEntity[]; total: number }>;
@@ -34,7 +40,13 @@ export interface ITripRepository {
     startDateTo?: Date;
     endDateFrom?: Date;
     endDateTo?: Date;
-    sortBy?: 'createdAt' | 'startDate' | 'endDate' | 'title' | 'status';
+    sortBy?:
+      | 'createdAt'
+      | 'startDate'
+      | 'endDate'
+      | 'title'
+      | 'status'
+      | 'budget';
     sortOrder?: 'ASC' | 'DESC';
   }): Promise<{ items: TripEntity[]; total: number }>;
 }
@@ -108,16 +120,26 @@ export class TripRepository implements ITripRepository {
       startDateTo?: Date;
       endDateFrom?: Date;
       endDateTo?: Date;
-      sortBy?: 'createdAt' | 'startDate' | 'endDate' | 'title' | 'status';
+      sortBy?:
+        | 'createdAt'
+        | 'startDate'
+        | 'endDate'
+        | 'title'
+        | 'status'
+        | 'budget';
       sortOrder?: 'ASC' | 'DESC';
     },
   ): Promise<{ items: TripEntity[]; total: number }> {
     const baseQb = this.repo
       .createQueryBuilder('trip')
       .leftJoin('trip.members', 'members')
-      .where('trip.userId = :userId OR members.userId = :userId', {
-        userId,
-      });
+      .where(
+        new Brackets((sqb) =>
+          sqb
+            .where('trip.userId = :userId', { userId })
+            .orWhere('members.userId = :userId', { userId }),
+        ),
+      );
 
     if (options.search) {
       baseQb.andWhere('(trip.title ILIKE :q OR trip.description ILIKE :q)', {
@@ -154,6 +176,7 @@ export class TripRepository implements ITripRepository {
       endDate: 'trip.endDate',
       title: 'trip.title',
       status: 'trip.status',
+      budget: 'trip.budget',
     };
     const orderField = options.sortBy ? allowed[options.sortBy] : undefined;
 
@@ -223,7 +246,13 @@ export class TripRepository implements ITripRepository {
     startDateTo?: Date;
     endDateFrom?: Date;
     endDateTo?: Date;
-    sortBy?: 'createdAt' | 'startDate' | 'endDate' | 'title' | 'status';
+    sortBy?:
+      | 'createdAt'
+      | 'startDate'
+      | 'endDate'
+      | 'title'
+      | 'status'
+      | 'budget';
     sortOrder?: 'ASC' | 'DESC';
   }): Promise<{ items: TripEntity[]; total: number }> {
     const qb = this.repo
@@ -291,6 +320,7 @@ export class TripRepository implements ITripRepository {
       endDate: 'trip.endDate',
       title: 'trip.title',
       status: 'trip.status',
+      budget: 'trip.budget',
     };
     const orderField = options.sortBy ? allowed[options.sortBy] : undefined;
 

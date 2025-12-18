@@ -62,7 +62,6 @@ export class ItineraryService {
     dto: UpdateItineraryDto,
   ): Promise<ItineraryEntity> {
     const existing = await this.repo.findByIdForUser(id, userId);
-    console.log('existing', existing);
     if (!existing) throw new NotFoundException('Itinerary not found');
     if (dto.tripId && dto.tripId !== existing.tripId) {
       const ok = await this.repo.tripOwnedByUser(dto.tripId, userId);

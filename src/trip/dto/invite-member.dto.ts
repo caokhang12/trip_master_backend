@@ -9,7 +9,7 @@ export class InviteMemberDto {
   })
   @IsEmail()
   @IsNotEmpty()
-  email: string;
+  email!: string;
 
   @ApiProperty({
     description: 'Role to assign to the invited member',
@@ -18,5 +18,5 @@ export class InviteMemberDto {
   })
   @IsEnum(MemberRole)
   @IsNotEmpty()
-  role: MemberRole;
+  role!: MemberRole;
 }

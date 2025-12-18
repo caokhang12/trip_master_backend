@@ -1,15 +1,28 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { useContainer } from 'class-validator';
 import * as cookieParser from 'cookie-parser';
+import { randomUUID } from 'crypto';
+import type { NextFunction, Request, Response } from 'express';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
   const port = process.env.PORT ?? 3000;
 
   app.use(cookieParser());
+
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    const incoming = req.get('x-request-id');
+    const requestId =
+      typeof incoming === 'string' && incoming.trim()
+        ? incoming.trim()
+        : randomUUID();
+    const reqWithId = req as Request & { requestId?: string };
+    reqWithId.requestId = requestId;
+    res.set('x-request-id', requestId);
+    next();
+  });
   // Enable CORS
   app.enableCors({
     origin: [
@@ -19,15 +32,6 @@ async function bootstrap(): Promise<void> {
     ],
     credentials: true,
   });
-
-  // Global validation pipe
-  app.useGlobalPipes(
-    new ValidationPipe({
-      transform: true,
-      whitelist: true,
-      forbidNonWhitelisted: true,
-    }),
-  );
 
   // Enable DI in class-validator custom validators
   useContainer(app.select(AppModule), { fallbackOnErrors: true });
@@ -53,10 +57,7 @@ async function bootstrap(): Promise<void> {
     .addTag('Authentication', 'User authentication and account management')
     .addTag('Users', 'User profile and preference operations')
     .addTag('Trips', 'Trip planning and management')
-    .addServer(
-      `http://localhost:${process.env.PORT ?? 3000}/`,
-      'Development Server',
-    )
+    .addServer(`http://localhost:${port}/`, 'Development Server')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

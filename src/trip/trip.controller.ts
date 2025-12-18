@@ -62,7 +62,7 @@ export class TripController {
       query.endDateFrom,
       query.endDateTo,
       query.sortBy,
-      query.sortOrder ?? 'ASC',
+      query.sortOrder,
     );
     return ResponseUtil.success(result);
   }
@@ -119,7 +119,7 @@ export class TripController {
       query.endDateFrom,
       query.endDateTo,
       query.sortBy,
-      query.sortOrder ?? 'DESC',
+      query.sortOrder,
     );
     return ResponseUtil.success(result);
   }

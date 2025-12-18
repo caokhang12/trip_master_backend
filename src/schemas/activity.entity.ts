@@ -53,6 +53,10 @@ export class ActivityEntity {
   @Column({ type: 'jsonb', nullable: true })
   metadata?: Record<string, any> | null;
 
+  // Structured POI snapshot for Google Places integration
+  @Column({ type: 'jsonb', nullable: true })
+  poi?: Record<string, any> | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

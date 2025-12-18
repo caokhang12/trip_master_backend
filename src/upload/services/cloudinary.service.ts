@@ -95,8 +95,12 @@ export class CloudinaryService {
    */
   async deleteFile(publicId: string): Promise<boolean> {
     try {
-      const result = await cloudinary.uploader.destroy(publicId);
-      return (result as { result: string }).result === 'ok';
+      const result: unknown = await cloudinary.uploader.destroy(publicId);
+      if (typeof result === 'object' && result !== null && 'result' in result) {
+        const r = (result as { result?: unknown }).result;
+        return r === 'ok';
+      }
+      return false;
     } catch (error) {
       this.logger.error('Delete failed:', error);
       return false;

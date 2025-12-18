@@ -4,6 +4,7 @@ import { ConfigModule } from '@nestjs/config';
 import amadeusConfig from './config/amadeus.config';
 import googleMapsConfig from './config/google-maps.config';
 import geminiConfig from './config/gemini.config';
+import openrouterConfig from './config/openrouter.config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { SharedModule } from './shared/shared.module';
@@ -33,7 +34,7 @@ import { AIModule } from './ai/ai.module';
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
-      load: [amadeusConfig, googleMapsConfig, geminiConfig],
+      load: [amadeusConfig, googleMapsConfig, geminiConfig, openrouterConfig],
     }),
     SharedModule,
     EmailModule,

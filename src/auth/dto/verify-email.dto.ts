@@ -7,5 +7,5 @@ export class VerifyEmailDto {
     example: 'c0f5c3b2c4a9481d9b2e5c6f8d9a7b3e',
   })
   @IsString()
-  token: string;
+  token!: string;
 }

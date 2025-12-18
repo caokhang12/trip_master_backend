@@ -7,5 +7,5 @@ export class ResendVerificationDto {
     example: 'john.doe@example.com',
   })
   @IsEmail()
-  email: string;
+  email!: string;
 }

@@ -62,8 +62,7 @@ describe('Trip Images Endpoints (e2e)', () => {
     const user = userRepo.create({
       id: userId,
       email: 'user@test.com',
-      password: 'hashed',
-      username: 'tester',
+      passwordHash: 'hashed',
     });
     await userRepo.save(user);
     const trip = tripRepo.create({

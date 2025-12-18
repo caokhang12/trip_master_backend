@@ -1,14 +1,15 @@
-import { ApiPropertyOptional, IntersectionType } from '@nestjs/swagger';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEnum, IsOptional, IsString, IsDateString } from 'class-validator';
 import { TripStatus } from '../enum/trip-enum';
 import { ExtendedPaginationDto } from '../../shared/dto/page-query.dto';
 
-class TripFiltersDto {
+export class TripListQueryDto extends ExtendedPaginationDto {
   // status + date range filters only (pagination/search/sort come from ExtendedPaginationDto)
 
   @ApiPropertyOptional({
     description: 'Filter by trip status',
     enum: TripStatus,
+    example: TripStatus.PLANNING,
   })
   @IsOptional()
   @IsEnum(TripStatus)
@@ -16,6 +17,7 @@ class TripFiltersDto {
 
   @ApiPropertyOptional({
     description: 'startDate >= this (YYYY-MM-DD)',
+    example: '2025-12-01',
   })
   @IsOptional()
   @IsDateString()
@@ -31,7 +33,7 @@ class TripFiltersDto {
 
   @ApiPropertyOptional({
     description: 'endDate >= this (YYYY-MM-DD)',
-    example: '2025-01-01',
+    example: '2025-12-01',
   })
   @IsOptional()
   @IsDateString()
@@ -44,27 +46,28 @@ class TripFiltersDto {
   @IsOptional()
   @IsDateString()
   endDateTo?: string;
-}
 
-export class TripListQueryDto extends IntersectionType(
-  ExtendedPaginationDto,
-  TripFiltersDto,
-) {
   @ApiPropertyOptional({
     description: 'Field to sort by',
-    enum: ['createdAt', 'startDate', 'endDate', 'title', 'status'],
+    enum: ['createdAt', 'startDate', 'endDate', 'title', 'status', 'budget'],
     example: 'createdAt',
     default: 'createdAt',
   })
   @IsOptional()
   @IsString()
-  declare sortBy?: 'createdAt' | 'title' | 'status';
+  declare sortBy?:
+    | 'createdAt'
+    | 'startDate'
+    | 'endDate'
+    | 'title'
+    | 'status'
+    | 'budget';
 
   @ApiPropertyOptional({
     description: 'Sort direction',
     enum: ['ASC', 'DESC'],
-    example: 'ASC',
-    default: 'ASC',
+    example: 'DESC',
+    default: 'DESC',
   })
   @IsOptional()
   @IsEnum(['ASC', 'DESC'])

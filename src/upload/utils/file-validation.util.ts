@@ -1,4 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
+import type { Request } from 'express';
+
+type FileFilterCallback = (error: Error | null, acceptFile: boolean) => void;
 
 /**
  * File validation utility for upload operations
@@ -54,8 +57,10 @@ export class FileValidationUtil {
     files.forEach((file, index) => {
       try {
         this.validateSingleFile(file);
-      } catch (error) {
-        throw new BadRequestException(`File ${index + 1}: ${error.message}`);
+      } catch (error: unknown) {
+        const message =
+          error instanceof Error ? error.message : 'File validation failed';
+        throw new BadRequestException(`File ${index + 1}: ${message}`);
       }
     });
   }
@@ -91,11 +96,15 @@ export class FileValidationUtil {
    * Get multer file filter for validation during upload
    */
   static getMulterFileFilter() {
-    return (req: any, file: Express.Multer.File, cb: any) => {
+    return (
+      _req: Request,
+      file: Express.Multer.File,
+      cb: FileFilterCallback,
+    ) => {
       if (this.ALLOWED_MIME_TYPES.includes(file.mimetype)) {
         cb(null, true);
       } else {
-        cb(new BadRequestException('Only images allowed'), false);
+        cb(new Error('Only images allowed'), false);
       }
     };
   }

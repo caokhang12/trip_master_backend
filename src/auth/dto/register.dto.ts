@@ -9,7 +9,7 @@ import {
 export class RegisterDto {
   @ApiProperty({ example: 'newjohn.doe@example.com' })
   @IsEmail()
-  email: string;
+  email!: string;
 
   @ApiProperty({
     minLength: 8,
@@ -31,14 +31,14 @@ export class RegisterDto {
         'Password must be at least 8 characters and include uppercase, lowercase, number and special character.',
     },
   )
-  password: string;
+  password!: string;
 
-  @ApiProperty({ required: false })
+  @ApiProperty({ required: false, example: 'Minh' })
   @IsOptional()
   @IsString()
   firstName?: string;
 
-  @ApiProperty({ required: false })
+  @ApiProperty({ required: false, example: 'Nguyen' })
   @IsOptional()
   @IsString()
   lastName?: string;

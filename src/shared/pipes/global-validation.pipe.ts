@@ -4,7 +4,7 @@ import {
   ArgumentMetadata,
   BadRequestException,
 } from '@nestjs/common';
-import { validate } from 'class-validator';
+import { validate, ValidationError } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
 
 /**
@@ -23,16 +23,20 @@ export class GlobalValidationPipe implements PipeTransform<unknown> {
     const object = plainToInstance(metatype, value, {
       enableImplicitConversion: true,
     });
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-    const errors = await validate(object);
+
+    const errors: ValidationError[] = await validate(object as object, {
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      enableDebugMessages: false,
+    });
 
     if (errors.length > 0) {
       const errorMessages: string[] = [];
 
-      const extractErrors = (errs: any[], prefix = ''): void => {
+      const extractErrors = (errs: ValidationError[], prefix = ''): void => {
         for (const error of errs) {
           const field = prefix ? `${prefix}.${error.property}` : error.property;
-          const constraints = error.constraints || {};
+          const constraints = error.constraints ?? {};
           const messages = Object.values(constraints);
 
           if (messages.length > 0) {
@@ -57,7 +61,8 @@ export class GlobalValidationPipe implements PipeTransform<unknown> {
 
       throw new BadRequestException({
         message: 'Validation failed',
-        details: errorMessages,
+        code: 'VALIDATION_ERROR',
+        details: Array.from(new Set(errorMessages)),
       });
     }
 
